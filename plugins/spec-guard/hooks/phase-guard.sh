@@ -174,7 +174,7 @@ elif [ "$GH_OK" = false ]; then
     NEXT="/test 验证 → /deliver 开 PR（有 $DIRTY 处未提交改动）"
   elif [ -n "$BRANCH_ISSUE" ]; then
     PHASE="TASK_READY (gh 不可用，降级判定)"
-    NEXT="/deliver 开 PR（Closes #$BRANCH_ISSUE）"
+    NEXT="/deliver 开 PR（Closes #${BRANCH_ISSUE}）"
   else
     PHASE="PLANNED (gh 不可用，降级判定)"
     NEXT="恢复 gh 后 /next；或手动指定要做的 issue"
@@ -195,7 +195,7 @@ elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
 
 elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -eq 0 ]; then
   PHASE="TASK_READY"
-  NEXT="/deliver 开 PR（Closes #$BRANCH_ISSUE）"
+  NEXT="/deliver 开 PR（Closes #${BRANCH_ISSUE}）"
 
 else
   PHASE="PLANNED"

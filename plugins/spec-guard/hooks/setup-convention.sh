@@ -19,7 +19,7 @@ case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"
-[ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 $TPL）"; exit 1; }
+[ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 ${TPL}）"; exit 1; }
 
 MARK_B="<!-- BEGIN:agent-skills-convention -->"
 MARK_E="<!-- END:agent-skills-convention -->"
@@ -55,14 +55,14 @@ if [ "$MODE" = "github" ]; then
   case "$RM" in
     *github*) echo "  ✅ 远端是 GitHub" ;;
     "")       echo "  ⚠️  无 origin 远端" ;;
-    *)        echo "  ⚠️  远端非 GitHub（$RM），建议 local 模式" ;;
+    *)        echo "  ⚠️  远端非 GitHub（${RM}），建议 local 模式" ;;
   esac
 fi
 
 [ "$F" -eq 0 ] || { echo ""; echo "存在阻塞项，未做任何改动。"; exit 1; }
 
 echo ""
-echo "═══ 落地约定（模式：$MODE）═══"
+echo "═══ 落地约定（模式：${MODE}）═══"
 
 # 已安装则只报告
 if [ -f CLAUDE.md ] && grep -q "$MARK_B" CLAUDE.md 2>/dev/null; then
@@ -131,7 +131,7 @@ print(re.search(r'当前阶段: \*\*(.+?)\*\*',c).group(1))" 2>/dev/null)
     bad "hook 无输出 —— 检查 CLAUDE.md 是否含约定标题"
   fi
 else
-  echo "  ⚠️  找不到 hook（$HOOK），跳过自检"
+  echo "  ⚠️  找不到 hook（${HOOK}），跳过自检"
 fi
 
 echo ""

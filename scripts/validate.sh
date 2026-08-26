@@ -32,7 +32,7 @@ done < <(find . -name "*.sh" -not -path "./.git/*")
 echo ""
 echo "═══ 可执行位 ═══"
 while IFS= read -r s; do
-  [ -x "$s" ] && say "✅" "$s" || { say "⚠️ " "$s 缺执行位（git update-index --chmod=+x $s）"; }
+  [ -x "$s" ] && say "✅" "$s" || { say "⚠️ " "$s 缺执行位（git update-index --chmod=+x ${s}）"; }
 done < <(find . -name "*.sh" -not -path "./.git/*")
 
 echo ""

@@ -178,9 +178,22 @@ elif [ "$TRACKER" = "other" ] && [ -z "$MODULE_ISSUE" ]; then
   broken "远端不是 GitHub，但 state.json 未声明 tracker 类型 —— 无法判定任务托管在哪"
   NEXT="在 .agent/state.json 里显式声明 \"tracker\": \"none\"（本地 todo.md）或 \"gitlab\"/\"jira\" 等"
 
+elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
+  # state.json 在、但 activeModule 是空的 —— 这是**刻意声明的空闲**，不是断链。
+  # 项目在两个 initiative 之间(上一批全部交付、下一批还没起)本来就是这个样子。
+  # 早期版本在这里报断链，对着一堆已交付的 spec 催「去建 issue」—— 假断链。
+  PHASE="IDLE (无活跃模块)"
+  NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
+
 elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then
+  # 到这里说明：要么 state.json 根本不存在，要么 activeModule 有值却没有对应 issue。
+  # 两种都是真断链。
   PHASE="SPECED"
-  broken "spec 已存在但 .agent/state.json 里没有模块 issue —— 链路在此断开"
+  if [ -n "$MODULE" ]; then
+    broken "activeModule=[$MODULE] 但 .agent/state.json 里没有它的 issue —— 链路在此断开"
+  else
+    broken "spec 已存在但没有 .agent/state.json —— 链路在此断开"
+  fi
   NEXT="/sync-map 把能力图和模块落成 issue"
 
 elif [ "$HAS_PLAN" = false ]; then

@@ -75,6 +75,25 @@ base; mkdir -p spec .agent; touch spec/a.md
 echo '{"tracker":"none","activeModule":"x","modules":{"x":{}}}' > .agent/state.json
 chk "本地模式缺plan" "SPECED (本地模式)|断链1"
 
+# state.json 在、activeModule 空 = 刻意空闲，不是断链
+base; mkdir -p spec .agent; touch spec/a.md spec/b.md
+echo '{"tracker":"github","activeModule":"","modules":{}}' > .agent/state.json
+chk "有 spec 但刻意无活跃模块 → 不报断链" "IDLE (无活跃模块)|断链0"
+
+# activeModule 有值却没 issue = 真断链
+base; mkdir -p spec .agent; touch spec/a.md
+echo '{"tracker":"github","activeModule":"x","modules":{}}' > .agent/state.json
+chk "activeModule 有值但无 issue → 真断链" "SPECED|断链1"
+
+# 文案要指名道姓,不能只说「没有模块 issue」
+base; mkdir -p spec .agent; touch spec/a.md
+echo '{"tracker":"github","activeModule":"x","modules":{}}' > .agent/state.json
+if CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | grep -q "activeModule=\[x\]"; then
+  printf '  ✅ 断链文案指名 activeModule\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 断链文案未指名 activeModule\n'; FAIL=$((FAIL+1))
+fi
+
 base; mkdir -p spec .agent; touch spec/a.md
 git remote add origin https://gitlab.com/a/b.git 2>/dev/null
 echo '{"activeModule":"x","modules":{"x":{}}}' > .agent/state.json

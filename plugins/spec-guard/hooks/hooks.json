@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SCRIPT=\"${CLAUDE_PLUGIN_ROOT}/hooks/phase-guard.sh\"; [ -f \"$SCRIPT\" ] || SCRIPT=\"${CLAUDE_PROJECT_DIR}/.claude/hooks/phase-guard.sh\"; [ -f \"$SCRIPT\" ] && bash \"$SCRIPT\" || true"
+          }
+        ]
+      }
+    ]
+  }
+}

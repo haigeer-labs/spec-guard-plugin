@@ -1,0 +1,24 @@
+name: Validate
+
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 仓库完整性校验
+        run: bash scripts/validate.sh
+
+      - name: phase-guard 回归测试
+        run: bash plugins/spec-guard/hooks/test-phase-guard.sh
+
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y shellcheck
+          shellcheck -S warning plugins/spec-guard/hooks/*.sh scripts/*.sh || true

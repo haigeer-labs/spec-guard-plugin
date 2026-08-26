@@ -1,0 +1,11 @@
+{
+  "name": "spec-guard-marketplace",
+  "owner": { "name": "Your Team" },
+  "plugins": [
+    {
+      "name": "spec-guard",
+      "source": "./plugins/spec-guard",
+      "description": "agent-skills 多 Spec 目录约定 + 链路守卫。补上 spec→plan→task 的状态机推进与断链检测。"
+    }
+  ]
+}

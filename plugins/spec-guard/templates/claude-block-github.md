@@ -20,6 +20,8 @@
 本项目使用 **GitHub Issues 作为 task list target**。planning 阶段：
 
 - 每个 task 用 `gh issue create --type Task --parent <module-issue>` 创建
+  - `.agent/state.json` 的 `issueTypes` 为 `false` 时**省略 `--type`**（个人仓库没有
+    issue types，那是组织级功能）。层级本身已区分 task，流程不受影响
 - 验收标准和验证步骤写进 issue 正文
 - 依赖关系用 `--blocked-by <n>`，不要写在描述里
 - checkpoint 也建 issue，标题以 `Checkpoint:` 开头

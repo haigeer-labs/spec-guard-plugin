@@ -116,6 +116,16 @@ else
   printf '  ❌ 覆盖了用户内容\n'; FAIL=$((FAIL+1))
 fi
 
+# state.json 必须是合法 JSON 且带 issueTypes 能力位（下游据此决定加不加 --type）
+if python3 -c "
+import json,sys
+d=json.load(open('.agent/state.json'))
+sys.exit(0 if isinstance(d.get('issueTypes'), bool) else 1)" 2>/dev/null; then
+  printf '  ✅ state.json 合法且带 issueTypes 能力位\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ state.json 缺 issueTypes 或不是合法 JSON\n'; FAIL=$((FAIL+1))
+fi
+
 bash "$SETUP" local >/dev/null 2>&1
 if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 1 ]; then
   printf '  ✅ 幂等（声明块不重复）\n'; PASS=$((PASS+1))

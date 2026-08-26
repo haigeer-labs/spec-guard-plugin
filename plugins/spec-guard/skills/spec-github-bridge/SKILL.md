@@ -14,6 +14,24 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 版本不足直接停下并告知用户，不要退化用 label 模拟 issue type。
 
+### issue types 可用性（决定加不加 `--type`）
+
+读 `.agent/state.json` 的 `issueTypes`：
+
+| 值 | 含义 | 怎么建 issue |
+|---|---|---|
+| `true` | 组织仓库，已启用 | 加 `--type Feature` / `--type Task` |
+| `false` | **个人仓库**（issue types 是组织级功能） | **省略 `--type`**，其余不变 |
+
+省略 `--type` 不影响任何流程：`gh issue list --parent <module>` 返回的
+**按构造就是 task**，层级本身已经编码了这个身份。`--parent`（层级）和
+`--blocked-by`（依赖）在个人免费仓库上实测可用。
+
+⚠️ **不要在 `issueTypes: false` 时硬加 `--type`** —— gh 会先把 issue 建出来
+再报 `type "Task" not found`，**留下一个孤儿 issue**。实测确认过。
+
+⚠️ 仍然**不要用 label 模拟 type** —— label 无层级、无依赖，筛选逻辑会全废。
+
 ---
 
 ## 操作一：能力图落库（bootstrap）
@@ -24,13 +42,13 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 步骤：
 
 1. 解析能力图的模块表和 build order
-2. 创建 Epic：
+2. 创建 Epic（`issueTypes: false` 时去掉 `--type Feature` 这一行）：
 
        gh issue create --type Feature \
          --title "Initiative: <名称>" \
          --body-file spec/CAPABILITY-MAP.md
 
-3. 按 build order 顺序，为每个模块创建 issue：
+3. 按 build order 顺序，为每个模块创建 issue（同样，`issueTypes: false` 时去掉 `--type`）：
 
        gh issue create --type Feature \
          --parent <epic> \
@@ -54,7 +72,7 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 **输入**：`/planning` 产出的任务列表
 **输出**：sub-issue + `plan.md` 的索引段
 
-对每个 task：
+对每个 task（`issueTypes: false` 时去掉 `--type Task`）：
 
     gh issue create --type Task \
       --parent <module-issue> \
@@ -98,7 +116,8 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 筛选规则（按顺序）：
 
-1. 排除 `issueType != Task`
+1. 排除 `issueType != Task` —— **`issueTypes: false` 时跳过这条**。
+   `--parent <module>` 返回的按构造就是 task，这条规则本来就是冗余的
 2. 排除存在未关闭 `blocked-by` 的
 3. 排除已有 assignee 且不是自己的（多人协作）
 4. 取第一个
@@ -143,6 +162,8 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 | "依赖关系写在描述里更方便" | 写描述里 `/build` 读不到，无法自动跳过被阻塞的任务。必须用 --blocked-by。 |
 | "直接关掉 issue 更快" | 手动关闭会丢失 PR ↔ issue 的关联，追溯时找不到实现在哪。 |
 | "gh 版本低，用 label 模拟 type" | label 无层级、无依赖，`/build` 的筛选逻辑会全部失效。升级 gh。 |
+| "个人仓库没有 issue types，那这套用不了" | 只有 `--type` 用不了。层级和依赖照常，省略 `--type` 即可，流程一步不少。 |
+| "反正建了也报错，先试试 --type" | 会留下孤儿 issue —— gh 先建后校验。读 `state.json` 的 `issueTypes`，别试。 |
 
 ## Red Flags
 

@@ -21,6 +21,7 @@ TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"
 [ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 ${TPL}）"; exit 1; }
 
+ISSUE_TYPES=unknown          # github 模式下由前置检查探测后覆盖
 MARK_B="<!-- BEGIN:agent-skills-convention -->"
 MARK_E="<!-- END:agent-skills-convention -->"
 F=0
@@ -80,11 +81,13 @@ try:
 except Exception:
     print('unknown')" 2>/dev/null)
         case "${IT:-unknown}" in
-          ok)   echo "  ✅ $NWO 支持 issue types" ;;
-          none) bad "$NWO 不支持 issue types —— 这是组织级功能，个人仓库用不了。
-       改用 local 模式，或把仓库放到组织下并在组织设置里启用 issue types。
-       不要退化用 label 模拟：label 无层级无依赖，/build 的筛选逻辑会全废。" ;;
-          *)    echo "  ⚠️  issue types 探测失败，跳过（不代表可用）" ;;
+          ok)   ISSUE_TYPES=true;  echo "  ✅ $NWO 支持 issue types" ;;
+          none) ISSUE_TYPES=false
+                echo "  ⚠️  $NWO 不支持 issue types（组织级功能，个人仓库用不了）"
+                echo "       → 自动降级：省略 --type，改用层级本身区分 task"
+                echo "       → 层级(--parent)和依赖(--blocked-by)照常可用，实测已验证"
+                echo "       → 不用 label 模拟 type：label 无层级无依赖，筛选逻辑会全废" ;;
+          *)    ISSUE_TYPES=unknown; echo "  ⚠️  issue types 探测失败，按不可用处理（宁可少用一个参数）" ;;
         esac
       fi
       ;;
@@ -123,11 +126,14 @@ if [ -f .agent/state.json ]; then
   skip ".agent/state.json 已存在"
 else
   T=$( [ "$MODE" = github ] && echo github || echo none )
+  # issueTypes: true=可用（加 --type）  false=不可用（省略 --type，靠层级区分）
+  ITJ=$( [ "$ISSUE_TYPES" = true ] && echo true || echo false )
   if [ "$DRY" = false ]; then
     cat > .agent/state.json <<EOF
 {
   "tracker": "$T",
   "initiative": { "title": "", "issue": null, "map": "spec/CAPABILITY-MAP.md" },
+  "issueTypes": ${ITJ},
   "modules": {},
   "activeModule": "",
   "updatedAt": ""

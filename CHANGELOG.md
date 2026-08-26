@@ -2,6 +2,44 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-08-26
+
+### 新增
+
+- **github 模式自适应 issue types**，个人仓库不再被挡在门外。
+
+  0.3.0 里 `/setup-convention github` 探测到没有 issue types 就**硬阻塞**。
+  实测下来这个判断过重了 —— 三个 gh 参数的可用性并不一致：
+
+  | gh 参数 | 依赖的 GitHub 功能 | 个人免费仓库实测 |
+  |---|---|---|
+  | `--type Feature/Task` | issue types | ❌ `type "Task" not found; available types:`（空） |
+  | `--parent` | sub-issues | ✅ 层级建立成功，REST + GraphQL 双向确认 |
+  | `--add-blocked-by` | issue dependencies | ✅ 依赖建立成功 |
+
+  **只有 issue types 是组织级的**（GitHub 员工在 community#175785 的原话：
+  *available only for organizations ... not for personal repositories*）。
+  而 `/next` 的第一条筛选规则「排除 `issueType != Task`」本来就冗余 ——
+  `gh issue list --parent <module>` 返回的按构造就是 task，层级已编码了这个身份。
+
+  所以不新增 tracker 模式，改为让 `github` 模式自适应：`/setup-convention`
+  探测一次，把结果写进 `.agent/state.json` 的 `issueTypes`，
+  `spec-github-bridge` 据此决定加不加 `--type`。**流程一步不少**，
+  只失去按 type 跨仓筛选的能力。
+
+- `spec-github-bridge` 增加「issue types 可用性」章节和两条 Common Rationalizations
+
+### 变更
+
+- `/setup-convention github` 在个人仓库上从**阻塞**改为**降级 + 告知**
+
+### 已知限制（补充）
+
+- 硬加 `--type` 会**留下孤儿 issue** —— gh 先把 issue 建出来再校验 type，
+  失败时不回滚。实测确认。所以必须读 `state.json` 的 `issueTypes`，不要试错。
+- 额度（官方文档）：sub-issue 每个父 issue **100 个**、嵌套 **8 层**、
+  每种依赖关系 **50 个**。本插件只用到 3 层，远未触顶。
+
 ## [0.3.0] - 2026-08-26
 
 ### 新增

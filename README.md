@@ -170,6 +170,8 @@ mkdir -p spec tasks .agent
 本项目使用 **GitHub Issues 作为 task list target**。planning 阶段：
 
 - 每个 task 用 `gh issue create --type Task --parent <module-issue>` 创建
+  - `.agent/state.json` 的 `issueTypes` 为 `false` 时**省略 `--type`**（个人仓库没有
+    issue types，那是组织级功能）。层级本身已区分 task，流程不受影响
 - 验收标准和验证步骤写进 issue 正文
 - 依赖关系用 `--blocked-by <n>`，不要写在描述里
 - checkpoint 也建 issue，标题以 `Checkpoint:` 开头
@@ -407,6 +409,7 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 | 模式 | 任务清单在哪 | 检测范围 |
 |---|---|---|
 | `github` | GitHub Issues | 完整（含任务层） |
+| `github` + `issueTypes:false` | GitHub Issues（个人仓库） | 完整，仅省略 `--type` |
 | `none` | `tasks/<module>/todo.md` | 完整（上游原生路径） |
 | `other` / `gitlab` / `jira` | 你自己的系统 | **只到 plan 层** |
 
@@ -434,7 +437,8 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 ```bash
 bash scripts/validate.sh                            # 仓库完整性
-bash plugins/spec-guard/hooks/test-phase-guard.sh   # 15 个断言（12 phase-guard + 3 setup）
+bash plugins/spec-guard/hooks/test-phase-guard.sh      # 16 个断言（12 phase-guard + 4 setup）
+bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 16 个断言
 ```
 
 ---
@@ -446,9 +450,11 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh   # 15 个断言（12 phase-gu
 3. **`spec-github-bridge` skill 里的 gh 命令未经端到端实测** —— 逻辑按官方文档写，
    但没在真实仓库跑通全流程。首次使用建议先用测试仓库。
 4. **多人协作无加锁** —— 任务认领依赖 assignee，理论上存在竞态。
-5. **github 模式需要「组织」仓库** —— `--type Feature/Task` 依赖 GitHub issue types，
-   这是**组织级功能，个人仓库用不了**。`/setup-convention github` 会在前置检查里
-   探测并阻塞。个人仓库请用 `local` 模式。
+5. **个人仓库没有 issue types，会自动降级** —— `--type Feature/Task` 依赖 GitHub
+   issue types，这是**组织级功能**。`/setup-convention github` 会探测并把结果写进
+   `.agent/state.json` 的 `issueTypes`，下游据此省略 `--type`。**层级（`--parent`）和
+   依赖（`--blocked-by`）在个人免费仓库上实测可用**，所以流程一步不少，
+   只是失去按 type 跨仓筛选的能力。
 6. **Windows 需 WSL 或 Git Bash** —— hook 是 bash 脚本。
 7. **文案硬编码中文**。
 8. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说

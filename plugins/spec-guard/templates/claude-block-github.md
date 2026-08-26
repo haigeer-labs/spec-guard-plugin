@@ -33,7 +33,9 @@
 `/build` 取下一个任务时，**不要读 todo.md**，改为：
 
 1. 读 `.agent/state.json` 确认 `activeModule`
-2. `gh issue list --parent <module-issue> --state open --json number,title,issueType`
+2. `gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"`
+   （**不是** `gh issue list --parent` —— 那个 flag 不存在，只有 `gh issue create` 有）
+   REST 返回所有状态，自己筛 `state == "open"`
 3. 跳过所有存在未关闭 `blocked-by` 的 issue
 4. 取第一个可执行的 Task
 

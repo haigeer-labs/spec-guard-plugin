@@ -2,6 +2,44 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.1] - 2026-08-26
+
+### 修复
+
+- **P0：`gh issue list --parent` 这个 flag 根本不存在。** `--parent` 只在
+  `gh issue create` 上；`gh issue list` 有 `parent` / `subIssues` 这两个
+  **`--json` 字段**，但没有同名 flag。四处受影响：
+
+  | 位置 | 后果 |
+  |---|---|
+  | `phase-guard.sh:101` | **GitHub 层从来没跑过**，每次静默落进「gh 不可用，降级判定」 |
+  | `verify-artifacts.sh` | Epic ↔ 能力图交叉校验永远 skip |
+  | `SKILL.md` 操作三 | `/next` 取任务命令直接 `unknown flag` |
+  | `CLAUDE.md` 模板 + README | 使用者照抄照错 |
+
+  全部改用 REST sub-issues 端点
+  （`gh api "repos/{owner}/{repo}/issues/<n>/sub_issues"`，`{owner}`/`{repo}`
+  占位符自动解析，仓库外干净失败）。REST 返回**所有状态**，已补 `state == "open"` 筛选。
+
+  **12 个 phase-guard 断言全绿却没抓到** —— 它们跑在没有 GitHub 的临时仓库里，
+  降级分支正是那里的预期行为，测试恰好覆盖了假象。只有真连 GitHub 才暴露得出来。
+
+### 新增
+
+- `docs/walkthrough.md` —— 端到端实跑记录。真实仓库、真实产物、真实输出：
+  `/setup-convention` → `/sync-map` → `/planning` → `/next` → `/build` →
+  `/verify-artifacts`，跑完 6 个 issue 全部 `deleteIssue` 真删除、零残留。
+
+### 变更
+
+- 已知限制 3 从「gh 命令未经端到端实测」收窄为「仅 `/deliver` 的 PR 环节未实测」
+
+### 已知限制（补充）
+
+- **降级必须可观察。** 三条铁律的第 2 条「探测失败就降级，不误报」是对的，
+  但一个**永远在降级**的探测器和一个坏掉的探测器没有区别。目前没有机制
+  区分「这次降级是对的」和「它一直在降级」。
+
 ## [0.4.0] - 2026-08-26
 
 ### 新增
@@ -20,7 +58,7 @@
   **只有 issue types 是组织级的**（GitHub 员工在 community#175785 的原话：
   *available only for organizations ... not for personal repositories*）。
   而 `/next` 的第一条筛选规则「排除 `issueType != Task`」本来就冗余 ——
-  `gh issue list --parent <module>` 返回的按构造就是 task，层级已编码了这个身份。
+  模块 issue 的 sub-issue 按构造就是 task，层级已编码了这个身份。
 
   所以不新增 tracker 模式，改为让 `github` 模式自适应：`/setup-convention`
   探测一次，把结果写进 `.agent/state.json` 的 `issueTypes`，

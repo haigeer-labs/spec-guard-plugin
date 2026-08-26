@@ -14,6 +14,7 @@
 | | |
 |---|---|
 | [docs/design.md](docs/design.md) | 需求与设计：五个缺口、核心决策、对象模型、状态机、已知限制 |
+| [docs/walkthrough.md](docs/walkthrough.md) | 端到端实跑记录：真实产物、真实输出，以及跑出来的那个 bug |
 | [docs/upstream-analysis.md](docs/upstream-analysis.md) | 上游源码分析：每条结论对应的源码行号 + 重新核对清单 |
 | [CLAUDE.md](CLAUDE.md) | 开发本插件的 agent 配置 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
@@ -183,7 +184,9 @@ mkdir -p spec tasks .agent
 `/build` 取下一个任务时，**不要读 todo.md**，改为：
 
 1. 读 `.agent/state.json` 确认 `activeModule`
-2. `gh issue list --parent <module-issue> --state open --json number,title,issueType`
+2. `gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"`
+   （**不是** `gh issue list --parent` —— 那个 flag 不存在，只有 `gh issue create` 有）
+   REST 返回所有状态，自己筛 `state == "open"`
 3. 跳过所有存在未关闭 `blocked-by` 的 issue
 4. 取第一个可执行的 Task
 
@@ -447,8 +450,9 @@ bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 16 个断言
 
 1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层。
 2. **需要 `gh` ≥ 2.94.0**。
-3. **`spec-github-bridge` skill 里的 gh 命令未经端到端实测** —— 逻辑按官方文档写，
-   但没在真实仓库跑通全流程。首次使用建议先用测试仓库。
+3. **`/deliver` 的 PR 环节未经端到端实测** —— 其余全链路已在真实仓库跑通
+   （见 [docs/walkthrough.md](docs/walkthrough.md)）。PR 在 GitHub 上删不掉，
+   实测会留下永久记录，故跳过。`gh pr create` 本身是标准命令、无特殊参数。
 4. **多人协作无加锁** —— 任务认领依赖 assignee，理论上存在竞态。
 5. **个人仓库没有 issue types，会自动降级** —— `--type Feature/Task` 依赖 GitHub
    issue types，这是**组织级功能**。`/setup-convention github` 会探测并把结果写进

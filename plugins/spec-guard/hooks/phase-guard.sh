@@ -99,18 +99,21 @@ fi
 # ── 4. GitHub 层 ───────────────────────────────────────────
 OPEN_TASKS="?"; ASSIGNED=""; GH_OK=false
 if command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
-  RAW=$(gh issue list --parent "$MODULE_ISSUE" --state open \
-        --json number,title,assignees --limit 50 2>/dev/null) || RAW=""
+  # 必须用 REST sub_issues：`gh issue list` **没有** --parent 这个 flag
+  # （--parent 只在 gh issue create 上）。早期版本用了它，结果每次都失败、
+  # 静默落进「gh 不可用」降级分支 —— GitHub 层从来没真正跑过。
+  RAW=$(gh api "repos/{owner}/{repo}/issues/${MODULE_ISSUE}/sub_issues" 2>/dev/null) || RAW=""
   if [ -n "$RAW" ]; then
     GH_OK=true
+    # REST 返回所有状态，要自己筛 open
     OPEN_TASKS=$(printf '%s' "$RAW" | python3 -c "
 import json,sys
-try: print(len(json.load(sys.stdin)))
+try: print(len([i for i in json.load(sys.stdin) if i.get('state')=='open']))
 except Exception: print('?')" 2>/dev/null)
     ASSIGNED=$(printf '%s' "$RAW" | python3 -c "
 import json,sys
 try:
-    a=[i for i in json.load(sys.stdin) if i.get('assignees')]
+    a=[i for i in json.load(sys.stdin) if i.get('state')=='open' and i.get('assignees')]
     print(f\"#{a[0]['number']} {a[0]['title']}\" if a else '')
 except Exception: print('')" 2>/dev/null)
   fi

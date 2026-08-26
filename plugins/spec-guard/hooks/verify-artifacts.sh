@@ -190,7 +190,8 @@ elif ! gh auth status >/dev/null 2>&1; then
 else
   # Epic 的 sub-issue 数 == 能力图模块数
   if [ -n "${EPIC}" ] && [ -n "${MAP_IDS}" ]; then
-    SUBN=$(gh issue list --parent "${EPIC}" --state all --json number --limit 100 2>/dev/null \
+    # REST sub_issues —— `gh issue list` 没有 --parent flag
+    SUBN=$(gh api "repos/{owner}/{repo}/issues/${EPIC}/sub_issues" 2>/dev/null \
            | python3 -c "import json,sys;print(len(json.load(sys.stdin)))" 2>/dev/null || echo "")
     MAPN=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
     if [ -z "${SUBN}" ]; then

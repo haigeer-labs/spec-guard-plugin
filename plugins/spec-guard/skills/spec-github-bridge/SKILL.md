@@ -23,8 +23,7 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 | `true` | 组织仓库，已启用 | 加 `--type Feature` / `--type Task` |
 | `false` | **个人仓库**（issue types 是组织级功能） | **省略 `--type`**，其余不变 |
 
-省略 `--type` 不影响任何流程：`gh issue list --parent <module>` 返回的
-**按构造就是 task**，层级本身已经编码了这个身份。`--parent`（层级）和
+省略 `--type` 不影响任何流程：模块 issue 的 sub-issue **按构造就是 task**，层级本身已经编码了这个身份。`--parent`（层级）和
 `--blocked-by`（依赖）在个人免费仓库上实测可用。
 
 ⚠️ **不要在 `issueTypes: false` 时硬加 `--type`** —— gh 会先把 issue 建出来
@@ -110,17 +109,23 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 ## 操作三：取下一个任务
 
-    MODULE_ISSUE=$(jq -r '.modules[.activeModule].issue' .agent/state.json)
-    gh issue list --parent $MODULE_ISSUE --state open \
-      --json number,title,issueType,dependencies
+    MODULE_ISSUE=$(python3 -c "import json;d=json.load(open('.agent/state.json'));print(d['modules'][d['activeModule']]['issue'])")
+
+    # ⚠️ 必须用 REST sub_issues。`gh issue list` **没有 --parent 这个 flag**
+    #    （--parent 只在 gh issue create 上），用了会 unknown flag 直接失败。
+    gh api "repos/{owner}/{repo}/issues/$MODULE_ISSUE/sub_issues"
+
+    # 每个 task 的阻塞关系单独查：
+    gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by"
 
 筛选规则（按顺序）：
 
 1. 排除 `issueType != Task` —— **`issueTypes: false` 时跳过这条**。
    `--parent <module>` 返回的按构造就是 task，这条规则本来就是冗余的
-2. 排除存在未关闭 `blocked-by` 的
-3. 排除已有 assignee 且不是自己的（多人协作）
-4. 取第一个
+2. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
+3. 排除存在未关闭 `blocked-by` 的
+4. 排除已有 assignee 且不是自己的（多人协作）
+5. 取第一个
 
 取到后：
 
@@ -163,6 +168,7 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 | "直接关掉 issue 更快" | 手动关闭会丢失 PR ↔ issue 的关联，追溯时找不到实现在哪。 |
 | "gh 版本低，用 label 模拟 type" | label 无层级、无依赖，`/build` 的筛选逻辑会全部失效。升级 gh。 |
 | "个人仓库没有 issue types，那这套用不了" | 只有 `--type` 用不了。层级和依赖照常，省略 `--type` 即可，流程一步不少。 |
+| "用 gh issue list --parent 列子任务" | **那个 flag 不存在**，只有 gh issue create 有 --parent。用 REST sub_issues。 |
 | "反正建了也报错，先试试 --type" | 会留下孤儿 issue —— gh 先建后校验。读 `state.json` 的 `issueTypes`，别试。 |
 
 ## Red Flags
@@ -178,5 +184,5 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 每次操作后必须验证：
 
 - bootstrap 后：`gh issue view <epic> --json subIssues` 返回的模块数 == 能力图的模块数
-- 任务落库后：`gh issue list --parent <module> --json number | jq length` == plan.md 索引条数
+- 任务落库后：`gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"` 的条目数 == plan.md 索引条数
 - 交付后：PR 页面显示 "Closes #n" 的关联链接

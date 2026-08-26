@@ -1,6 +1,6 @@
 ## Agent Skills 集成约定
 
-> 本块由 install.sh 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 本块由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
 
 ### Spec 布局（多模块）
 

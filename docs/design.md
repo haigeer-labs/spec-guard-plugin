@@ -262,6 +262,9 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 ## 九、参考
 
 - 上游仓库：`https://github.com/addyosmani/agent-skills`
+- **核对基准：commit `5a5ea45`（2026-08-21）**，也是本插件的最低上游版本要求。
+  更早的版本没有 Phase 0 和 Task List Target，本文的缺口 A/B/C/D/E 全部悬空 ——
+  详见 [upstream-analysis.md](upstream-analysis.md) 顶部。
 - 关键源文件：
   - `skills/spec-driven-development/SKILL.md` Phase 0（多模块）
   - `skills/planning-and-task-breakdown/SKILL.md` Output Files（tracker 扩展点）

@@ -2,27 +2,40 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.1.0] - 2026-08-26
+## [0.2.1] - 2026-08-26
 
-首个版本。
+### 修复
+
+- **P0：macOS 上 hook 静默崩溃。** `$VAR` 后紧跟全角括号（如
+  `"…Closes #$BRANCH_ISSUE）"`）时，macOS 自带的 bash 3.2 会把该字符的首字节
+  吃进变量名，配合 `set -u` 直接致命退出。共 7 处：
+
+  | 文件 | 影响 |
+  |---|---|
+  | `phase-guard.sh` ×2 | 进入 `TASK_READY`（准备开 PR 那一刻）hook 就死，且 hook 失败是静默的 |
+  | `setup-convention.sh` ×4 | local 模式安装无声失败，`CLAUDE.md` 声明块根本没写进去 |
+  | `validate.sh` ×1 | 缺执行位时的提示语 |
+
+  全部改为 `${VAR}`。
 
 ### 新增
 
-- `phase-guard.sh` —— UserPromptSubmit hook，注入链路状态并检测断链
-  - 9 个阶段的状态机（IDLE / MAP_ONLY / SPECED / TRACKED / PLANNED / TASK_CLAIMED / BUILDING / TASK_READY / MODULE_DONE）
-  - 三种 tracker 模式：`github` / `none` / `other`
-  - `gh` 不可用时自动降级，不误报
-  - 未声明约定的仓库静默退出
-- `/setup-convention` —— 在项目中落地目录约定
-- `/phase` —— 主动查询链路状态
-- `/sync-map` `/next` `/deliver` —— GitHub Issue 流程命令
-- `spec-github-bridge` skill —— 四个操作的完整流程
-- 三份模板：GitHub 模式声明块、本地模式声明块、能力图
+- `scripts/check-bash32.py` —— 静态检查这一类多字节解析陷阱，已接入 `validate.sh`
+- CI 加 macOS matrix 并显式用 `/bin/bash` —— 原先只跑 ubuntu（bash 5，多字节安全），
+  所以这个 bug 在 CI 里永远是绿的
 
-### 已知限制
+### 变更
 
-- 任务层自动化只覆盖 `github` 和 `none` 两种模式，GitLab / Jira 仅检测到 plan 层
-- 需要 `gh` ≥ 2.94.0（`--type` / `--parent` / `--blocked-by`）
+- 模板里过期的「本块由 install.sh 生成」改为实际的 `/setup-convention`
+- README / CLAUDE.md 的测试数量从「12 个场景」更正为 15 个断言
+- **明确最低上游版本：commit `5a5ea45`（2026-08-21）。** 更早的版本里
+  `spec-driven-development` 的 Phase 0 和 `planning-and-task-breakdown` 的
+  Task List Target **根本不存在**（实测 `7829ffd` / 2026-07-26：175 个文件、
+  两者全树 0 命中），本插件的五个缺口全部悬空、症状是「Phase 0 永远不触发」。
+  已写进 README 依赖章节、`docs/design.md` 参考章节和 `docs/upstream-analysis.md` 顶部
+- `docs/upstream-analysis.md` 按 commit `5a5ea45` 重新核对：**五个缺口一个都没被上游补掉**。
+  补了结果表、逐条验证命令；修正行号漂移（Task List Target 155→150、三条约束 60-64→59-63）；
+  注明上游 `hooks/` 目录新增了 `sdd-cache-*` / `simplify-ignore` 但**均未注册进 `hooks.json`**
 
 ## [0.2.0] - 2026-08-26
 
@@ -46,3 +59,25 @@
 - 已启用 + `gh` 网络调用的 hook 耗时未实测（无 gh 环境下为 ~154ms）
 - 文案硬编码中文
 - Windows 需 WSL 或 Git Bash
+
+## [0.1.0] - 2026-08-26
+
+首个版本。
+
+### 新增
+
+- `phase-guard.sh` —— UserPromptSubmit hook，注入链路状态并检测断链
+  - 9 个阶段的状态机（IDLE / MAP_ONLY / SPECED / TRACKED / PLANNED / TASK_CLAIMED / BUILDING / TASK_READY / MODULE_DONE）
+  - 三种 tracker 模式：`github` / `none` / `other`
+  - `gh` 不可用时自动降级，不误报
+  - 未声明约定的仓库静默退出
+- `/setup-convention` —— 在项目中落地目录约定
+- `/phase` —— 主动查询链路状态
+- `/sync-map` `/next` `/deliver` —— GitHub Issue 流程命令
+- `spec-github-bridge` skill —— 四个操作的完整流程
+- 三份模板：GitHub 模式声明块、本地模式声明块、能力图
+
+### 已知限制
+
+- 任务层自动化只覆盖 `github` 和 `none` 两种模式，GitLab / Jira 仅检测到 plan 层
+- 需要 `gh` ≥ 2.94.0（`--type` / `--parent` / `--blocked-by`）

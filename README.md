@@ -407,7 +407,7 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 ```bash
 bash scripts/validate.sh                            # 仓库完整性
-bash plugins/spec-guard/hooks/test-phase-guard.sh   # 12 个场景回归
+bash plugins/spec-guard/hooks/test-phase-guard.sh   # 15 个断言（12 phase-guard + 3 setup）
 ```
 
 ---
@@ -429,6 +429,18 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh   # 12 个场景回归
 ## 依赖
 
 本插件**依赖 `addyosmani/agent-skills` 已安装**，补的是那套 skill 的缺口。
+
+⚠️ **最低上游版本：commit `5a5ea45`（2026-08-21）或更新。** 本插件依赖的两处上游结构
+（`spec-driven-development` 的 Phase 0、`planning-and-task-breakdown` 的 Task List Target）
+在更早的版本里**根本不存在**。装了旧版的症状是「Phase 0 永远不触发、插件好像没用」。核对：
+
+```bash
+M=~/.claude/plugins/marketplaces/addy-agent-skills
+git -C "$M" log -1 --format='%h %ad' --date=short   # 应 >= 5a5ea45 / 2026-08-21
+grep -c "Task List Target" "$M/skills/planning-and-task-breakdown/SKILL.md"   # 应为 1
+```
+
+旧版升级：`/plugin update agent-skills@addy-agent-skills` 然后 `/reload-plugins`。
 
 ```
 /plugin marketplace add addyosmani/agent-skills

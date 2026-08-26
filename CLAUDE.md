@@ -75,7 +75,8 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh
 ```
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 12 个场景覆盖：空仓库 / 各阶段 / 三种 tracker 模式 / 静默退出 / 不崩溃。
+当前 15 个断言：phase-guard 12 个（空仓库 / 各阶段 / 三种 tracker 模式 / 静默退出 /
+不崩溃）+ setup-convention 3 个（dry-run 零写入 / 不覆盖用户内容 / 幂等）。
 
 ---
 
@@ -100,6 +101,9 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh
 - **不要在 phase-guard.sh 里做写操作** —— 它是探测器，只读
 - **不要在本仓库的 CLAUDE.md 里写激活字符串** —— 见顶部的自引用陷阱
 - **不要用 `jq` 作为硬依赖**
+- **不要写 `$VAR` 紧跟多字节字符** —— 如 `"…#$ISSUE）"`。macOS 自带 bash 3.2 会把
+  全角括号的首字节吃进变量名，配上 `set -u` 直接致命退出，而 hook 失败是静默的。
+  一律写 `${VAR}`。`scripts/check-bash32.py` 会拦，CI 也加了 macOS matrix
 - **不要在 hook 里输出非 JSON** —— 宿主会拒绝，且失败是静默的
 - **不要给 hook 加长耗时操作** —— 它在每次用户发言前跑，超过 1s 就会有体感
 

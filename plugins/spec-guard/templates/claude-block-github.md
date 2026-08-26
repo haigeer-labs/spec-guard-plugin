@@ -1,6 +1,6 @@
 ## Agent Skills 集成约定
 
-> 本块由 install.sh 生成。任务托管在 **GitHub Issues**。
+> 本块由 `/setup-convention github` 生成。任务托管在 **GitHub Issues**。
 > 修改时保留 `<!-- BEGIN/END:agent-skills-convention -->` 标记，便于工具识别。
 
 ### Spec 布局（多模块）

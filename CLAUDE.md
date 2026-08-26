@@ -81,9 +81,11 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 32 个断言：phase-guard 12 个（空仓库 / 各阶段 / 三种 tracker 模式 / 静默退出 /
-不崩溃）+ setup-convention 4 个（dry-run 零写入 / 不覆盖用户内容 / state.json 能力位 /
-幂等）+ verify-artifacts 16 个（含「合规项目零误报」等反向用例）。
+当前 40 个断言：`test-phase-guard.sh` 19 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+刻意空闲 / 静默退出 / 不崩溃 + setup-convention 4 个）、`test-verify-artifacts.sh`
+21 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」等反向用例）。
+
+**反向用例和正向一样重要** —— 这个项目修过的假断链比真 bug 多。
 
 ---
 

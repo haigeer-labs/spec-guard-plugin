@@ -440,8 +440,8 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 ```bash
 /bin/bash scripts/validate.sh                              # 仓库完整性
-/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh     # 16 个断言（12 phase-guard + 4 setup）
-/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 16 个断言
+/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh     # 19 个断言
+/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 21 个断言
 ```
 
 > ⚠️ **macOS 上显式用 `/bin/bash`（那是 3.2）。** 装了 Homebrew 的话 `bash` 会指向
@@ -466,7 +466,12 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
    只是失去按 type 跨仓筛选的能力。
 6. **Windows 需 WSL 或 Git Bash** —— hook 是 bash 脚本。
 7. **文案硬编码中文**。
-8. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说
+8. **插件假设「从零开始 + 永远在做某件事」** —— 对已有自己一套约定的项目，
+   `/setup-convention` 的声明块是**替换**而非适配：追加之后 `CLAUDE.md` 里会出现
+   两个互相矛盾的真源，比覆盖更糟。落地前请人工核对现有约定，必要时**只保留
+   激活标题 `## Agent Skills 集成约定`**，块内容改写成指向自有约定的映射表。
+   见 [docs/walkthrough.md 第二次实跑](docs/walkthrough.md)。
+9. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说
    "save at the project root"，没给文件名。
 
 ---

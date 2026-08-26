@@ -1,7 +1,18 @@
 {
   "name": "spec-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "为 addyosmani/agent-skills 补上多模块 Spec 支持、GitHub Issue 打通、以及链路断裂检测。",
-  "author": { "name": "Your Team" },
-  "keywords": ["agent-skills", "spec-driven", "github-issues", "workflow"]
+  "author": {
+    "name": "Your Team"
+  },
+  "keywords": [
+    "agent-skills",
+    "spec-driven",
+    "github-issues",
+    "workflow"
+  ],
+  "homepage": "https://github.com/your-org/spec-guard-plugin",
+  "requires": {
+    "note": "依赖 addyosmani/agent-skills 已安装；github 模式需 gh >= 2.94.0"
+  }
 }

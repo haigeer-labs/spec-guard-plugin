@@ -3,7 +3,9 @@
 # 用法: bash plugins/spec-guard/hooks/test-phase-guard.sh
 set -uo pipefail
 
-H="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/phase-guard.sh"
+HOOKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGDIR="$(cd "$HOOKDIR/.." && pwd)"
+H="$HOOKDIR/phase-guard.sh"
 [ -f "$H" ] || { echo "找不到 $H"; exit 1; }
 
 TMP="$(mktemp -d)"
@@ -91,6 +93,36 @@ else
   printf '  ❌ 目录不存在时不该有输出\n'; FAIL=$((FAIL+1))
 fi
 
+# ── setup-convention.sh 的回归 ──
 echo ""
-echo "  $PASS 通过 / $FAIL 失败"
+echo "═══ setup-convention 回归 ═══"
+# 注意：此时可能已 cd 到临时目录，必须用脚本开头解析的绝对路径
+SETUP="$HOOKDIR/setup-convention.sh"
+export CLAUDE_PLUGIN_ROOT="$PLUGDIR"
+
+rm -rf "$TMP/s"; mkdir -p "$TMP/s"; cd "$TMP/s"; git init -q 2>/dev/null
+echo "# 原有内容" > CLAUDE.md
+bash "$SETUP" local --dry-run >/dev/null 2>&1
+if [ "$(ls -A | grep -vc '^.git$')" -eq 1 ]; then
+  printf '  ✅ dry-run 零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ dry-run 不该写文件\n'; FAIL=$((FAIL+1))
+fi
+
+bash "$SETUP" local >/dev/null 2>&1
+if head -1 CLAUDE.md | grep -q "原有内容"; then
+  printf '  ✅ 原 CLAUDE.md 内容保留\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 覆盖了用户内容\n'; FAIL=$((FAIL+1))
+fi
+
+bash "$SETUP" local >/dev/null 2>&1
+if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 1 ]; then
+  printf '  ✅ 幂等（声明块不重复）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 重复写入声明块\n'; FAIL=$((FAIL+1))
+fi
+
+echo ""
+echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

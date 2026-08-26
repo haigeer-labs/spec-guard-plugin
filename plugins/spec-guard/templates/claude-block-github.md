@@ -28,6 +28,21 @@
 - `plan.md` 开头注明 `> Tasks tracked in GitHub Issues #<module-issue>`
 - `plan.md` 的 Task List 章节只放 issue 编号的有序索引，不重复 checklist
 
+### 归档的任务清单
+
+已完成模块的 `todo.md` 是**历史记录**，不是活的任务清单。在**前 10 行**内写上
+`已归档` 或 `ARCHIVED`，检查器就会把它从「与 tracker 并存」和「命名空间」
+两项检查里排除：
+
+```markdown
+# Todo: <模块名>
+
+> ## ⚠️ 已归档 —— 任务级全部完成
+> 落地记录：issue #34 已关闭 · PR #36 已合入 main
+```
+
+只认前 10 行是刻意的 —— 避免正文里偶然提到「已归档」就被误判。
+
 ### Build 输入源
 
 `/build` 取下一个任务时，**不要读 todo.md**，改为：

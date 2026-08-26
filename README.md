@@ -379,7 +379,7 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 | 违规 | 为什么是问题 |
 |---|---|
 | 根目录有 `SPEC*.md` | `/build` 的路径规则找不到 |
-| 存在 `todo.md`（tracker 模式下） | 和 issue 二选一，并存必然分叉 |
+| 存在 `todo.md`（tracker 模式下） | 和 issue 二选一，并存必然分叉。**前 10 行含 `已归档`/`ARCHIVED` 的不计** —— 那是历史记录不是活清单 |
 | 认领了 issue 但分支不含 issue 号 | `Closes #n` 会关错单 |
 
 ---

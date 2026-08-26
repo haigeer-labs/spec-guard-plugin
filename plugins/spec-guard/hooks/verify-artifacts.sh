@@ -23,6 +23,23 @@ set -uo pipefail
 ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去目录: ${ROOT}"; exit 1; }
 
+# ── 归档识别 ──────────────────────────────────────────────
+#   已完成的模块，其 todo.md 是**历史记录**，不是活的任务清单。
+#   把它当成「与 tracker 并存」来报违规是误报 —— 而误报会让人关掉整个机制。
+#   约定：文件**前 10 行**内出现 `已归档` 或 `ARCHIVED` 即视为归档。
+#   放前 10 行是刻意的：只认头部声明，避免正文里偶然提到就被误判。
+is_archived() {
+  [ -f "$1" ] || return 1
+  head -10 "$1" 2>/dev/null | grep -qiE '已归档|ARCHIVED'
+}
+
+# 列出所有**非归档**的 todo.md
+live_todos() {
+  find tasks -name "todo.md" 2>/dev/null | while IFS= read -r t; do
+    is_archived "$t" || printf '%s\n' "$t"
+  done
+}
+
 P=0; W=0; F=0
 ok()   { printf '  ✅ %s\n' "$1"; P=$((P+1)); }
 warn() { printf '  ⚠️  %s\n' "$1"; W=$((W+1)); }
@@ -141,17 +158,25 @@ if ls -1 SPEC*.md >/dev/null 2>&1; then
 else
   ok "根目录无 SPEC*.md"
 fi
-if [ -f "tasks/plan.md" ] || [ -f "tasks/todo.md" ]; then
-  bad "tasks/ 根下有 plan.md 或 todo.md —— 缺 module 命名空间，多模块时会互相覆盖"
+ROOTFILES=""
+for r in tasks/plan.md tasks/todo.md; do
+  [ -f "$r" ] && ! is_archived "$r" && ROOTFILES="${ROOTFILES}${r} "
+done
+if [ -n "${ROOTFILES}" ]; then
+  bad "tasks/ 根下有 ${ROOTFILES}—— 缺 module 命名空间，多模块时会互相覆盖"
+elif [ -f "tasks/plan.md" ] || [ -f "tasks/todo.md" ]; then
+  ok "tasks/ 根下只有已归档文件（不计违规）"
 else
   ok "tasks/ 有 module 命名空间"
 fi
 if [ "${TRACKER}" != "none" ]; then
-  T=$(find tasks -name "todo.md" 2>/dev/null | grep . || true)
+  T=$(live_todos | grep . || true)
+  A=$(find tasks -name "todo.md" 2>/dev/null | wc -l | tr -d ' ')
+  L=$(printf '%s' "${T}" | grep -c . || true)
   if [ -n "${T}" ]; then
-    bad "存在 $(printf '%s' "${T}" | tr '\n' ' ')但已声明外部 tracker —— 二者不能并存，必然分叉"
+    bad "存在 $(printf '%s' "${T}" | tr '\n' ' ') 但已声明外部 tracker —— 二者不能并存，必然分叉"
   else
-    ok "无 todo.md 与 tracker 并存"
+    ok "无活的 todo.md 与 tracker 并存$( [ "${A}" -gt 0 ] && echo "（${A} 份已归档，不计）" )"
   fi
 fi
 echo ""

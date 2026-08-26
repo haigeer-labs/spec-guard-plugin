@@ -61,6 +61,23 @@ except Exception:
 " "$1" 2>/dev/null
   fi
 }
+# ── 归档识别 ──────────────────────────────────────────────
+#   已完成的模块，其 todo.md 是**历史记录**，不是活的任务清单。
+#   把它当成「与 tracker 并存」来报违规是误报 —— 而误报会让人关掉整个机制。
+#   约定：文件**前 10 行**内出现 `已归档` 或 `ARCHIVED` 即视为归档。
+#   放前 10 行是刻意的：只认头部声明，避免正文里偶然提到就被误判。
+is_archived() {
+  [ -f "$1" ] || return 1
+  head -10 "$1" 2>/dev/null | grep -qiE '已归档|ARCHIVED'
+}
+
+# 列出所有**非归档**的 todo.md
+live_todos() {
+  find tasks -name "todo.md" 2>/dev/null | while IFS= read -r t; do
+    is_archived "$t" || printf '%s\n' "$t"
+  done
+}
+
 FACTS=""; BROKEN=""; NEXT=""
 
 add()    { FACTS="${FACTS}  - $1"$'\n'; }
@@ -91,9 +108,9 @@ HAS_PLAN=false
 # 违规：todo.md 和 tracker 并存
 HAS_TODO=false
 [ -n "$MODULE" ] && [ -f "tasks/$MODULE/todo.md" ] && HAS_TODO=true
-TODO_FOUND=$(find tasks -name "todo.md" 2>/dev/null | head -1)
+TODO_FOUND=$(live_todos | head -1)
 if [ "$TRACKER" != "none" ] && [ -n "$TODO_FOUND" ]; then
-  broken "存在 todo.md，但本项目已声明外部 tracker —— 二者不能并存"
+  broken "存在 ${TODO_FOUND}，但本项目已声明外部 tracker —— 二者不能并存"
 fi
 
 # ── 4. GitHub 层 ───────────────────────────────────────────

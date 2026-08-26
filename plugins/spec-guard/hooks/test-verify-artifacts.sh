@@ -108,6 +108,40 @@ mkdir -p tasks/identity; touch tasks/identity/todo.md
 echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
 has "todo.md 与 tracker 并存被抓到" "二者不能并存"
 
+# ── 归档识别：带「已归档」标记的 todo.md 不该报违规 ──
+base; map identity; touch spec/identity.md
+mkdir -p tasks/identity
+printf '# Todo: x\n\n> ## \xe2\x9a\xa0\xef\xb8\x8f \xe5\xb7\xb2\xe5\xbd\x92\xe6\xa1\xa3 —— \xe4\xbb\xbb\xe5\x8a\xa1\xe7\xba\xa7\xe5\x85\xa8\xe9\x83\xa8\xe5\xae\x8c\xe6\x88\x90\n' > tasks/identity/todo.md
+echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+has "归档 todo.md 不报并存违规" "无活的 todo.md 与 tracker 并存"
+
+# ── 归档识别：ARCHIVED 英文标记同样生效 ──
+base; map identity; touch spec/identity.md
+mkdir -p tasks/identity
+printf '# Todo\n\n> ARCHIVED — all tasks done\n' > tasks/identity/todo.md
+echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+has "ARCHIVED 标记同样生效" "无活的 todo.md 与 tracker 并存"
+
+# ── 反向：没有标记的 todo.md 仍必须报违规 ──
+base; map identity; touch spec/identity.md
+mkdir -p tasks/identity; printf '# Todo\n\n- [ ] 干活\n' > tasks/identity/todo.md
+echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+has "无标记的 todo.md 仍报违规" "二者不能并存"
+
+# ── 归档标记只认前 10 行，正文里提到不算 ──
+base; map identity; touch spec/identity.md
+mkdir -p tasks/identity
+{ printf '# Todo\n'; for i in $(seq 15); do echo "- [ ] t$i"; done; echo "备注：本模块稍后已归档"; } > tasks/identity/todo.md
+echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+has "第 10 行之后的「已归档」不算数" "二者不能并存"
+
+# ── tasks/ 根下的归档文件不算命名空间违规 ──
+base; map identity; touch spec/identity.md
+mkdir -p tasks
+printf '# Plan\n\n> \xe5\xb7\xb2\xe5\xbd\x92\xe6\xa1\xa3\n' > tasks/plan.md
+echo '{"tracker":"github","activeModule":""}' > .agent/state.json
+has "根下归档 plan.md 不报命名空间违规" "只有已归档文件（不计违规）"
+
 # ── D：github 模式下 plan.md 里有 checkbox ──
 base; map identity; touch spec/identity.md
 mkdir -p tasks/identity; printf '## Task List\n- [ ] 建表\n' > tasks/identity/plan.md

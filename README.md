@@ -34,11 +34,11 @@
 
 ```
 /spec     ✅ 多模块
-/planning ❌ 单例：tasks/plan.md、tasks/todo.md（无命名空间）
+/plan ❌ 单例：tasks/plan.md、tasks/todo.md（无命名空间）
 /build    ❌ 单例
 ```
 
-四个模块递归跑下来，第二个模块的 `/planning` 会覆盖第一个的 `tasks/plan.md`。
+四个模块递归跑下来，第二个模块的 `/plan` 会覆盖第一个的 `tasks/plan.md`。
 
 ### ② spec 放根目录时 `/build` 找不到
 
@@ -124,7 +124,7 @@
 ```
 
 插件**不能往你的仓库写文件**。而 `CLAUDE.md` 的声明块恰恰是激活上游 External
-Tracker 分支的开关——不在仓库里，队友拉下代码后 `/planning` 还是写 `todo.md`。
+Tracker 分支的开关——不在仓库里，队友拉下代码后 `/plan` 还是写 `todo.md`。
 
 ---
 
@@ -241,7 +241,7 @@ mkdir -p spec tasks .agent
 </details>
 
 > ⚠️ **两种模式互斥。** GitHub 模式说「不要创建 todo.md」，本地模式说「任务清单：
-> todo.md」。同时写会让 `/planning` 精神分裂。
+> todo.md」。同时写会让 `/plan` 精神分裂。
 
 ### 3. 建 `.agent/state.json`
 
@@ -298,7 +298,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | 谁推进流程 | 用户自己按顺序敲命令 | hook 每轮注入状态 + 报断链 |
 | 产物对不对 | 无检测 | `/verify-artifacts` |
 
-其余一切照旧 —— `/spec` `/planning` `/build` `/test` `/review` 的用法、
+其余一切照旧 —— `/spec` `/plan` `/build` `/test` `/review` 的用法、
 各 skill 的触发条件、persona 的行为，全部走上游文档。
 
 > ⚠️ **`/spec` 的 Phase 0 默认不触发。** 上游原话：*Phase 0 exists for the
@@ -324,14 +324,14 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 1. 编辑 spec/CAPABILITY-MAP.md 填模块划分
 2. 人工评审模块边界和 build order          ← 不能跳
 3. /sync-map      能力图落成 Epic + 模块 issue
-4. /planning      为第一个模块拆解任务 → sub-issue
+4. /plan      为第一个模块拆解任务 → sub-issue
 5. /next          取任务
 6. /build         TDD 实现
 7. /deliver       开 PR
 8. 回到 5，直到模块完成，/next 自动推进到下一模块
 ```
 
-**第 4 步是关键验证点**：看 `/planning` 到底建 issue 还是写 `todo.md`。
+**第 4 步是关键验证点**：看 `/plan` 到底建 issue 还是写 `todo.md`。
 建了 issue 说明上游的 External Tracker 分支被正确激活，后面才有意义。
 
 ---
@@ -357,7 +357,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 
 处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。
 
-建议下一步: /planning 为 [identity] 拆解任务
+建议下一步: /plan 为 [identity] 拆解任务
 ```
 
 ### 九个阶段
@@ -366,7 +366,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 IDLE          没有任何 spec                      → /spec
 MAP_ONLY      有能力图但没有模块 spec        ⚠断链 → /spec 递归
 SPECED        有 spec 但没有 issue 结构      ⚠断链 → /sync-map
-TRACKED       有 issue 但没有 plan.md        ⚠断链 → /planning
+TRACKED       有 issue 但没有 plan.md        ⚠断链 → /plan
 PLANNED       全部就位                            → /next
 TASK_CLAIMED  认领了 task 但分支不对         ⚠断链 → 切分支
 BUILDING      在正确分支上有未提交改动            → /test → /deliver

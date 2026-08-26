@@ -56,8 +56,8 @@ agents/    commands/  docs/  evals/  hooks/  references/  scripts/  skills/
 | `SPEC.md` | `/spec` | 项目根 |
 | `SPEC-<module>.md` | `/spec` Phase 0 | 项目根 |
 | 能力图 | `/spec` Phase 0 | 项目根（**文件名未定义**） |
-| `tasks/plan.md` | `/planning` | `tasks/` |
-| `tasks/todo.md` | `/planning` | `tasks/` |
+| `tasks/plan.md` | `/plan` | `tasks/` |
+| `tasks/todo.md` | `/plan` | `tasks/` |
 | `PERF.md` | `/webperf` | 项目根 |
 
 ---
@@ -192,7 +192,7 @@ grep -n -iE "module|capability map|per-module|SPEC-" \
 # → 无匹配
 ```
 
-**确认缺口 B**：多模块递归时，各模块的 `/planning` 会互相覆盖 `tasks/plan.md`。
+**确认缺口 B**：多模块递归时，各模块的 `/plan` 会互相覆盖 `tasks/plan.md`。
 
 ### 3.9 全仓库无 gh 调用
 

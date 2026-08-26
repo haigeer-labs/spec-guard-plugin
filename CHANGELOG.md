@@ -24,10 +24,15 @@
   **12 个 phase-guard 断言全绿却没抓到** —— 它们跑在没有 GitHub 的临时仓库里，
   降级分支正是那里的预期行为，测试恰好覆盖了假象。只有真连 GitHub 才暴露得出来。
 
+- **文档里 22 处命令名写错**：上游的拆解命令在 Claude Code 里叫 **`/plan`**，不是
+  `/planning`。上游有两套等价但文件名不同的命令目录 —— `commands/planning.toml`
+  与 `.claude/commands/plan.md`，**Claude Code 读的是后者**。照着旧文档敲会得到
+  「命令不存在」。（skill 目录名 `planning-and-task-breakdown` 未变，那些路径引用是对的。）
+
 ### 新增
 
 - `docs/walkthrough.md` —— 端到端实跑记录。真实仓库、真实产物、真实输出：
-  `/setup-convention` → `/sync-map` → `/planning` → `/next` → `/build` →
+  `/setup-convention` → `/sync-map` → `/plan` → `/next` → `/build` →
   `/verify-artifacts`，跑完 6 个 issue 全部 `deleteIssue` 真删除、零残留。
 
 ### 变更

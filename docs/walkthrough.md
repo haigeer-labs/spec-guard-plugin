@@ -74,7 +74,7 @@ Epic #81                 Initiative: 前端资产单一真源治理
 `issueTypes: false`，所以全程**不带 `--type`**。层级用 `gh issue create --parent`，
 依赖用 `gh issue edit --add-blocked-by`，两者在个人免费仓库上都可用。
 
-## 4. `/planning`
+## 4. `/plan`
 
 ```
 #82 theme-tokens
@@ -186,6 +186,28 @@ gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by"
 ```
 
 ⚠️ REST 返回**所有状态**，不像 `gh issue list` 有 `--state`，要自己筛 `state == "open"`。
+
+## 顺带跑出来的第二个 bug：命令名写错了
+
+本文档最初把上游的拆解命令写成 `/planning`。**在 Claude Code 里它叫 `/plan`。**
+
+上游有两套命令目录，内容等价但**文件名不同**：
+
+```
+commands/*.toml         build code-simplify planning review ship spec test webperf
+.claude/commands/*.md   build code-simplify plan     review ship spec test webperf
+                                            ^^^^
+```
+
+**Claude Code 读的是 `.claude/commands/`**（本 session 的 skill 列表暴露的正是
+`agent-skills:plan`）；`commands/*.toml` 是给别的 agent harness 用的。
+
+spec-guard 的文档里 22 处写了 `/planning`，对 Claude Code 用户全是错的 ——
+照着敲会得到「命令不存在」。已全部改为 `/plan`。
+
+> 注意区分：**skill** 仍叫 `planning-and-task-breakdown`（目录名没变），
+> 只有**命令**是 `/plan`。文档里那些 `skills/planning-and-task-breakdown/SKILL.md`
+> 路径引用是对的，不要一起改掉。
 
 ---
 

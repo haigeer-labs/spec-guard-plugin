@@ -19,11 +19,11 @@
 
 ```
 /spec     ✅ 多模块：能力图 + SPEC-<module>.md
-/planning ❌ 单例：  tasks/plan.md、tasks/todo.md（无命名空间）
+/plan ❌ 单例：  tasks/plan.md、tasks/todo.md（无命名空间）
 /build    ❌ 单例：  "从 plan 里取下一个 pending task"
 ```
 
-四个模块递归跑下来，第二个模块的 `/planning` 会覆盖第一个的 `tasks/plan.md`。
+四个模块递归跑下来，第二个模块的 `/plan` 会覆盖第一个的 `tasks/plan.md`。
 
 ### 场景 2：spec 放在根目录时 `/build` 找不到
 
@@ -46,7 +46,7 @@
 > Sequential slash commands **run by the user**（/spec → /plan → /build → /test → /review）
 
 **顺序编排的责任被显式交给了人。** 没有任何机制推进状态机——`/spec` 跑完不会
-叫 `/planning`，`/planning` 跑完不会叫 `/build`。
+叫 `/plan`，`/plan` 跑完不会叫 `/build`。
 
 所以「产生了 spec 但没建 task」不是 bug，是设计使然。
 
@@ -215,7 +215,7 @@ PR       回答「这个活干完了」   → 进 GitHub
 IDLE          没有任何 spec                      → /spec
 MAP_ONLY      有能力图但没有模块 spec        ⚠断链 → /spec 递归
 SPECED        有 spec 但没有 issue 结构      ⚠断链 → /sync-map
-TRACKED       有 issue 但没有 plan.md        ⚠断链 → /planning
+TRACKED       有 issue 但没有 plan.md        ⚠断链 → /plan
 PLANNED       全部就位                            → /next
 TASK_CLAIMED  认领了 task 但分支不对         ⚠断链 → 切分支
 BUILDING      在正确分支上有未提交改动            → /test → /deliver

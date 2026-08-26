@@ -29,6 +29,6 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 插件装的是**你这台机器上的工具**（hook、skill、命令）。
 但 `CLAUDE.md` 声明块、`spec/`、`.agent/state.json` 必须写进**项目仓库并提交**——
 其中 CLAUDE.md 那段声明是激活 agent-skills 内置 External Tracker 分支的开关，
-不在仓库里，队友的 `/planning` 还是会写 todo.md。
+不在仓库里，队友的 `/plan` 还是会写 todo.md。
 
 插件不能替用户往仓库写文件，所以需要这个命令。

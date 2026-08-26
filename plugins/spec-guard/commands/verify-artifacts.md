@@ -32,6 +32,6 @@ CLAUDE_PROJECT_DIR=$(pwd) bash "${CLAUDE_PLUGIN_ROOT}/hooks/verify-artifacts.sh"
 ## 什么时候该跑
 
 - `/sync-map` 之后：确认 issue 结构和能力图对得上
-- `/planning` 之后：确认 task 落进了 issue 而不是 todo.md
+- `/plan` 之后：确认 task 落进了 issue 而不是 todo.md
 - `/deliver` 之前：确认 PR 会带上 `Closes #n`
 - 接手别人的分支、或隔了几天回来时

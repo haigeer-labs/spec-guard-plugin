@@ -68,7 +68,7 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 ## 操作二：任务落库（planning 之后）
 
-**输入**：`/planning` 产出的任务列表
+**输入**：`/plan` 产出的任务列表
 **输出**：sub-issue + `plan.md` 的索引段
 
 对每个 task（`issueTypes: false` 时去掉 `--type Task`）：

@@ -3,7 +3,7 @@
   "version": "0.4.1",
   "description": "为 addyosmani/agent-skills 补上多模块 Spec 支持、GitHub Issue 打通、以及链路断裂检测。",
   "author": {
-    "name": "Your Team"
+    "name": "yizhongkaimail-collab"
   },
   "keywords": [
     "agent-skills",
@@ -11,7 +11,7 @@
     "github-issues",
     "workflow"
   ],
-  "homepage": "https://github.com/your-org/spec-guard-plugin",
+  "homepage": "https://github.com/yizhongkaimail-collab/spec-guard-plugin",
   "requires": {
     "note": "依赖 addyosmani/agent-skills 已安装；github 模式需 gh >= 2.94.0"
   }

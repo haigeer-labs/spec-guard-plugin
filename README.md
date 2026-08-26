@@ -107,7 +107,7 @@
 
 ```
 # 一次性：装插件（工具装到你这台机器）
-/plugin marketplace add <this-repo>
+/plugin marketplace add yizhongkaimail-collab/spec-guard-plugin
 /plugin install spec-guard
 
 # 每个项目一次：落地约定（写进项目仓库并提交）

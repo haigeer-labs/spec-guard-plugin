@@ -36,6 +36,11 @@ while IFS= read -r s; do
 done < <(find . -name "*.sh" -not -path "./.git/*")
 
 echo ""
+echo "═══ bash 3.2 兼容（macOS 自带 bash）═══"
+# shellcheck disable=SC2046
+python3 scripts/check-bash32.py $(find . -name "*.sh" -not -path "./.git/*") || F=1
+
+echo ""
 echo "═══ 命令 frontmatter ═══"
 while IFS= read -r c; do
   head -1 "$c" | grep -q -- "---" && say "✅" "$c" || { say "❌" "$c 缺 frontmatter"; F=1; }

@@ -7,18 +7,28 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # macOS 自带 bash 3.2，Linux 是 bash 5。两者对多字节字符的解析不同，
+    # 只跑一个平台会漏掉「$VAR 后紧跟全角括号」这类静默致命 bug。
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
+      - name: bash 版本
+        run: /bin/bash --version | head -1
+
       - name: 仓库完整性校验
-        run: bash scripts/validate.sh
+        run: /bin/bash scripts/validate.sh
 
       - name: phase-guard 回归测试
-        run: bash plugins/spec-guard/hooks/test-phase-guard.sh
+        run: /bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
 
       - name: ShellCheck
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update -qq && sudo apt-get install -y shellcheck
           shellcheck -S warning plugins/spec-guard/hooks/*.sh scripts/*.sh || true

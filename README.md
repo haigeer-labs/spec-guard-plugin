@@ -275,6 +275,32 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 
 ---
 
+## 装了之后，上游的哪些默认行为变了
+
+**本插件不提供 agent-skills 的使用教程，也不该提供** —— 上游自己有 README、
+`docs/` 和 24 份 SKILL.md，而且它会变（Phase 0 和 Task List Target 就是
+2026-08 才加的）。写一份平行教程等于开第二个真相源，必然分叉。
+
+上游永远不会替你写的只有这一张表 —— **spec-guard 改了它哪些默认行为**：
+
+| | 上游默认 | 装了 spec-guard |
+|---|---|---|
+| 单模块 spec | `SPEC.md`（项目根） | `spec/<module-id>.md` |
+| 多模块 spec | `SPEC-<module>.md`（项目根） | `spec/<module-id>.md` |
+| 能力图 | 项目根，**文件名未定义** | `spec/CAPABILITY-MAP.md` |
+| 计划文档 | `tasks/plan.md`（单例，多模块会互相覆盖） | `tasks/<module-id>/plan.md` |
+| 任务清单 | `tasks/todo.md` | github 模式下**不存在**，改为 issue |
+| 谁推进流程 | 用户自己按顺序敲命令 | hook 每轮注入状态 + 报断链 |
+| 产物对不对 | 无检测 | `/verify-artifacts` |
+
+其余一切照旧 —— `/spec` `/planning` `/build` `/test` `/review` 的用法、
+各 skill 的触发条件、persona 的行为，全部走上游文档。
+
+> ⚠️ **`/spec` 的 Phase 0 默认不触发。** 上游原话：*Phase 0 exists for the
+> exception, not the rule* —— 它明确指示模型「大多数需求是单能力，直接跳过」。
+> 想让它触发，最可靠的是在需求里直接点名「先给我能力图，评审通过后再逐个写
+> spec」，而不是指望模型自己判断。
+
 ## 使用
 
 | 命令 | 作用 |

@@ -27,6 +27,9 @@ jobs:
       - name: phase-guard 回归测试
         run: /bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
 
+      - name: verify-artifacts 回归测试
+        run: /bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
+
       - name: ShellCheck
         if: matrix.os == 'ubuntu-latest'
         run: |

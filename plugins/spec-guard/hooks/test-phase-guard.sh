@@ -110,7 +110,7 @@ else
 fi
 
 bash "$SETUP" local >/dev/null 2>&1
-if head -1 CLAUDE.md | grep -q "原有内容"; then
+if grep -q "原有内容" <<<"$(head -1 CLAUDE.md)"; then
   printf '  ✅ 原 CLAUDE.md 内容保留\n'; PASS=$((PASS+1))
 else
   printf '  ❌ 覆盖了用户内容\n'; FAIL=$((FAIL+1))

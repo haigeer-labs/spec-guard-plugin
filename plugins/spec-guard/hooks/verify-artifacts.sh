@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+# verify-artifacts.sh —— 产物落地校验（只读）
+#
+# phase-guard.sh 回答「现在在哪个阶段」，本脚本回答「已经落下的产物对不对」。
+#
+# 为什么需要它：整套约定从头到尾都是**提示词**——CLAUDE.md 里写「不要创建
+# todo.md」、SKILL.md 里写「issue 正文不要粘贴 spec 全文」，全是对模型的建议。
+# 软指令必须配硬检测，否则跑歪了没人知道。
+#
+# 为什么不并进 phase-guard：那个挂在 UserPromptSubmit 上，有 <1s 预算，
+# 而这里的检查要读文件内容、打 gh。按需跑，不是每轮跑。
+#
+# 与 phase-guard 有三项重叠（根目录 SPEC*.md / todo.md 并存 / 分支 issue 号），
+# 是刻意的：一个「随时提醒」，一个「按需体检」，体检漏项比重复更糟。
+#
+# 退出码: 0=无 FAIL（可能有 WARN）  1=有 FAIL  2=约定未启用
+#
+# 用法: CLAUDE_PROJECT_DIR=/path/to/project bash verify-artifacts.sh
+# ─────────────────────────────────────────────────────────────
+set -uo pipefail
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去目录: ${ROOT}"; exit 1; }
+
+P=0; W=0; F=0
+ok()   { printf '  ✅ %s\n' "$1"; P=$((P+1)); }
+warn() { printf '  ⚠️  %s\n' "$1"; W=$((W+1)); }
+bad()  { printf '  ❌ %s\n' "$1"; F=$((F+1)); }
+skip() { printf '  ⏭  %s\n' "$1"; }
+
+# ── 约定未启用就别装懂 ──────────────────────────────────────
+if [ ! -f CLAUDE.md ] || ! grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null; then
+  echo "本项目没有启用 spec-guard 约定（CLAUDE.md 缺约定标题）。"
+  echo "先跑 /setup-convention。"
+  exit 2
+fi
+
+STATE=".agent/state.json"
+
+jread() {  # $1=file  $2=python 表达式(d 为根对象)
+  [ -f "$1" ] || return 0
+  python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    v=$2
+    print(v if v is not None else '')
+except Exception:
+    print('')
+" "$1" 2>/dev/null
+}
+
+# ── tracker 判定（与 phase-guard 同一套顺序）────────────────
+TRACKER=$(jread "${STATE}" "d.get('tracker')")
+if [ -z "${TRACKER}" ]; then
+  R=$(git remote get-url origin 2>/dev/null || echo "")
+  case "${R}" in
+    *github.com*|*github.*) TRACKER="github" ;;
+    "")                     TRACKER="none" ;;
+    *)                      TRACKER="other" ;;
+  esac
+fi
+MODULE=$(jread "${STATE}" "d.get('activeModule')")
+EPIC=$(jread "${STATE}" "d.get('initiative',{}).get('issue')")
+
+echo "═══ 产物落地校验 ═══"
+echo "  tracker=${TRACKER}${MODULE:+  activeModule=${MODULE}}"
+echo ""
+
+# ── A. 能力图 ──────────────────────────────────────────────
+echo "── A. 能力图 ──"
+MAP="spec/CAPABILITY-MAP.md"
+MAP_IDS=""
+if [ ! -f "${MAP}" ]; then
+  warn "${MAP} 不存在 —— 单模块项目可忽略；多模块的话 Phase 0 没落地"
+else
+  MAP_IDS=$(python3 - "${MAP}" <<'PY'
+import re, sys
+ids = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    if not line.lstrip().startswith("|"):
+        continue
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if len(cells) < 2:
+        continue
+    first = cells[0]
+    # 跳过表头和 |---|---| 分隔行
+    if not first or first.lower() == "module id" or set(first) <= set("-: "):
+        continue
+    ids.append(first.strip(chr(96)))  # chr(96)=反引号；写字面量会截断外层 $( )
+print("\n".join(ids))
+PY
+)
+  N=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
+  if [ "${N}" -eq 0 ]; then
+    warn "${MAP} 里没解析出任何 module id —— 表格格式可能不对"
+  elif grep -q "^example-" <<<"${MAP_IDS}"; then   # herestring：管道 + grep -q 会 SIGPIPE
+    warn "${MAP} 还是模板占位符（example-a/example-b），没填真实模块"
+  else
+    ok "能力图解析出 ${N} 个 module id"
+  fi
+
+  # 评审记录没勾完
+  if grep -q "^- \[ \]" "${MAP}" 2>/dev/null; then
+    warn "能力图的评审记录还有未勾选项 —— Phase 0 是 gated 的，评审不能跳"
+  fi
+
+  # module id 必须 kebab-case
+  BADID=$(printf '%s' "${MAP_IDS}" | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*$' | grep . || true)
+  [ -n "${BADID}" ] && bad "module id 不是 kebab-case: $(printf '%s' "${BADID}" | tr '\n' ' ')"
+fi
+echo ""
+
+# ── B. spec 文件名 ↔ module id ─────────────────────────────
+#   最阴险的一类漂移：能力图写 identity，模型建了 spec/user-identity.md。
+#   phase-guard 只数 spec/*.md 的数量，从不比对，所以下游会静默错位。
+echo "── B. spec 文件名 ↔ module id ──"
+SPECS=$(ls -1 spec/*.md 2>/dev/null | sed 's|^spec/||;s|\.md$||' | grep -v "^CAPABILITY-MAP$" || true)
+if [ -z "${MAP_IDS}" ]; then
+  skip "无能力图，跳过比对"
+elif [ -z "${SPECS}" ]; then
+  warn "spec/ 下还没有模块 spec —— Phase 0 走完了但没递归"
+else
+  ORPHAN=$(comm -13 <(printf '%s\n' "${MAP_IDS}" | sort) <(printf '%s\n' "${SPECS}" | sort) | grep . || true)
+  MISSING=$(comm -23 <(printf '%s\n' "${MAP_IDS}" | sort) <(printf '%s\n' "${SPECS}" | sort) | grep . || true)
+  if [ -n "${ORPHAN}" ]; then
+    bad "spec/ 里有能力图上没有的模块: $(printf '%s' "${ORPHAN}" | tr '\n' ' ')"
+    printf '     上游原话：the map, not filename guessing, is the index of what exists\n'
+  fi
+  [ -n "${MISSING}" ] && printf '  ℹ  能力图上还没写 spec 的模块: %s（按 build order 逐个补）\n' \
+    "$(printf '%s' "${MISSING}" | tr '\n' ' ')"
+  [ -z "${ORPHAN}" ] && ok "spec 文件名与 module id 一致"
+fi
+echo ""
+
+# ── C. 目录约定 ────────────────────────────────────────────
+echo "── C. 目录约定 ──"
+if ls -1 SPEC*.md >/dev/null 2>&1; then
+  bad "根目录有 $(ls -1 SPEC*.md | tr '\n' ' ')—— /build 只认 spec/ 通配，挪进 spec/"
+else
+  ok "根目录无 SPEC*.md"
+fi
+if [ -f "tasks/plan.md" ] || [ -f "tasks/todo.md" ]; then
+  bad "tasks/ 根下有 plan.md 或 todo.md —— 缺 module 命名空间，多模块时会互相覆盖"
+else
+  ok "tasks/ 有 module 命名空间"
+fi
+if [ "${TRACKER}" != "none" ]; then
+  T=$(find tasks -name "todo.md" 2>/dev/null | grep . || true)
+  if [ -n "${T}" ]; then
+    bad "存在 $(printf '%s' "${T}" | tr '\n' ' ')但已声明外部 tracker —— 二者不能并存，必然分叉"
+  else
+    ok "无 todo.md 与 tracker 并存"
+  fi
+fi
+echo ""
+
+# ── D. plan.md 内容 ────────────────────────────────────────
+echo "── D. plan.md ──"
+if [ -z "${MODULE}" ]; then
+  skip "state.json 没有 activeModule"
+elif [ ! -f "tasks/${MODULE}/plan.md" ]; then
+  warn "tasks/${MODULE}/plan.md 不存在 —— /planning 还没跑"
+else
+  PLAN="tasks/${MODULE}/plan.md"
+  if [ "${TRACKER}" = "github" ]; then
+    if grep -qE '^\s*- \[[ x]\]' "${PLAN}"; then
+      bad "${PLAN} 里有 checkbox —— tracker 模式下 Task List 应是 issue 编号索引，不是 checklist"
+    else
+      ok "${PLAN} 的 Task List 不是 checklist"
+    fi
+    grep -qi "tracked in" "${PLAN}" \
+      && ok "${PLAN} 注明了 tracker 位置" \
+      || warn "${PLAN} 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪"
+  else
+    ok "${PLAN} 存在"
+  fi
+fi
+echo ""
+
+# ── E. GitHub 层（探测失败就整段跳过，绝不误报）────────────
+echo "── E. GitHub 层 ──"
+if [ "${TRACKER}" != "github" ]; then
+  skip "tracker=${TRACKER}，不涉及 GitHub"
+elif ! command -v gh >/dev/null 2>&1; then
+  skip "gh 未安装，跳过（不代表通过）"
+elif ! gh auth status >/dev/null 2>&1; then
+  skip "gh 未认证，跳过（不代表通过）"
+else
+  # Epic 的 sub-issue 数 == 能力图模块数
+  if [ -n "${EPIC}" ] && [ -n "${MAP_IDS}" ]; then
+    SUBN=$(gh issue list --parent "${EPIC}" --state all --json number --limit 100 2>/dev/null \
+           | python3 -c "import json,sys;print(len(json.load(sys.stdin)))" 2>/dev/null || echo "")
+    MAPN=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
+    if [ -z "${SUBN}" ]; then
+      skip "读不到 Epic #${EPIC} 的 sub-issue（网络或权限），跳过"
+    elif [ "${SUBN}" -ne "${MAPN}" ]; then
+      bad "Epic #${EPIC} 有 ${SUBN} 个 sub-issue，能力图有 ${MAPN} 个模块 —— 对不上"
+    else
+      ok "Epic #${EPIC} 的模块 issue 数与能力图一致（${MAPN}）"
+    fi
+  else
+    skip "state.json 没有 initiative.issue，跳过 Epic 比对"
+  fi
+
+  # 模块 issue 正文是否粘贴了 spec 全文
+  MI=$(jread "${STATE}" "d.get('modules',{}).get('${MODULE}',{}).get('issue')")
+  if [ -n "${MI}" ] && [ -f "spec/${MODULE}.md" ]; then
+    BL=$(gh issue view "${MI}" --json body -q '.body' 2>/dev/null | wc -c | tr -d ' ')
+    SL=$(wc -c < "spec/${MODULE}.md" | tr -d ' ')
+    if [ -n "${BL}" ] && [ "${BL}" -gt 0 ] && [ "${SL}" -gt 0 ] \
+       && [ "${BL}" -gt $((SL * 2 / 3)) ]; then
+      warn "issue #${MI} 正文 ${BL} 字节 vs spec ${SL} 字节 —— 疑似粘贴了 spec 全文，spec 会改，复制必然分叉"
+    else
+      ok "issue #${MI} 正文是摘要而非 spec 全文"
+    fi
+  fi
+
+  # 当前分支的 PR 是否含 Closes #n
+  BR=$(git branch --show-current 2>/dev/null || echo "")
+  BRI=$(printf '%s' "${BR}" | grep -oE '[0-9]+' | head -1 || true)
+  if [ -n "${BRI}" ]; then
+    PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
+    if [ -z "${PRB}" ]; then
+      skip "分支 ${BR} 还没有 PR"
+    elif grep -qiE "closes #${BRI}\b" <<<"${PRB}"; then
+      ok "PR 正文含 Closes #${BRI}"
+    else
+      bad "PR 正文没有 Closes #${BRI} —— issue 不会自动关闭，Project 看板不流转"
+    fi
+  fi
+
+  # activeModule 与当前分支是否对得上
+  if [ -n "${BRI}" ] && [ -n "${MI}" ]; then
+    PAR=$(gh issue view "${BRI}" --json parent -q '.parent.number' 2>/dev/null || echo "")
+    if [ -z "${PAR}" ]; then
+      skip "读不到 #${BRI} 的父 issue，跳过归属校验"
+    elif [ "${PAR}" != "${MI}" ]; then
+      bad "分支在做 #${BRI}（父 #${PAR}），但 activeModule=${MODULE} 的 issue 是 #${MI} —— 对不上"
+    else
+      ok "当前分支的 task 属于 activeModule"
+    fi
+  fi
+fi
+
+echo ""
+echo "═══ ${P} 通过 / ${W} 警告 / ${F} 失败 ═══"
+if [ "${F}" -gt 0 ]; then
+  echo ""
+  echo "失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。"
+  exit 1
+fi
+exit 0

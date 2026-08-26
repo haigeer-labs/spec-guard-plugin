@@ -2,6 +2,50 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-08-26
+
+### 新增
+
+- **`/verify-artifacts`** —— 产物落地校验（只读）。`phase-guard` 回答「现在在哪个
+  阶段」，它回答「已经落下的产物对不对」。整套约定从头到尾都是**提示词**，
+  软指令必须配硬检测，否则跑歪了没人知道。覆盖 9 类检查：
+
+  | 层 | 检查 |
+  |---|---|
+  | 能力图 | 模板占位符未填 / 评审未勾选 / module id 非 kebab-case |
+  | spec | **文件名 ↔ 能力图 module id 比对** |
+  | 目录 | 根目录 `SPEC*.md` / `tasks/` 缺命名空间 / `todo.md` 与 tracker 并存 |
+  | plan | tracker 模式下仍是 checklist / 没写 tracker 位置 |
+  | GitHub | Epic sub-issue 数 ≠ 模块数 / issue 正文粘贴 spec 全文 / PR 缺 `Closes #n` / 分支 task 不属于 activeModule |
+
+  其中 spec 文件名比对补的是最阴险的一类漂移：`phase-guard.sh:80` 只数
+  `spec/*.md` 的**数量**，从不跟能力图比对 module id。能力图写 `identity`、
+  模型建了 `spec/user-identity.md`，阶段照样往前推，下游全部静默错位。
+
+- `setup-convention.sh` 增加 **issue types 可用性探测**。`--type Feature/Task`
+  依赖 GitHub issue types，这是**组织级功能，个人仓库用不了**。原先只查 gh 版本
+  和 `--parent` 参数存在性 —— 这两项在个人仓库上一样全绿，然后 `/sync-map`
+  的第一条命令就炸。探测不到时降级为警告，绝不假阻塞。
+- `test-verify-artifacts.sh` —— 16 个断言，含「合规项目零误报」和「local 模式的
+  checkbox 不误报」两条反向用例
+
+### 修复
+
+- **P0：`setup-convention.sh` 的 github 前置检查有 40% 概率假阻塞。**
+  `gh issue create --help | grep -q -- "--parent"` —— `grep -q` 命中即关管道，
+  还在输出的 `gh` 吃到 SIGPIPE(141)，`set -o pipefail` 把它传出来，判断为假。
+  **实测 30 次里 12 次假阻塞**，且错误信息是误导性的「跑 type -a gh 检查 PATH」。
+  改 herestring 后 30/30 稳定。
+- 同类问题全仓库扫出并修掉 5 处（`setup-convention.sh` ×2、`phase-guard.sh` ×1、
+  `validate.sh` ×1、`test-phase-guard.sh` ×1）。其中 `phase-guard.sh:94` 的
+  `find tasks -name todo.md | grep -q .` 会漏报「todo.md 与 tracker 并存」。
+- CLAUDE.md 加了这条禁令，`/verify-artifacts` 的实现和测试都不用管道
+
+### 已知限制（补充）
+
+- github 模式需要**组织仓库**，个人仓库请用 local 模式
+- `verify-artifacts` 的 GitHub 层仍未经端到端实测（缺可用的组织仓库）
+
 ## [0.2.1] - 2026-08-26
 
 ### 修复

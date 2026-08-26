@@ -91,7 +91,8 @@ HAS_PLAN=false
 # 违规：todo.md 和 tracker 并存
 HAS_TODO=false
 [ -n "$MODULE" ] && [ -f "tasks/$MODULE/todo.md" ] && HAS_TODO=true
-if [ "$TRACKER" != "none" ] && find tasks -name "todo.md" 2>/dev/null | grep -q .; then
+TODO_FOUND=$(find tasks -name "todo.md" 2>/dev/null | head -1)
+if [ "$TRACKER" != "none" ] && [ -n "$TODO_FOUND" ]; then
   broken "存在 todo.md，但本项目已声明外部 tracker —— 二者不能并存"
 fi
 

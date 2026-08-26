@@ -34,8 +34,9 @@ plugins/spec-guard/
 ├── commands/*.md                       ← slash 命令
 ├── hooks/
 │   ├── hooks.json                      ← hook 注册
-│   ├── phase-guard.sh                  ← 核心：状态探测
-│   └── test-phase-guard.sh             ← 回归测试
+│   ├── phase-guard.sh                  ← 核心：状态探测（每轮跑，<1s）
+│   ├── verify-artifacts.sh             ← 产物落地校验（按需跑，可打 gh）
+│   └── test-*.sh                       ← 回归测试
 ├── skills/spec-github-bridge/SKILL.md
 └── templates/                          ← 由 /setup-convention 写入用户项目
 docs/design.md                          ← 需求与设计
@@ -69,9 +70,10 @@ scripts/
 ## 工作流
 
 ```bash
-# 改完必跑这两个
+# 改完必跑这三个
 bash scripts/validate.sh
 bash plugins/spec-guard/hooks/test-phase-guard.sh
+bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 ```
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
@@ -105,6 +107,9 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh
   全角括号的首字节吃进变量名，配上 `set -u` 直接致命退出，而 hook 失败是静默的。
   一律写 `${VAR}`。`scripts/check-bash32.py` 会拦，CI 也加了 macOS matrix
 - **不要在 hook 里输出非 JSON** —— 宿主会拒绝，且失败是静默的
+- **不要写 `cmd | grep -q`** —— `grep -q` 命中即关管道，还在输出的 `cmd` 吃到
+  SIGPIPE(141)，`set -o pipefail` 把它传出来，判断永远为假。用 herestring
+  （`grep -q pat <<<"$var"`）或纯 bash `case`
 - **不要给 hook 加长耗时操作** —— 它在每次用户发言前跑，超过 1s 就会有体感
 
 ---

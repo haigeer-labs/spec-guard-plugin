@@ -43,7 +43,7 @@ python3 scripts/check-bash32.py $(find . -name "*.sh" -not -path "./.git/*") || 
 echo ""
 echo "═══ 命令 frontmatter ═══"
 while IFS= read -r c; do
-  head -1 "$c" | grep -q -- "---" && say "✅" "$c" || { say "❌" "$c 缺 frontmatter"; F=1; }
+  grep -q -- "---" <<<"$(head -1 "$c")" && say "✅" "$c" || { say "❌" "$c 缺 frontmatter"; F=1; }
 done < <(find plugins/*/commands -name "*.md" 2>/dev/null)
 
 echo ""

@@ -282,6 +282,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | `/setup-convention [github\|local] [--dry-run]` | 落地约定（首次跑一次） |
 | `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/phase` | 查看当前链路状态和断链项 |
+| `/verify-artifacts` | 校验已落地的产物是否符合约定 |
 | `/sync-map` | 能力图 → GitHub Issue 结构 |
 | `/next` | 取下一个可执行任务 |
 | `/deliver` | 五轴自查 → 开 PR（Closes #n） |
@@ -419,9 +420,12 @@ bash plugins/spec-guard/hooks/test-phase-guard.sh   # 15 个断言（12 phase-gu
 3. **`spec-github-bridge` skill 里的 gh 命令未经端到端实测** —— 逻辑按官方文档写，
    但没在真实仓库跑通全流程。首次使用建议先用测试仓库。
 4. **多人协作无加锁** —— 任务认领依赖 assignee，理论上存在竞态。
-5. **Windows 需 WSL 或 Git Bash** —— hook 是 bash 脚本。
-6. **文案硬编码中文**。
-7. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说
+5. **github 模式需要「组织」仓库** —— `--type Feature/Task` 依赖 GitHub issue types，
+   这是**组织级功能，个人仓库用不了**。`/setup-convention github` 会在前置检查里
+   探测并阻塞。个人仓库请用 `local` 模式。
+6. **Windows 需 WSL 或 Git Bash** —— hook 是 bash 脚本。
+7. **文案硬编码中文**。
+8. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说
    "save at the project root"，没给文件名。
 
 ---

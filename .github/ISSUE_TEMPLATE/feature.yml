@@ -1,0 +1,17 @@
+name: 功能建议
+description: 新的断链检测、新命令、新 tracker 支持
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决什么问题
+      description: 描述场景，不要直接描述方案
+    validations: { required: true }
+  - type: textarea
+    id: falsepositive
+    attributes:
+      label: 误报风险
+      description: |
+        如果是新增断链检测，必须回答：这个「断链」有没有合理的例外？
+        探测依赖不存在时会怎样？

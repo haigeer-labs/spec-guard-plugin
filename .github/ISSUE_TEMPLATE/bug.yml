@@ -1,0 +1,27 @@
+name: Bug 报告
+description: phase-guard 误报、命令失效、安装问题
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 特别是「误报断链」这类，请贴出 hook 的原始输出
+    validations: { required: true }
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境
+      value: |
+        - OS:
+        - gh --version:
+        - git remote: (github / gitlab / 无)
+        - .agent/state.json 的 tracker 字段:
+    validations: { required: true }
+  - type: textarea
+    id: hookout
+    attributes:
+      label: hook 输出
+      description: |
+        CLAUDE_PROJECT_DIR=$(pwd) bash ~/.claude/plugins/spec-guard/hooks/phase-guard.sh
+      render: shell

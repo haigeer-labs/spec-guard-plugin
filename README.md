@@ -8,6 +8,19 @@
 
 ---
 
+
+## 文档
+
+| | |
+|---|---|
+| [docs/design.md](docs/design.md) | **需求与设计** —— 五个缺口、核心决策、对象模型、状态机、已知限制 |
+| [docs/upstream-analysis.md](docs/upstream-analysis.md) | **上游源码分析** —— 每条结论对应的源码行号，上游更新后按末尾清单重新核对 |
+| [CLAUDE.md](CLAUDE.md) | 开发本插件的 agent 配置（含自引用陷阱说明） |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
+| [CHANGELOG.md](CHANGELOG.md) | 版本记录 |
+
+---
+
 ## 安装
 
 ```

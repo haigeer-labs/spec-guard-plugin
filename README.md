@@ -439,10 +439,15 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 ## 测试
 
 ```bash
-bash scripts/validate.sh                            # 仓库完整性
-bash plugins/spec-guard/hooks/test-phase-guard.sh      # 16 个断言（12 phase-guard + 4 setup）
-bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 16 个断言
+/bin/bash scripts/validate.sh                              # 仓库完整性
+/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh     # 16 个断言（12 phase-guard + 4 setup）
+/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 16 个断言
 ```
+
+> ⚠️ **macOS 上显式用 `/bin/bash`（那是 3.2）。** 装了 Homebrew 的话 `bash` 会指向
+> 5.x —— 那就绕过了本机唯一能暴露 bash 3.2 兼容问题的环境，而 CI 的 macOS matrix
+> 需要账户级 Actions 可用才会跑。
+
 
 ---
 

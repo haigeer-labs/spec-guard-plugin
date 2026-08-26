@@ -71,10 +71,14 @@ scripts/
 
 ```bash
 # 改完必跑这三个
-bash scripts/validate.sh
-bash plugins/spec-guard/hooks/test-phase-guard.sh
-bash plugins/spec-guard/hooks/test-verify-artifacts.sh
+/bin/bash scripts/validate.sh
+/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
+/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 ```
+
+**显式写 `/bin/bash`**，不要写 `bash` —— macOS 上后者可能是 Homebrew 的 5.x，
+而 3.2 才是这个项目踩过坑的那个版本（见 CHANGELOG 0.2.1）。
+
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
 当前 32 个断言：phase-guard 12 个（空仓库 / 各阶段 / 三种 tracker 模式 / 静默退出 /

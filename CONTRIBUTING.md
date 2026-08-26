@@ -3,11 +3,16 @@
 ## 提 PR 前
 
 ```bash
-bash scripts/validate.sh
-bash plugins/spec-guard/hooks/test-phase-guard.sh
+/bin/bash scripts/validate.sh
+/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
+/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 ```
 
-两个都绿才提。CI 会跑同样的检查。
+三个都绿才提。
+
+**显式写 `/bin/bash`**：macOS 上 `bash` 可能是 Homebrew 的 5.x，而 3.2 才是
+这个项目踩过坑的版本。CI 有 macOS matrix 覆盖同样的检查，但它需要账户级
+Actions 可用 —— 本地手跑是唯一无条件生效的防线。
 
 ## 改 phase-guard.sh
 

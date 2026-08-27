@@ -36,6 +36,7 @@ plugins/spec-guard/
 │   ├── hooks.json                      ← hook 注册
 │   ├── phase-guard.sh                  ← 核心：状态探测（每轮跑，<1s）
 │   ├── verify-artifacts.sh             ← 产物落地校验（按需跑，可打 gh）
+│   ├── teardown-convention.sh          ← 移除约定（唯一的破坏性操作，确定性执行）
 │   └── test-*.sh                       ← 回归测试
 ├── skills/spec-github-bridge/SKILL.md
 └── templates/                          ← 由 /setup-convention 写入用户项目
@@ -85,7 +86,7 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 68 个断言：`test-phase-guard.sh` 44 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+当前 74 个断言：`test-phase-guard.sh` 50 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
 刻意空闲 / 模块级分支 / 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
 `test-verify-artifacts.sh` 24 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」

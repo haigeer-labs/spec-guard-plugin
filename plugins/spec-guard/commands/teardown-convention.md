@@ -1,46 +1,44 @@
 ---
 description: 从当前项目移除 spec-guard 的约定（保留你的 spec 和 plan 内容）
-allowed-tools: Bash, Read, Edit
+argument-hint: "[--dry-run] [--keep-state]"
+allowed-tools: Bash
 ---
 
 移除本项目的 spec-guard 约定。**先确认用户真的要移除**，说明会发生什么。
 
-## 会移除
+## 执行
 
-- `CLAUDE.md` 中 `<!-- BEGIN:agent-skills-convention -->` 到
-  `<!-- END:agent-skills-convention -->` 之间的内容（含标记本身）
-
-## 不会碰
-
-- `spec/` `tasks/` 里的内容 —— 那是用户的规格和计划，不是工具的
-- `.agent/state.json` —— 里面有 issue 编号映射，删了就找不回来
-- GitHub 上已创建的 issue
-
-## 步骤
-
-1. 确认 `CLAUDE.md` 存在且含标记：
+直接跑脚本，**不要自己解释执行步骤**——这是插件里唯一的破坏性操作
+（删用户 `CLAUDE.md` 里的内容），必须确定性执行：
 
 ```bash
-grep -n "BEGIN:agent-skills-convention" CLAUDE.md
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/teardown-convention.sh" $ARGUMENTS
 ```
 
-2. 删除标记之间的内容（含标记）。**用精确的行范围，不要正则误删用户内容。**
+用户说「先看看会删什么」就加 `--dry-run`。
 
-3. 验证 hook 已停止生效：
+## 它做什么
 
-```bash
-CLAUDE_PROJECT_DIR=$(pwd) bash "${CLAUDE_PLUGIN_ROOT}/hooks/phase-guard.sh"
-```
+| 动作 | 说明 |
+|---|---|
+| 删 `CLAUDE.md` 里 `BEGIN`/`END` 标记之间的内容（含标记） | 标记外一个字节不动 |
+| `.agent/state.json` → `.agent/state.json.disabled` | **这一步才是真正的「移除」** |
+| 实际跑一遍 `phase-guard.sh` 验证 | 而不是让人相信「无输出即为成功」这句话 |
 
-无输出即为成功。
+**不碰**：`spec/`、`tasks/` 里的内容（那是用户的规格和计划），
+以及 GitHub 上已创建的 issue。
 
-4. 告知用户：
+## 为什么要动 state.json
 
-```
-约定已移除。以下内容保留，确认不需要后自行删除：
-  spec/               你的能力图和模块规格
-  tasks/              你的计划文档
-  .agent/state.json   模块 ↔ issue 编号映射
+0.7.0 起 `.agent/state.json` **本身就是 hook 的激活信号**（为 `--no-claude-md`
+零足迹模式加的）。只删声明块的话，项目不是「约定被移除」，
+而是**变成了零足迹模式** —— 0.7.5 之后 hook 还会每轮注入「先加载 skill」，
+比移除前更黏。
 
-插件本身仍然装着。要完全卸载：/plugin uninstall spec-guard
-```
+改名而不是删除：issue 编号映射删了就找不回来，改回原名即可恢复。
+
+`--keep-state` 保留原名，**hook 会继续激活**，只在确实想切到零足迹模式时用。
+
+## 之后
+
+把脚本输出**原样转述**给用户。退出码 2 表示本项目没启用过约定，什么都没做。

@@ -420,6 +420,60 @@ else
   printf '  ❌ 无 --replace 却改了 CLAUDE.md\n'; FAIL=$((FAIL+1))
 fi
 
+# ── teardown-convention.sh ────────────────────────────────
+# 插件里唯一的破坏性操作。0.7.9 之前它没有脚本、没有测试,而且移除不干净:
+# 0.7.0 起 state.json 本身就是激活信号,只删声明块 = 切成零足迹模式。
+TD="$HOOKDIR/teardown-convention.sh"
+
+mktd() {
+  rm -rf "$TMP/td"; mkdir -p "$TMP/td"; cd "$TMP/td"; git init -q 2>/dev/null
+  printf '# 我的项目\n\n构建用 npm run build。\n' > CLAUDE.md
+  bash "$SETUP" github >/dev/null 2>&1
+}
+
+mktd
+bash "$TD" --dry-run >/dev/null 2>&1
+if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 1 ] && [ -f .agent/state.json ]; then
+  printf '  ✅ teardown --dry-run 零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ teardown --dry-run 动了文件\n'; FAIL=$((FAIL+1))
+fi
+
+CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" >/dev/null 2>&1
+if [ "$(printf '%s' "$(cat CLAUDE.md)")" = "$(printf '# 我的项目\n\n构建用 npm run build。')" ]; then
+  printf '  ✅ teardown 后 CLAUDE.md 逐字回到原样\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ teardown 后 CLAUDE.md 不是原样:\n%s\n' "$(cat CLAUDE.md)"; FAIL=$((FAIL+1))
+fi
+
+if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/td" bash "$H" 2>/dev/null)" ]; then
+  printf '  ✅ teardown 后 hook 真的静默\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ teardown 后 hook 仍在注入 —— 约定没真的移除\n'; FAIL=$((FAIL+1))
+fi
+
+if [ -f .agent/state.json.disabled ] && [ ! -f .agent/state.json ]; then
+  printf '  ✅ state.json 改名保留（issue 映射不丢）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ state.json 处理不对\n'; FAIL=$((FAIL+1))
+fi
+
+bash "$TD" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  printf '  ✅ 没装过的项目退 2（幂等）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 重复 teardown 应退 2\n'; FAIL=$((FAIL+1))
+fi
+
+# --keep-state:保留原名,而 hook 因此仍激活 —— 这是刻意的,要说清楚
+mktd
+CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" --keep-state >/dev/null 2>&1
+if [ -f .agent/state.json ] && [ -n "$(CLAUDE_PROJECT_DIR="$TMP/td" bash "$H" 2>/dev/null)" ]; then
+  printf '  ✅ --keep-state 保留 state.json,hook 仍激活（零足迹模式）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
+fi
+
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

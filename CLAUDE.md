@@ -102,10 +102,30 @@ scripts/
 3. bash scripts/validate.sh && bash plugins/spec-guard/hooks/test-phase-guard.sh
 4. git tag v<version>
 5. push
+6. 拉一下自己装的那份，确认真的跟上了：
+
+```bash
+claude plugin marketplace update spec-guard-marketplace
+claude plugin update spec-guard@spec-guard-marketplace   # 之后要重启才生效
 ```
 
 **版本号不升，使用者收不到更新** —— Claude Code 靠 `plugin.json` 的 `version`
 判断是否拉取新版。
+
+**第 6 步不是多余的。** 2026-08-27 实测：连发 0.6.0 → 0.7.2 五个版本之后，
+本机装着的仍然是 **0.5.2** —— 而那台机器上的目标项目 `CLAUDE.md` 已经是
+0.7.x 的新约定。这正是 `docs/walkthrough.md` 第三次实跑那条教训说的
+**「新约定 + 旧检查器」中间态**，只不过这次它是在插件作者自己的机器上，
+而且**存在了整整五个版本没被发现**。
+
+推得更远一点：`git push` 不是发版的终点，**「装着的那份 sha 对得上最新 commit」
+才是**。核对办法：
+
+```bash
+python3 -c "import json;d=json.load(open('$HOME/.claude/plugins/installed_plugins.json'));\
+print(d['plugins']['spec-guard@spec-guard-marketplace'][0]['gitCommitSha'][:7])"
+git rev-parse --short HEAD
+```
 
 ---
 

@@ -78,8 +78,19 @@
 
 第 2 条能关 issue 是因为 closing keyword 在 commit message 里同样生效 ——
 官方原话是 the issue will be closed when you merge the commit into the
-**default branch**。第 4 条正是这一条的推论：squash 把 N 条 message 压成一条，
-只有最后那个 issue 会被关，其余 task 全部留在 open。
+**default branch**。
+
+第 4 条的理由**不是**「squash 会漏关 issue」。GitHub 的 squash 默认配置
+（`squash_merge_commit_message: COMMIT_MESSAGES`）会把每条 commit message
+拼进压缩后的正文，那些 `Closes #n` 通常还在、照样生效。真正的理由是两条：
+
+- 那个拼接**依赖一个可改的仓库设置** —— 换成 `PR_BODY` 就全丢，合并对话框里的
+  正文也随时能手改。task issue 关不关，取决于一个没人盯着的开关
+- `/build auto` 刻意做到**一个 task 一条 commit**，为的是任意一点都能干净回滚。
+  squash 把 N 条压成一条，这个性质当场消失 —— 出事只能整个模块一起 revert
+
+> 想知道自己这个仓会不会吃掉 closing keyword：
+> `gh api repos/{owner}/{repo} --jq .squash_merge_commit_message`
 
 为什么不一个 task 一个 PR：task 拆得越细 PR 越碎，一个需求被切成 N 个互不相干的
 合并事件 —— 评审时看不到完整交付面，做的人每条都要停下来等合并。**PR 的粒度对齐

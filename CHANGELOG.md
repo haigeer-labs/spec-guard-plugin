@@ -2,6 +2,36 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.6.1] - 2026-08-27
+
+### 修复
+
+- **0.6.0 给「禁止 squash」写了个错的理由。** 原话是「squash 把 N 条 message
+  压成一条，只有最后一个 issue 会关，其余留在 open」—— 这条是从机制推的
+  （0.6.0 的已知限制里标了「没实测」），推错了。
+
+  实查了仓库设置：GitHub 的 squash 默认是
+  `squash_merge_commit_message: COMMIT_MESSAGES`，**会把每条 commit message
+  拼进压缩后的正文**，那些 `Closes #n` 通常还在、照样生效。
+
+  规矩本身不变，理由换成真的那两条：
+
+  1. 那个拼接依赖一个**可改的仓库设置**（换成 `PR_BODY` 就全丢），合并对话框里的
+     正文也随时能手改 —— 拿它当保证等于把 issue 状态挂在一个没人盯着的开关上
+  2. `/build auto` 刻意做到一个 task 一条 commit，为的是**任意一点都能干净回滚**；
+     squash 压成一条后这个性质当场消失，出事只能整个模块一起 revert
+
+  第 2 条才是硬理由 —— 它跟仓库设置无关，改不掉。
+
+  > 教训：把「没实测」标出来是对的，但标了之后就该去测。这条本来一句
+  > `gh api repos/{owner}/{repo} --jq .squash_merge_commit_message` 就能验。
+
+### 已知限制（更正）
+
+- 0.6.0 的「squash 合并没有实测」一条**作废** —— 已查明默认行为。
+  仍未实测的是：把 `squash_merge_commit_message` 改成 `PR_BODY` 之后
+  closing keyword 是否真的全丢（按字面推断是，没跑过）。
+
 ## [0.6.0] - 2026-08-27
 
 ### 变更（约定层，会影响已落地的项目）

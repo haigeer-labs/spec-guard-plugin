@@ -165,9 +165,15 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
     ## 验证
     <测试输出摘要>"
 
-**合并只能用 merge commit 或 rebase。** squash 会把每条 commit message 压成一条，
-task issue 除最后一个外全部留在 open —— 而 `/next` 会把它们当成没做完，
-重新取出来做第二遍。
+**合并只能用 merge commit 或 rebase。** 理由不是「squash 会漏关 issue」——
+GitHub 的 squash 默认（`squash_merge_commit_message: COMMIT_MESSAGES`）会把每条
+commit message 拼进压缩后的正文，closing keyword 通常还在。真正的理由是：
+
+1. 那个拼接依赖一个**可改的仓库设置**，合并对话框里的正文也能手改 ——
+   task issue 关不关取决于一个没人盯着的开关，而漏关的表现是 `/next`
+   把已完成的 task 重新取出来做第二遍
+2. `/build auto` 刻意做到一个 task 一条 commit，为的是**任意一点都能干净回滚**；
+   squash 压成一条后只能整个模块一起 revert
 
     gh pr merge --merge --delete-branch     # 或 --rebase
 
@@ -186,7 +192,7 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 | "依赖关系写在描述里更方便" | 写描述里 `/build` 读不到，无法自动跳过被阻塞的任务。必须用 --blocked-by。 |
 | "直接关掉 issue 更快" | 手动关闭会丢失 PR ↔ issue 的关联，追溯时找不到实现在哪。 |
 | "每个 task 开个 PR，交付更清楚" | 交付面被切碎，评审看不到一个需求的全貌，而每条都要停下来等合并。粒度对齐需求，不对齐提交。 |
-| "PR 用 squash 合，历史干净" | squash 会吃掉每条 commit 的 `Closes #n`，只有最后一个 task issue 被关，其余全部留在 open。用 merge 或 rebase。 |
+| "PR 用 squash 合，历史干净" | 干净的代价是丢掉一 task 一 commit 的回滚点，出事只能整个模块一起 revert。closing keyword 多半还在（默认拼接 commit messages），但那是个可改的设置，不该拿它当保证。 |
 | "gh 版本低，用 label 模拟 type" | label 无层级、无依赖，`/build` 的筛选逻辑会全部失效。升级 gh。 |
 | "个人仓库没有 issue types，那这套用不了" | 只有 `--type` 用不了。层级和依赖照常，省略 `--type` 即可，流程一步不少。 |
 | "用 gh issue list --parent 列子任务" | **那个 flag 不存在**，只有 gh issue create 有 --parent。用 REST sub_issues。 |
@@ -210,4 +216,4 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 - 任务落库后：`gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"` 的条目数 == plan.md 索引条数
 - 交付前：`git log <默认分支>..HEAD --format=%B | grep -c 'Closes #'` == 本模块要交付的 task 数
 - 交付后：PR 页面显示 "Closes #<module-issue>" 的关联链接
-- 合并后：本模块的 task issue 全部变 closed（若有残留 → 多半是被 squash 了）
+- 合并后：本模块的 task issue 全部变 closed（有残留 → 查合并时落到默认分支的正文里 closing keyword 还在不在）

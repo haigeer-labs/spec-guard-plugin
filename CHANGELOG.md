@@ -2,6 +2,61 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.6.0] - 2026-08-27
+
+### 变更（约定层，会影响已落地的项目）
+
+- **PR 粒度从 task 提到 module。** 原先是「一个 task 一条分支一个 PR」，
+  现在是「一个模块一条分支一个 PR，每个 task 一条带 `Closes #n` 的 commit」。
+
+  起因是使用者的实跑反馈：任务拆得细，于是每推进一个 task 就要停下来开 PR、
+  等合并，**一个需求被切成 N 个互不相干的合并事件**，连贯性没了。
+
+  查了下这个成本买到了什么 —— 在那个项目上：main 没有分支保护、
+  `allow_auto_merge` 是 false、CI 是 `on: push` 也跑、最近 10 个 PR
+  从开到合中位数 1 分 20 秒且全是 1 commit、开合是同一个人。也就是说
+  PR 既不是评审关口也不是 CI 关口也不是保护关口，唯一买到的是
+  `Closes #n` 那条追溯链接 —— 而那条链接，模块级 PR 一样给。
+
+  **上游从来没要求过一个 task 一个 PR。** agent-skills 的 `/build` 到 commit
+  为止，`/build auto` 是一路 commit 跑完整个 plan；task 级 PR 是本插件
+  0.2.0 自己加的，这次把它收回去。
+
+- **合并策略从此有硬约束：只能 merge commit 或 rebase，不能 squash。**
+  task issue 靠 commit message 里的 closing keyword 关闭（官方原话：the issue
+  will be closed when you merge the commit into the **default branch**），
+  squash 把 N 条 message 压成一条，只有最后一个 issue 会关，其余留在 open，
+  而 `/next` 会把它们当成没做完、重新取出来做第二遍。
+
+### 修复
+
+- **模块分支会被报成假断链。** `phase-guard.sh` 的
+  「已认领 X 但当前分支不含 issue 号」那条，遇到 `feat/<module-id>` 这种
+  不含 issue 号的模块分支必然命中 —— 改约定不改状态机的话，每轮都在报。
+  新增 `ON_MODULE_BRANCH` 判定，且是**末段整段匹配**而非子串包含：
+  子串匹配下 module id 叫 `a` 时分支 `master` 会被当成模块分支（已加反向用例）。
+
+### 新增
+
+- `phase-guard.sh` 新增 `MODULE_READY` 阶段与 `TASKS_DONE_HERE` 计数。
+  模块级 PR 下 task issue 要到合并才关，`OPEN_TASKS` 全程不减 ——
+  「这个模块做完没有」只能数 `<默认分支>..HEAD` 里的 closing keyword。
+  这个数**只喂「建议下一步」，不进 `broken()`**：数偏了顶多建议早了，
+  不会变成一条假断链。
+- `/deliver` 开 PR 前先核对 task 覆盖，没覆盖齐就不开、报还差哪几个。
+- 断言 40 → 45（`test-phase-guard.sh` 19 → 24，新增 5 条含 2 条反向用例）。
+
+### 已知限制（补充）
+
+- **`TASKS_DONE_HERE` 只认 `main`/`master` 作为基线分支。** 默认分支叫别的
+  （`trunk`、`develop`）时它恒为 0，表现是 `MODULE_READY` 永远不出现、
+  一直建议「继续取任务」。这是**保守失败**（不会误报断链），但会让人
+  自己判断什么时候该开 PR。
+- **squash 合并没有实测。** 官方文档只写了 commit message 的 closing keyword
+  在合入默认分支时生效，没写 squash 时怎么处理被压掉的 message。
+  上面「squash 会漏关 issue」是从机制推的，不是跑出来的 —— 所以约定写成
+  「禁止 squash」而不是「squash 时要注意」。
+
 ## [0.5.2] - 2026-08-27
 
 ### 修复

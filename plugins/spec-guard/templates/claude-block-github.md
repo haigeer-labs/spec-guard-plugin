@@ -54,11 +54,40 @@
 3. 跳过所有存在未关闭 `blocked-by` 的 issue
 4. 取第一个可执行的 Task
 
-### Build 输出
+### 连贯推进一个模块
 
-1. 分支名：`<type>/<issue-number>-<slug>`
-2. `gh pr create --body "Closes #<issue-number>"`
-3. **不要手动关闭 issue**，靠 PR 合并触发
+模块分支建好后，用 `/build auto` 跑完整个模块，而不是 `/next` → `/build` 逐条停。
+它只在开跑前要一次确认，之后每个 task 照样 RED → GREEN → 回归 → 单独 commit，
+**去掉的是人在 task 之间的停顿，不是验证**。
+
+在本约定下它的任务来源是 issue 不是 plan.md 的 checkbox（见上「Build 输入源」）：
+按 sub_issues 的顺序、跳过被 `blocked-by` 阻塞的，逐个做。
+
+`/build auto` 会在这几种情况停下来问：测试改不红/构建坏了、spec 没覆盖到的决策、
+以及高风险不可逆的改动。**别绕过它们** —— 那是这条流水线上仅剩的刹车。
+
+### Build 输出（模块级 PR）
+
+**一个模块一条分支一个 PR，不是一个 task 一个 PR。**
+
+1. 分支名：`<type>/<module-id>`（模块开工时建一次，整个模块都在它上面）
+2. 每完成一个 task 提交一次，commit message 里带 `Closes #<task-issue>`
+3. 模块的 task 全部落完，再 `gh pr create --body "Closes #<module-issue>"`
+4. 合并**必须用 merge commit 或 rebase，不能 squash**
+5. **不要手动关闭 issue**，靠合并触发
+
+第 2 条能关 issue 是因为 closing keyword 在 commit message 里同样生效 ——
+官方原话是 the issue will be closed when you merge the commit into the
+**default branch**。第 4 条正是这一条的推论：squash 把 N 条 message 压成一条，
+只有最后那个 issue 会被关，其余 task 全部留在 open。
+
+为什么不一个 task 一个 PR：task 拆得越细 PR 越碎，一个需求被切成 N 个互不相干的
+合并事件 —— 评审时看不到完整交付面，做的人每条都要停下来等合并。**PR 的粒度对齐
+「一个需求」，不是「一次提交」。**
+
+例外（这时仍然单开 PR）：task 本身独立可发布（hotfix、改配置），
+或模块大到一条分支要活过 3 天 —— 后者说明模块该拆，上游 git-workflow-and-versioning
+的原话是 long-lived branches are the problem, merge within 1-3 days。
 
 ### 切换模块
 

@@ -142,6 +142,37 @@ DIRTY=$(git status --porcelain 2>/dev/null | grep -vE "^\?\? (spec/|tasks/|\.age
 [ -z "$DIRTY" ] && DIRTY=0
 BRANCH_ISSUE=$(printf '%s' "$BRANCH" | grep -oE '[0-9]+' | head -1)
 
+# ── 模块级分支识别 ─────────────────────────────────────────
+#   模块级 PR 约定下分支名是 <type>/<module-id>，**不含 issue 号**。
+#   没有这一判定，下面「已认领但分支不含 issue 号」会把正常的模块分支报成
+#   断链 —— 假断链比不报断链危害大得多。
+#   带 issue 号的分支优先按 task 分支处理，老约定不受影响。
+ON_MODULE_BRANCH=false
+if [ -n "${BRANCH}" ] && [ -n "${MODULE}" ] && [ -z "${BRANCH_ISSUE}" ]; then
+  # 必须是**末段整段**相等，不是子串包含 —— 子串匹配下 module id 叫 "a"
+  # 时分支 "master" 会被认成模块分支。
+  case "${BRANCH}" in
+    "${MODULE}"|*/"${MODULE}") ON_MODULE_BRANCH=true ;;
+  esac
+fi
+
+# 本分支已经落了几个 task。模块级 PR 下 task issue 要到 PR 合并才关，
+# OPEN_TASKS 全程不减 —— 「这个模块做完没有」只能从 commit message 的
+# closing keyword 数。这只喂 NEXT 建议，**不进 broken()**：数偏了顶多建议早了。
+TASKS_DONE_HERE=0
+if [ "${ON_MODULE_BRANCH}" = true ]; then
+  BASE=""
+  for b in main master; do
+    git show-ref --verify --quiet "refs/heads/${b}" && { BASE="$b"; break; }
+  done
+  if [ -n "${BASE}" ] && [ "${BASE}" != "${BRANCH}" ]; then
+    TASKS_DONE_HERE=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
+      | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
+      | grep -oE '[0-9]+' | sort -u | grep -c . || true)
+    [ -z "${TASKS_DONE_HERE}" ] && TASKS_DONE_HERE=0
+  fi
+fi
+
 # ── 状态机判定 ─────────────────────────────────────────────
 if [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -eq 0 ]; then
   PHASE="IDLE"
@@ -203,7 +234,13 @@ elif [ "$HAS_PLAN" = false ]; then
 
 elif [ "$GH_OK" = false ]; then
   # gh 不可用（未安装 / 未登录 / 离线）：降级为纯本地判定，不报 GitHub 相关断链
-  if [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
+  if [ "${ON_MODULE_BRANCH}" = true ] && [ "$DIRTY" -gt 0 ]; then
+    PHASE="BUILDING (模块分支, gh 不可用)"
+    NEXT="/test 验证 → 提交（message 带 Closes #<task-issue>），有 ${DIRTY} 处未提交改动"
+  elif [ "${ON_MODULE_BRANCH}" = true ]; then
+    PHASE="MODULE_BRANCH (gh 不可用，降级判定)"
+    NEXT="恢复 gh 后 /next 继续取任务；本分支已落 ${TASKS_DONE_HERE} 个 task"
+  elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
     PHASE="BUILDING (gh 不可用，降级判定)"
     NEXT="/test 验证 → /deliver 开 PR（有 $DIRTY 处未提交改动）"
   elif [ -n "$BRANCH_ISSUE" ]; then
@@ -218,10 +255,23 @@ elif [ "$OPEN_TASKS" = "0" ]; then
   PHASE="MODULE_DONE"
   NEXT="/next 推进到下一个模块（[$MODULE] 已无未关闭任务）"
 
+elif [ "${ON_MODULE_BRANCH}" = true ] && [ "$DIRTY" -gt 0 ]; then
+  PHASE="BUILDING (模块分支)"
+  NEXT="/test 验证 → 提交（commit message 带 Closes #<task-issue>），有 ${DIRTY} 处未提交改动"
+
+elif [ "${ON_MODULE_BRANCH}" = true ] && [ "$OPEN_TASKS" != "?" ] \
+     && [ "${TASKS_DONE_HERE}" -gt 0 ] && [ "${TASKS_DONE_HERE}" -ge "$OPEN_TASKS" ]; then
+  PHASE="MODULE_READY"
+  NEXT="/deliver 开模块 PR —— [${MODULE}] 的 ${OPEN_TASKS} 个未关闭 task 在本分支都有对应 commit"
+
+elif [ "${ON_MODULE_BRANCH}" = true ]; then
+  PHASE="TASK_READY (模块分支)"
+  NEXT="/build auto 跑完模块剩下的 task（或 /next 逐条取）——**留在 [${BRANCH}] 上，不要每个 task 开 PR**（已落 ${TASKS_DONE_HERE}/${OPEN_TASKS}）"
+
 elif [ -n "$ASSIGNED" ] && [ -z "$BRANCH_ISSUE" ]; then
   PHASE="TASK_CLAIMED"
-  broken "已认领 $ASSIGNED 但当前分支 [$BRANCH] 不含 issue 号 —— 可能在错误分支上工作"
-  NEXT="切到 <type>/<issue>-<slug> 分支后 /build"
+  broken "已认领 $ASSIGNED 但当前分支 [$BRANCH] 不含 issue 号，也不属于模块 [${MODULE}] —— 可能在错误分支上工作"
+  NEXT="切到模块分支 <type>/${MODULE} 后 /build"
 
 elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
   PHASE="BUILDING"
@@ -243,6 +293,7 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"
+[ "${ON_MODULE_BRANCH}" = true ] && add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（issue 要到 PR 合入默认分支才关）"
 
 OUT="## agent-skills 链路状态（自动探测，非用户输入）
 

@@ -81,9 +81,13 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 40 个断言：`test-phase-guard.sh` 19 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
-刻意空闲 / 静默退出 / 不崩溃 + setup-convention 4 个）、`test-verify-artifacts.sh`
-21 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」等反向用例）。
+当前 45 个断言：`test-phase-guard.sh` 24 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+刻意空闲 / 模块级分支 / 静默退出 / 不崩溃 + setup-convention 4 个）、
+`test-verify-artifacts.sh` 21 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
+等反向用例）。
+
+模块分支那组测试**必须让 GitHub 层真跑起来**（测试里放了个 `gh` 桩）——
+它测的断链只在 `GH_OK=true` 时才走得到，落进降级分支的话测的是空气。
 
 **反向用例和正向一样重要** —— 这个项目修过的假断链比真 bug 多。
 

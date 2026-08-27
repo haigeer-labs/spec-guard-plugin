@@ -112,6 +112,56 @@ else
   printf '  ❌ 目录不存在时不该有输出\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 模块级 PR 约定 ─────────────────────────────────────────
+# 这一组必须让 GitHub 层**真的跑起来**：模块分支不含 issue 号，
+# 而「已认领但分支不含 issue 号」那条断链只在 GH_OK=true 时才走得到。
+# 落进降级分支的话，这组测试测的是空气。
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/gh" <<'STUB'
+#!/bin/bash
+cat <<'JSON'
+[{"number":11,"state":"open","title":"T1","assignees":[{"login":"me"}]},
+ {"number":12,"state":"open","title":"T2","assignees":[]}]
+JSON
+STUB
+chmod +x "$TMP/bin/gh"
+OLDPATH="$PATH"
+export PATH="$TMP/bin:$PATH"
+
+mod_repo() {  # 建一个「spec+plan+issue 齐全、活跃模块=x」的仓库
+  base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
+  echo '{"tracker":"github","activeModule":"x","modules":{"x":{"issue":9}}}' > .agent/state.json
+  git add -A >/dev/null 2>&1; git -c user.email=t@t -c user.name=t commit -qm p 2>/dev/null
+}
+
+mod_repo; git checkout -qb feat/x 2>/dev/null
+chk "模块分支干净 → 继续取任务，不报断链" "TASK_READY (模块分支)|断链0"
+
+echo x > f
+chk "模块分支有改动 → 提交，不是开 PR" "BUILDING (模块分支)|断链0"
+
+mod_repo; git checkout -qb feat/x 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T2
+
+Closes #12" 2>/dev/null
+chk "模块内 task 全部落 commit → 该开模块 PR 了" "MODULE_READY|断链0"
+
+# 反向用例：真的在错误分支上（不是模块分支、也没 issue 号）仍然要报
+mod_repo
+chk "已认领却停在默认分支 → 真断链照报" "TASK_CLAIMED|断链1"
+
+# 反向用例：module id 是单字母时，"master" 不能被当成模块分支
+base; mkdir -p spec tasks/a .agent; touch spec/a.md tasks/a/plan.md
+echo '{"tracker":"github","activeModule":"a","modules":{"a":{"issue":9}}}' > .agent/state.json
+git add -A >/dev/null 2>&1; git -c user.email=t@t -c user.name=t commit -qm p 2>/dev/null
+git checkout -qb master 2>/dev/null || git checkout -q master 2>/dev/null
+chk "module id=a 时 master 不算模块分支（子串陷阱）" "TASK_CLAIMED|断链1"
+
+export PATH="$OLDPATH"
+
 # ── setup-convention.sh 的回归 ──
 echo ""
 echo "═══ setup-convention 回归 ═══"

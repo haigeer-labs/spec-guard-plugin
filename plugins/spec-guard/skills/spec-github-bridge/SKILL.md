@@ -138,23 +138,42 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 ---
 
-## 操作四：交付
+## 操作四：交付（模块级 PR）
 
-`/review` 通过后：
+粒度是**模块**，不是 task。一个模块一条分支，跑完整个 plan 再收口。
 
-    git checkout -b <type>/<issue>-<slug>
-    # ... commits ...
+模块开工时建一次分支：
+
+    git checkout -b <type>/<module-id>
+
+每完成一个 task 提交一次，**closing keyword 写在 commit message 里**：
+
+    git commit -m "<type>(<scope>): <task 标题>
+
+    Closes #<task-issue>"
+
+模块的 task 全部落完、`/review` 通过后，开一个 PR：
+
     gh pr create \
-      --title "<type>: <task 标题>" \
-      --body "Closes #<issue>
+      --title "<type>(<module-id>): <模块标题>" \
+      --body "Closes #<module-issue>
 
-    ## 变更
-    <一句话>
+    ## 落地的 task
+    - #<n> <标题>
+    - #<n> <标题>
 
     ## 验证
     <测试输出摘要>"
 
-**PR 正文必须含 `Closes #<n>`**，否则 issue 不会自动关闭、Project 看板不会流转。
+**合并只能用 merge commit 或 rebase。** squash 会把每条 commit message 压成一条，
+task issue 除最后一个外全部留在 open —— 而 `/next` 会把它们当成没做完，
+重新取出来做第二遍。
+
+    gh pr merge --merge --delete-branch     # 或 --rebase
+
+task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要到
+**合入默认分支**才生效 —— 在特性分支上提交时 issue 不会动，这是正常的，
+不是断链。
 
 ---
 
@@ -166,6 +185,8 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 | "这个 task 很小，不用建 issue" | 小到不用建 issue 的 task，说明它不该是独立 task，合并到相邻 task 里。 |
 | "依赖关系写在描述里更方便" | 写描述里 `/build` 读不到，无法自动跳过被阻塞的任务。必须用 --blocked-by。 |
 | "直接关掉 issue 更快" | 手动关闭会丢失 PR ↔ issue 的关联，追溯时找不到实现在哪。 |
+| "每个 task 开个 PR，交付更清楚" | 交付面被切碎，评审看不到一个需求的全貌，而每条都要停下来等合并。粒度对齐需求，不对齐提交。 |
+| "PR 用 squash 合，历史干净" | squash 会吃掉每条 commit 的 `Closes #n`，只有最后一个 task issue 被关，其余全部留在 open。用 merge 或 rebase。 |
 | "gh 版本低，用 label 模拟 type" | label 无层级、无依赖，`/build` 的筛选逻辑会全部失效。升级 gh。 |
 | "个人仓库没有 issue types，那这套用不了" | 只有 `--type` 用不了。层级和依赖照常，省略 `--type` 即可，流程一步不少。 |
 | "用 gh issue list --parent 列子任务" | **那个 flag 不存在**，只有 gh issue create 有 --parent。用 REST sub_issues。 |
@@ -177,7 +198,9 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 - `plan.md` 的 Task List 是 checkbox 而不是 issue 编号
 - issue 正文里粘贴了 spec 全文
 - `.agent/state.json` 的 activeModule 和当前分支名不一致
-- PR 描述里没有 `Closes #`
+- PR 描述里没有 `Closes #<module-issue>`
+- 一个模块出现了多个 PR，或分支名里带 issue 号（说明退回了 task 级粒度）
+- commit message 里没有 `Closes #<task-issue>`（那些 task issue 永远关不掉）
 
 ## Verification
 
@@ -185,4 +208,6 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 - bootstrap 后：`gh issue view <epic> --json subIssues` 返回的模块数 == 能力图的模块数
 - 任务落库后：`gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"` 的条目数 == plan.md 索引条数
-- 交付后：PR 页面显示 "Closes #n" 的关联链接
+- 交付前：`git log <默认分支>..HEAD --format=%B | grep -c 'Closes #'` == 本模块要交付的 task 数
+- 交付后：PR 页面显示 "Closes #<module-issue>" 的关联链接
+- 合并后：本模块的 task issue 全部变 closed（若有残留 → 多半是被 squash 了）

@@ -43,7 +43,7 @@ plugins/spec-guard/
 docs/design.md                          ← 需求与设计
 scripts/
 ├── validate.sh                     ← 仓库完整性校验（下面几个 check 由它调）
-└── check-*.py                      ← manifests / bash32 / grep-pipe / 命令名 / README↔模板同步
+└── check-*.py                      ← manifests / bash32 / grep-pipe / gh-json 字段 / 命令名 / README↔模板同步
 ```
 
 ---
@@ -102,8 +102,8 @@ scripts/
 
 ### 校验器自己也有回归套件
 
-`scripts/test-checkers.sh`（14 个断言，已接进 `validate.sh`，免费）。
-五个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
+`scripts/test-checkers.sh`（17 个断言，已接进 `validate.sh`，免费）。
+六个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
 
 **为什么单独有这一层**：一轮之内出过**四次**「新加的防线自己有毛病」——
 `check-command-names` 漏双引号前缀、`check-readme-sync` 没跑反向用例、

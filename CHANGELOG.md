@@ -2,6 +2,74 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.14] - 2026-08-28
+
+体检续：这轮把 skill 里那些**每次 `/next` 都要跑的 gh 命令**拿去对着真 gh
+和真仓库跑了一遍。一个硬失败的 bug，一处能砍掉 N 次 API 调用的多余步骤，
+一条无从判断的筛选规则。
+
+### 修复
+
+- **`/next` 的「取到后」那条命令每次都会硬失败。**
+
+  操作三写的是：
+
+      gh issue view <n> --json title,body,parent,dependencies
+
+  而 `dependencies` **不是合法字段**（真名叫 `blockedBy`）：
+
+      Unknown JSON field: "dependencies"
+
+  跟陷阱表里那条「`gh issue list --parent` 那个 flag 不存在」是**同一个形状**，
+  只是这次躺在正文的操作步骤里。已改成 `blockedBy`（实测通过字段校验）。
+
+### 变更
+
+- **筛选被阻塞任务不再逐个 task 打 API。** 操作三原先要求对每个 task 单独跑
+  `gh api .../dependencies/blocked_by`。但 REST `sub_issues` 的每一条里
+  已经带了 `issue_dependencies_summary.blocked_by`，数的正好是**未关闭**的
+  阻塞者：
+
+  ```
+  #11  open  {"blocked_by": 0, "total_blocked_by": 1, ...}   ← 前置 #10 已关闭
+  #13  open  {"blocked_by": 1, "total_blocked_by": 1, ...}   ← 前置 #12 仍 open
+  ```
+
+  （在 `sentinel-livelab` 上逐条核对过。）一个 9 task 的模块因此省掉 9 次
+  round trip，也去掉了一个「模型可能漏查几条」的循环。
+  需要知道**是谁**在挡的时候才单独查那一个。
+
+- **删掉筛选规则「排除 `issueType != Task`」。** REST `sub_issues` 的响应里
+  根本没有 type 字段，这条规则在那份数据上无从判断；而 `--parent <module>`
+  返回的按构造就是 task，skill 自己也写着它「本来就是冗余的」。
+  把一条**评估不了**的规则放在有序筛选的第一位，只会逼模型去猜或多打 N 次 API。
+
+  > 核对边界：本账号只有个人仓库（`issueTypes` 不可用）。有 issue types 的
+  > 组织仓库上那个字段会不会出现，**没验过** —— 但即使出现，冗余这一点不变。
+
+- Verification 里的 `gh issue view <epic> --json subIssues` 补上取数方式：
+  它返回的是 `{nodes, totalCount}` 对象，不是裸数组，直接 `| length` 会得到 `2`。
+
+### 新增
+
+- **`scripts/check-gh-json-fields.py`** —— 校验仓库里写到的
+  `gh <issue|pr|repo> view --json <字段>` 都真实存在。
+
+  这个仓库已经**两次**把不存在的东西写进操作步骤，两次都是每跑必败、
+  两次都在文档里躺了很久。跟其他 `check-*.py` 不同的是，
+  **它的判据不是冻结清单，是问 gh 本人** —— 跑一次
+  `gh issue view 1 --json <乱写>` 让 gh 吐出合法字段表。
+  实测这一步 gh 在**本地**完成：不需要仓库上下文、不需要网络、不需要登录
+  （`GH_HOST` 指向不存在的主机也照常打印）。gh 不可用时干净跳过并声明
+  「跳过不代表通过」。
+
+  它当场抓到了上面那个 `dependencies`。
+
+### 测试
+
+`test-checkers.sh` 14 → **17**（含「gh 不可用时干净跳过」的降级用例）。
+接进 `validate.sh`，现在每次校验 13 个字段引用。
+
 ## [0.7.13] - 2026-08-27
 
 体检续：这轮查的是**四个模型驱动、零测试的命令**（`/sync-map` `/next`

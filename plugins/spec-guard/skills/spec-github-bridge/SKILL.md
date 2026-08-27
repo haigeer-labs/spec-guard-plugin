@@ -150,21 +150,31 @@ Epic 建好写 `initiative.issue`，每个模块 issue 建好写 `modules.<id>.i
     #    （--parent 只在 gh issue create 上），用了会 unknown flag 直接失败。
     gh api "repos/{owner}/{repo}/issues/$MODULE_ISSUE/sub_issues"
 
-    # 每个 task 的阻塞关系单独查：
+筛选规则（按顺序），**四条全部只用上面这一次响应，不必逐个 task 再打 API**：
+
+1. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
+2. 排除 `issue_dependencies_summary.blocked_by > 0` —— 这个字段数的就是
+   **未关闭**的阻塞者，已关闭的不计（实测：某 task `total_blocked_by=1` 而
+   `blocked_by=0`，因为那个前置 issue 已经关了）。答案已经在手里，
+   不要为此逐个 task 打 `dependencies/blocked_by`
+3. 排除已有 assignee 且不是自己的（多人协作）
+4. 取第一个
+
+需要知道**是谁**在挡（报给用户时）才单独查，只查那一个：
+
     gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by"
 
-筛选规则（按顺序）：
-
-1. 排除 `issueType != Task` —— **`issueTypes: false` 时跳过这条**。
-   `--parent <module>` 返回的按构造就是 task，这条规则本来就是冗余的
-2. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
-3. 排除存在未关闭 `blocked-by` 的
-4. 排除已有 assignee 且不是自己的（多人协作）
-5. 取第一个
+> 原先第一条是「排除 `issueType != Task`」。**REST `sub_issues` 的响应里
+> 根本没有 type 字段**，那条规则在这份数据上无从判断；而 `--parent <module>`
+> 返回的按构造就是 task，本来也是冗余的。已删。
+> （核对边界：本账号只有个人仓库，`issueTypes` 不可用；有 issue types 的
+> 组织仓库上该字段会不会出现，没验过。但即使出现，冗余这一点不变。）
 
 取到后：
 
-    gh issue view <n> --json title,body,parent,dependencies
+    # ⚠️ 字段是 `blockedBy`，**不是 `dependencies`** —— 后者会
+    #    `Unknown JSON field` 直接失败。合法字段表：gh issue view <n> --json 乱写一个
+    gh issue view <n> --json title,body,parent,blockedBy
     gh issue edit <n> --add-assignee @me
 
 把 issue 正文的验收标准交给 `/build`，替代它原本从 todo.md 读取的内容。
@@ -289,7 +299,8 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 
 每次操作后必须验证：
 
-- bootstrap 后：`gh issue view <epic> --json subIssues` 返回的模块数 == 能力图的模块数
+- bootstrap 后：`gh issue view <epic> --json subIssues -q '.subIssues.totalCount'` == 能力图的模块数
+  （`subIssues` 返回的是 `{nodes, totalCount}` 对象，不是裸数组 —— 直接 `| length` 会得到 `2`）
 - 任务落库后：`gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"` 的条目数 == plan.md 索引条数
 - 交付前：`git log <默认分支>..HEAD --format=%B | grep -c 'Closes #'` == 本模块要交付的 task 数
 - 交付后：PR 页面显示 "Closes #<module-issue>" 的关联链接

@@ -41,6 +41,12 @@ echo "═══ bash 3.2 兼容（macOS 自带 bash）═══"
 python3 scripts/check-bash32.py $(find . -name "*.sh" -not -path "./.git/*") || F=1
 
 echo ""
+echo "═══ gh --json 字段是否真实存在 ═══"
+# shellcheck disable=SC2046
+python3 scripts/check-gh-json-fields.py \
+  $(find plugins scripts -type f \( -name "*.md" -o -name "*.sh" \)) || F=1
+
+echo ""
 echo "═══ 管道 + grep -q（SIGPIPE 陷阱）═══"
 # shellcheck disable=SC2046
 python3 scripts/check-grep-pipe.py $(find . -name "*.sh" -not -path "./.git/*") || F=1

@@ -59,6 +59,29 @@ want fail "grep-pipe: 管道 + grep -q → 报错"   python3 "$ROOT/scripts/chec
 want pass "grep-pipe: herestring 写法 → 放行"  python3 "$ROOT/scripts/check-grep-pipe.py" "$TMP/goodgp.sh"
 want pass "grep-pipe: 注释里提到不算 → 放行"   python3 "$ROOT/scripts/check-grep-pipe.py" "$TMP/cmtgp.sh"
 
+# ── check-gh-json-fields.py ──
+# 踩过的真 bug（两次同一形状）：`gh issue list --parent`，以及 SKILL.md 里
+# 一个并不存在的 issue view JSON 字段 —— 都是**每次跑都硬失败**的命令，
+# 都在文档里躺了很久。这个校验器的判据不是冻结清单，是问 gh 本人。
+# （这里刻意不写出那个字段名：校验器不跳过注释，写了会抓到本文件自己。）
+# 坏样本**运行时拼装**，不让那个字段名以完整形态出现在本文件源码里 ——
+# 否则 validate.sh 里的 check-gh-json-fields 会抓自己的测试脚本（同 bash32 那条）。
+BADF='depend''encies'
+printf 'gh issue view 5 --json title,%s\n' "$BADF" > "$TMP/badjson.md"
+printf 'gh issue view 5 --json title,blockedBy\n'   > "$TMP/goodjson.md"
+if command -v gh >/dev/null 2>&1; then
+  want fail "gh-json: 不存在的字段 → 报错" python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/badjson.md"
+  want pass "gh-json: 真实字段 → 放行"     python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/goodjson.md"
+else
+  printf '  ⏭  gh 未安装，跳过 gh-json 的一正一反（不代表通过）\n'
+fi
+# gh 不可用时必须干净跳过退 0，不能假阻塞。
+# PATH 清空后 python3 也找不着了，所以用绝对路径调它 —— 这里要屏蔽的只有 gh。
+mkdir -p "$TMP/nogh"
+PY3="$(command -v python3)"
+want pass "gh-json: gh 不可用时干净跳过" \
+  env PATH="$TMP/nogh" "$PY3" "$ROOT/scripts/check-gh-json-fields.py" "$TMP/badjson.md"
+
 # ── check-manifests.py ──
 mkm() {  # $1=目录 $2=plugin.json 里的 name
   rm -rf "$1"; mkdir -p "$1/.claude-plugin" "$1/plugins/demo/.claude-plugin"

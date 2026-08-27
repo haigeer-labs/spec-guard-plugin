@@ -278,7 +278,8 @@ find "$M" -type f -not -path '*/.git/*' | wc -l    # 应为 187 上下
 | 4 | planning skill 有了 module 概念？ | ❌ 仍 0 命中 | **缺口 B 仍成立** |
 | 5 | 新增了 gh 调用？ | ❌ 无 | **缺口 E 仍成立** |
 | 6 | 能力图有了固定文件名？ | ❌ 仍只说 "at the project root" | **已知限制 3 仍成立** |
-| 7 | 新增了自动推进机制？ | ❌ `hooks.json` 仍只注册 1 个 SessionStart | **缺口 F 仍成立**，且不冲突 |
+| 7 | 命令与 skill 的名字有没有变？ | ✅ 未变 | `check-command-names.py` 的快照仍有效 |
+| 8 | 新增了自动推进机制？ | ❌ `hooks.json` 仍只注册 1 个 SessionStart | **缺口 F 仍成立**，且不冲突 |
 
 **五个缺口一个都没被上游补掉，插件整体成立。**
 
@@ -305,7 +306,13 @@ grep -rn -E "\bgh (issue|pr) " "$M" --include="*.md" --include="*.toml" \
 # 6. 能力图文件名（仍只说 project root = 已知限制 3 仍成立）
 grep -n "Save the approved map" "$M/skills/spec-driven-development/SKILL.md"
 
-# 7. 注册了哪些 hook 事件（不是数 hooks/ 目录里的文件）
+# 7. 命令与 skill 的名字（check-command-names.py 里的快照要跟这个一致）
+#    ⚠️ 命令看 .claude/commands/ 而**不是** commands/*.toml —— 两者文件名不同
+#       (plan.md vs planning.toml)，Claude Code 读前者。搞错这个正是 0.5.2 的 bug。
+ls "$M/.claude/commands" | sed 's/\.md$//'
+ls "$M/skills"
+
+# 8. 注册了哪些 hook 事件（不是数 hooks/ 目录里的文件）
 python3 -c "import json;print(list(json.load(open('$M/hooks/hooks.json'))['hooks']))"
 ```
 

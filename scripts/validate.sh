@@ -45,6 +45,10 @@ echo "═══ 用户可见输出里的命令名 ═══"
 python3 scripts/check-command-names.py || F=1
 
 echo ""
+echo "═══ README 内嵌声明块 ↔ templates ═══"
+python3 scripts/check-readme-sync.py || F=1
+echo ""
+
 echo "═══ 命令 frontmatter ═══"
 while IFS= read -r c; do
   grep -q -- "---" <<<"$(head -1 "$c")" && say "✅" "$c" || { say "❌" "$c 缺 frontmatter"; F=1; }

@@ -66,8 +66,11 @@
 > or the user designate an issue tracker (e.g. GitHub Issues, Jira, Linear), create one
 > tracker item per task **instead of** writing `tasks/todo.md`.
 
-**激活条件就是「CLAUDE.md 里声明」。** 全仓库搜索确认：除了这段说明，没有任何
+**上游的激活条件就是「CLAUDE.md 里声明」。** 全仓库搜索确认：除了这段说明，没有任何
 `gh issue` 实现。所以本插件的 GitHub 集成不是发明新东西，是把上游留好的接口接上。
+
+（本插件自己的 hook 从 0.7.0 起认两个信号：CLAUDE.md 的约定标题，**或** `.agent/state.json`
+存在。后者是给不想动 CLAUDE.md 的项目用的，见 `--no-claude-md`。上游那半仍然只认前者。）
 
 ---
 
@@ -143,105 +146,73 @@ mkdir -p spec tasks .agent
 ### 2. 往 `CLAUDE.md` **追加**下面这段
 
 ⚠️ **追加，不是覆盖。** 用户的 CLAUDE.md 里有他们自己的项目规范。
-前后必须包上标记，工具靠它识别。
+前后必须包上标记，工具靠它识别 —— `/setup-convention --replace` 升级本块时
+也只认这对标记。
+
+> 下面两段与 [`templates/claude-block-*.md`](plugins/spec-guard/templates/) **逐字节一致**，
+> 由 `scripts/check-readme-sync.py` 在 `validate.sh` 里钉住。改了模板忘了改这里会直接报错 ——
+> 这个 README 曾经内嵌一份 106 行的旧版，**分叉了三个版本没人发现**。
 
 <details>
 <summary><b>GitHub 模式（点开复制）</b></summary>
 
+<!-- SYNC:claude-block-github BEGIN -->
 ````markdown
 <!-- BEGIN:agent-skills-convention -->
 ## Agent Skills 集成约定
 
-> 任务托管在 **GitHub Issues**。
+> 由 `/setup-convention github` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-github-bridge` skill 里。**
+> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/setup-convention --replace` 靠它升级本块。
 
-### Spec 布局（多模块）
+- 任务的事实源是 **GitHub Issues**。**不要创建任何 `todo.md`**
+- 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
+- **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、
+  `docs/SPEC.md`、`spec/` 三条路径，**只有第三条是通配的**
+- 计划文档 `tasks/<module-id>/plan.md`；活跃模块与 issue 号在 `.agent/state.json`
+- 分支是 `<type>/<module-id>`，**一个模块一条**，不是一个 task 一条
 
-- 能力图：`spec/CAPABILITY-MAP.md`
-- 模块 spec：`spec/<module-id>.md`（kebab-case，一次选定，中途绝不改名）
-- **不要**在项目根创建 `SPEC.md` 或 `SPEC-<module>.md`
-
-  原因：`/build` 的 spec 查找规则只有三条路径——根目录 `SPEC.md`、`docs/SPEC.md`、
-  `spec/` 下的文件。**只有第三条是通配的**，根目录的 `SPEC-identity.md` 它找不到。
-
-### Planning 产物
-
-- 计划文档：`tasks/<module-id>/plan.md`
-- **不要创建任何 todo.md**
-
-本项目使用 **GitHub Issues 作为 task list target**。planning 阶段：
-
-- 每个 task 用 `gh issue create --type Task --parent <module-issue>` 创建
-  - `.agent/state.json` 的 `issueTypes` 为 `false` 时**省略 `--type`**（个人仓库没有
-    issue types，那是组织级功能）。层级本身已区分 task，流程不受影响
-- 验收标准和验证步骤写进 issue 正文
-- 依赖关系用 `--blocked-by <n>`，不要写在描述里
-- checkpoint 也建 issue，标题以 `Checkpoint:` 开头
-- `plan.md` 开头注明 `> Tasks tracked in GitHub Issues #<module-issue>`
-- `plan.md` 的 Task List 章节只放 issue 编号的有序索引，不重复 checklist
-
-### Build 输入源
-
-`/build` 取下一个任务时，**不要读 todo.md**，改为：
-
-1. 读 `.agent/state.json` 确认 `activeModule`
-2. `gh api "repos/{owner}/{repo}/issues/<module-issue>/sub_issues"`
-   （**不是** `gh issue list --parent` —— 那个 flag 不存在，只有 `gh issue create` 有）
-   REST 返回所有状态，自己筛 `state == "open"`
-3. 跳过所有存在未关闭 `blocked-by` 的 issue
-4. 取第一个可执行的 Task
-
-### Build 输出
-
-1. 分支名：`<type>/<issue-number>-<slug>`
-2. `gh pr create --body "Closes #<issue-number>"`
-3. **不要手动关闭 issue**，靠 PR 合并触发
-
-### 切换模块
-
-切换 `activeModule` 前，当前模块必须没有 in-progress 的 task。
-切换后重读该模块的 `spec/<module-id>.md` 和 `tasks/<module-id>/plan.md`。
+**动 spec、拆任务、取任务、交付之前，先加载 `spec-github-bridge` skill。**
+上面五条是「放哪里」，skill 才有「怎么做」：issue 落库、`--parent` / `--blocked-by`、
+归档标记、`/build auto` 连贯推进、模块级 PR 与合并策略。跳过它必然写出双真相源。
 <!-- END:agent-skills-convention -->
 ````
+<!-- SYNC:claude-block-github END -->
+
 </details>
 
 <details>
 <summary><b>本地模式（点开复制）</b></summary>
 
+<!-- SYNC:claude-block-local BEGIN -->
 ````markdown
 <!-- BEGIN:agent-skills-convention -->
 ## Agent Skills 集成约定
 
-> 任务托管在**本地 todo.md**（上游原生路径）。
+> 由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 保留 `<!-- BEGIN/END -->` 标记，`/setup-convention --replace` 靠它升级本块。
 
-### Spec 布局（多模块）
-
-- 能力图：`spec/CAPABILITY-MAP.md`
-- 模块 spec：`spec/<module-id>.md`（kebab-case，一次选定，中途绝不改名）
-- **不要**在项目根创建 `SPEC.md` 或 `SPEC-<module>.md`
-
-### Planning 产物
-
-- 计划文档：`tasks/<module-id>/plan.md`
-- 任务清单：`tasks/<module-id>/todo.md`
-
-每个模块的产物互相隔离，不要共用 `tasks/plan.md`。
-
-### Build 输入源
-
-1. 读 `.agent/state.json` 确认 `activeModule`
-2. 从 `tasks/<activeModule>/todo.md` 取第一个未勾选任务
-3. 不要跨模块取任务
-
-### 切换模块
-
-切换 `activeModule` 前，当前模块必须没有进行中的 task。
-切换后重读该模块的 spec 和 plan。
+- 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
+- **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、
+  `docs/SPEC.md`、`spec/` 三条路径，**只有第三条是通配的**
+- 每个模块的产物互相隔离：`tasks/<module-id>/plan.md` + `tasks/<module-id>/todo.md`，
+  **不要共用 `tasks/plan.md`**
+- `/build` 取任务：读 `.agent/state.json` 的 `activeModule`，从该模块的 `todo.md`
+  取第一个未勾选项，**不跨模块取**
+- 切换 `activeModule` 前当前模块不能有进行中的 task；切换后重读该模块的 spec 和 plan
 <!-- END:agent-skills-convention -->
 ````
+<!-- SYNC:claude-block-local END -->
+
 </details>
 
-> ⚠️ **两种模式互斥。** GitHub 模式说「不要创建 todo.md」，本地模式说「任务清单：
-> todo.md」。同时写会让 `/plan` 精神分裂。
+**两种模式二选一，不要都写。** github 模式的任务在 issue 里，本地模式在
+`tasks/<module>/todo.md`。同时写会让 `/plan` 精神分裂。
+
+**「怎么做」不在这段里** —— 它在 `spec-github-bridge` skill 里，按需加载。
+声明块只放推导不出来的事实（路径 / tracker 类型 / 几条硬禁令）+ 一句触发指令。
+这是官方对 CLAUDE.md 的明确建议（多步过程应移进 skill 或 path-scoped rule），
+也是 0.7.0 把它从 106 行砍到 15 行的原因：官方建议 target under 200 lines，
+而它曾经一口气占掉使用者 CLAUDE.md 的 34%。
 
 ### 3. 建 `.agent/state.json`
 
@@ -268,8 +239,8 @@ mkdir -p spec tasks .agent
 CLAUDE_PROJECT_DIR=$(pwd) bash <plugin-root>/hooks/phase-guard.sh
 ```
 
-应输出含 `hookSpecificOutput` 的 JSON。**无输出**说明 CLAUDE.md 里没有
-`Agent Skills 集成约定` 这个标题——hook 靠它判断是否生效。
+应输出含 `hookSpecificOutput` 的 JSON。**无输出**说明两个激活信号都不满足：
+CLAUDE.md 里没有 `Agent Skills 集成约定` 这个标题，且没有 `.agent/state.json`。
 
 ### 6. 提交
 
@@ -297,6 +268,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | 任务清单 | `tasks/todo.md` | github 模式下**不存在**，改为 issue |
 | 谁推进流程 | 用户自己按顺序敲命令 | hook 每轮注入状态 + 报断链 |
 | 产物对不对 | 无检测 | `/verify-artifacts` |
+| 交付粒度 | 未定义（`/build` 到 commit 为止） | 一个模块一条分支一个 PR，禁 squash |
 
 其余一切照旧 —— `/spec` `/plan` `/build` `/test` `/review` 的用法、
 各 skill 的触发条件、persona 的行为，全部走上游文档。
@@ -311,12 +283,14 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | 命令 | 作用 |
 |---|---|
 | `/setup-convention [github\|local] [--dry-run]` | 落地约定（首次跑一次） |
+| `/setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
+| `/setup-convention … --no-claude-md` | 不写声明块，hook 改由 `.agent/state.json` 激活 |
 | `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/phase` | 查看当前链路状态和断链项 |
 | `/verify-artifacts` | 校验已落地的产物是否符合约定 |
 | `/sync-map` | 能力图 → GitHub Issue 结构 |
 | `/next` | 取下一个可执行任务 |
-| `/deliver` | 五轴自查 → 开 PR（Closes #n） |
+| `/deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
 
 ### 典型流程
 
@@ -325,10 +299,10 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 2. 人工评审模块边界和 build order          ← 不能跳
 3. /sync-map      能力图落成 Epic + 模块 issue
 4. /plan      为第一个模块拆解任务 → sub-issue
-5. /next          取任务
-6. /build         TDD 实现
-7. /deliver       开 PR
-8. 回到 5，直到模块完成，/next 自动推进到下一模块
+5. git checkout -b <type>/<module-id>       ← 一个模块一条分支
+6. /build auto    跑完整个模块（每个 task 一条带 Closes #n 的 commit）
+7. /deliver       开模块级 PR（Closes #module-issue）
+8. 合并用 --merge 或 --rebase，**不要 squash**，然后 /next 推进到下一模块
 ```
 
 **第 4 步是关键验证点**：看 `/plan` 到底建 issue 还是写 `todo.md`。
@@ -455,9 +429,11 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层。
 2. **需要 `gh` ≥ 2.94.0**。
-3. **`/deliver` 的 PR 环节未经端到端实测** —— 其余全链路已在真实仓库跑通
-   （见 [docs/walkthrough.md](docs/walkthrough.md)）。PR 在 GitHub 上删不掉，
-   实测会留下永久记录，故跳过。`gh pr create` 本身是标准命令、无特殊参数。
+3. ~~`/deliver` 的 PR 环节未经端到端实测~~ —— **0.7.1 起作废，已实测。**
+   在 `sentinel-livelab` 上真跑了 5 个 PR，`gh pr create` → 正文/commit message 的
+   `Closes #n` → 合入默认分支自动关 issue → 分支清理，全链路验证通过。
+   > 这条免责声明在 0.6.0–0.7.0 期间已经不成立却还挂着 —— **一条过期的免责声明
+   > 比过期文档更糟，它在劝退使用者用一个已经证明可用的功能。**
 4. **多人协作无加锁** —— 任务认领依赖 assignee，理论上存在竞态。
 5. **个人仓库没有 issue types，会自动降级** —— `--type Feature/Task` 依赖 GitHub
    issue types，这是**组织级功能**。`/setup-convention github` 会探测并把结果写进
@@ -473,6 +449,11 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
    见 [docs/walkthrough.md 第二次实跑](docs/walkthrough.md)。
 9. **能力图文件名是本项目约定**（`spec/CAPABILITY-MAP.md`）。上游只说
    "save at the project root"，没给文件名。
+10. **`--replace` 只认完整标记行** `<!-- BEGIN:agent-skills-convention -->`。
+    手工改坏标记（比如删掉 `<!-- -->`）的项目会被当成「没装过」而追加第二块。
+11. **`--no-claude-md` 模式下模型对目录约定的感知晚一步。** hook 注入的是**状态**
+    不是**约定**；选这个模式就要么自己在别处写一句「动 spec/tasks 前先加载
+    `spec-github-bridge`」，要么接受靠 hook 每轮兜底。
 
 ---
 

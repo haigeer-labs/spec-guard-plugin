@@ -41,8 +41,8 @@ plugins/spec-guard/
 └── templates/                          ← 由 /setup-convention 写入用户项目
 docs/design.md                          ← 需求与设计
 scripts/
-├── validate.sh                         ← 仓库完整性校验
-└── check-manifests.py
+├── validate.sh                     ← 仓库完整性校验（下面几个 check 由它调）
+└── check-*.py                      ← manifests / bash32 / 命令名 / README↔模板同步
 ```
 
 ---

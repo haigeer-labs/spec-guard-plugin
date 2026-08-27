@@ -13,6 +13,9 @@ import sys
 PAT = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*[^\x00-\x7F]")
 
 def main() -> int:
+    if not sys.argv[1:]:
+        print("  ❌ 没有传入任何文件 —— 这不是「没问题」，是「什么都没查」")
+        return 1
     ok = True
     for path in sys.argv[1:]:
         with open(path, encoding="utf-8") as fh:

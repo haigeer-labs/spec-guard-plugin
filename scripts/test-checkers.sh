@@ -120,6 +120,41 @@ printf 'NEXT="/totally-made-up"\n' > "$TMP/cnskip/plugins/demo/hooks/real.sh"
 want fail "command-names: 非 test- 的 hook 仍然要查" \
   bash -c "cd '$TMP/cnskip' && python3 '$ROOT/scripts/check-command-names.py'"
 
+# 上游清单不再是冻结快照，而是问本机装着的上游本人。
+# 危险方向是**上游删名/改名**：快照里还有、上游已经没有 —— 检查器照样放行，
+# 而文档里那条命令已经会报 Unknown。0.4.1 的 /planning 就是这么来的。
+UPS=$(SPEC_GUARD_UPSTREAM_REGISTRY="" python3 -c "
+import json,pathlib,sys
+try:
+    d=json.loads((pathlib.Path.home()/'.claude/plugins/installed_plugins.json').read_text())
+    print(next(v[0]['installPath'] for k,v in d['plugins'].items() if 'agent-skills' in k and v))
+except Exception: pass" 2>/dev/null)
+if [ -n "${UPS}" ] && [ -d "${UPS}/.claude/commands" ]; then
+  mkfake() {  # $1=目标目录 $2=要删掉的命令名（空=全留）
+    rm -rf "$1"; mkdir -p "$1/.claude/commands" "$1/skills"
+    for f in "${UPS}"/.claude/commands/*.md; do
+      b=$(basename "$f"); [ "$b" = "$2.md" ] || : > "$1/.claude/commands/$b"
+    done
+    for d in "${UPS}"/skills/*/; do mkdir -p "$1/skills/$(basename "$d")"; done
+    printf '{"plugins":{"agent-skills@x":[{"installPath":"%s"}]}}\n' "$1" > "$1.json"
+  }
+  mkfake "$TMP/upfull" ""
+  mkfake "$TMP/upgone" plan
+  want pass "command-names: 对照上游本人 → 放行" \
+    bash -c "cd '$ROOT' && SPEC_GUARD_UPSTREAM_REGISTRY='$TMP/upfull.json' python3 '$ROOT/scripts/check-command-names.py'"
+  want fail "command-names: 上游删了 /plan → 报快照过期" \
+    bash -c "cd '$ROOT' && SPEC_GUARD_UPSTREAM_REGISTRY='$TMP/upgone.json' python3 '$ROOT/scripts/check-command-names.py'"
+else
+  printf '  ⏭  本机没装上游 agent-skills，跳过「对照上游本人」的一正一反（不代表通过）\n'
+fi
+
+# ── 零文件不算通过 ────────────────────────────────────────
+# 「0 处违规」和「0 个文件」在退出码上长得一样（lenses A5）。
+# validate.sh 里这三个都靠 $(find …) 喂文件，find 表达式一旦失配就会全绿。
+for c in check-bash32 check-grep-pipe check-gh-json-fields; do
+  want fail "$c: 零个文件 → 不算通过" python3 "$ROOT/scripts/$c.py"
+done
+
 # ── check-readme-sync.py ──
 mkr() {  # $1=目录 $2=README 内嵌块要不要跟模板一致(same|drift)
   rm -rf "$1"; mkdir -p "$1/plugins/spec-guard/templates"

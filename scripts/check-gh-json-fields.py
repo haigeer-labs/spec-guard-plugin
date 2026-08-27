@@ -41,6 +41,10 @@ def valid_fields(sub: str):
 
 
 def main() -> int:
+    if not sys.argv[1:]:
+        print("  ❌ 没有传入任何文件 —— 这不是「没问题」，是「什么都没查」")
+        return 1
+
     if shutil.which("gh") is None:
         print("  ⏭  gh 未安装，跳过 --json 字段校验（不代表通过）")
         return 0

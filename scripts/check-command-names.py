@@ -24,9 +24,11 @@ import pathlib
 import re
 import sys
 
-# ⚠️ 下面两个集合是**手工维护的快照**，上游改名它们不会自己跟上。
-#    改上游版本时按 docs/upstream-analysis.md 的「重新核对清单」重验。
-#    末次核对：2026-08-27，上游 commit 5a5ea45。
+# ⚠️ 下面两个集合是**兜底快照**，只在读不到本机装着的上游时才用。
+#    能读到就以**上游本人**为准（见 upstream_live()）—— 冻结清单在上游改名时
+#    不会自己跟上，而那正是 0.4.1 那个 bug 的成因：文档写着一个已经不存在的
+#    命令，检查器照样放行。
+#    末次核对：2026-08-28，上游 0.6.7（commit 7829ffd）—— 与实际一致。
 
 # 上游 addy-agent-skills 的命令。取自 `.claude/commands/*.md` 的**文件名** ——
 # 不是 `commands/*.toml`：两套目录内容等价但文件名不同（`plan.md` vs
@@ -68,6 +70,36 @@ SCOPES = ["hooks/*.sh", "templates/*.md", "commands/*.md"]
 SKILL_REF = re.compile(r"[Ii]nvoke\s+(?:the\s+)?[`']?([a-z][a-z0-9-]{4,})[`']?")
 
 
+def upstream_live():
+    """读本机装着的上游，返回 (命令集, skill 集)。读不到返回 (None, None)。
+
+    判据不冻结，问上游本人 —— 装着的那份就在本地，没有理由去猜。
+    `installed_plugins.json` 的 `installPath` 是权威来源：cache 目录下可能
+    同时躺着几个版本目录（版本号一个、commit sha 一个），挑错了就会拿一份
+    已经不在用的清单当真。
+    """
+    try:
+        import json
+        import os
+        # 环境变量不是为了灵活，是**为了它自己能被测试** ——
+        # 写死 $HOME 的话，「上游删掉了某个命令」这条反向用例只能靠改真实的
+        # 用户配置来构造。同 check-readme-sync.py 那个 root 参数。
+        reg = pathlib.Path(os.environ.get("SPEC_GUARD_UPSTREAM_REGISTRY") or
+                           (pathlib.Path.home() / ".claude/plugins/installed_plugins.json"))
+        d = json.loads(reg.read_text(encoding="utf-8"))
+        path = next(v[0]["installPath"] for k, v in d.get("plugins", {}).items()
+                    if "agent-skills" in k and v)
+        root = pathlib.Path(path)
+        # 命令取 `.claude/commands/*.md` 的**文件名**，不是 `commands/*.toml`：
+        # 两套目录内容等价但文件名不同（plan.md vs planning.toml），
+        # 而 Claude Code 读的是前者。搞错这个正是 0.5.2 那个 bug。
+        cmds = {p.stem for p in (root / ".claude/commands").glob("*.md")}
+        skills = {p.name for p in (root / "skills").iterdir() if p.is_dir()}
+        return (cmds or None), (skills or None)
+    except Exception:
+        return None, None
+
+
 def own_commands(root: pathlib.Path) -> set[str]:
     d = root / "commands"
     return {p.stem for p in d.glob("*.md")} if d.is_dir() else set()
@@ -81,9 +113,16 @@ def own_skills(root: pathlib.Path) -> set[str]:
 def main() -> int:
     ok = True
     checked = 0
+    live_cmds, live_skills = upstream_live()
+    if live_cmds is None:
+        print("  ⏭  读不到本机装着的上游，退回兜底快照（不代表快照是最新的）")
+    # 校验集取**并集**：上游新增的名字不该被判失败。
+    # 危险的方向是**删名/改名** —— 快照里有、上游已经没有的，单独抓。
+    gone_cmds = (UPSTREAM - live_cmds) if live_cmds else set()
+    gone_skills = (UPSTREAM_SKILLS - live_skills) if live_skills else set()
     for plugin in sorted(pathlib.Path("plugins").glob("*/")):
-        known = own_commands(plugin) | UPSTREAM | BUILTIN
-        known_skills = own_skills(plugin) | UPSTREAM_SKILLS
+        known = own_commands(plugin) | UPSTREAM | (live_cmds or set()) | BUILTIN
+        known_skills = own_skills(plugin) | UPSTREAM_SKILLS | (live_skills or set())
         for scope in SCOPES:
             for path in sorted(plugin.glob(scope)):
                 # 回归测试脚本不是「用户可见输出」—— 它们的输出只给跑测试的人看，
@@ -94,18 +133,28 @@ def main() -> int:
                 checked += 1
                 for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                     for name in CMD.findall(line):
-                        if name not in known:
+                        if name in gone_cmds:
+                            print(f"  ❌ {path}:{lineno} /{name} 在兜底快照里，"
+                                  f"但**本机装着的上游已经没有它了** —— 快照过期，"
+                                  f"照这条走会报 Unknown command")
+                            ok = False
+                        elif name not in known:
                             print(f"  ❌ {path}:{lineno} 引用了不存在的命令 /{name}")
                             ok = False
                     # skill 与命令是两个命名空间，分开校验
                     for name in SKILL_REF.findall(line):
                         if name in {"skill", "these"}:
                             continue
-                        if name not in known_skills:
+                        if name in gone_skills:
+                            print(f"  ❌ {path}:{lineno} skill `{name}` 在兜底快照里，"
+                                  f"但**本机装着的上游已经没有它了** —— 快照过期")
+                            ok = False
+                        elif name not in known_skills:
                             print(f"  ❌ {path}:{lineno} 引用了不存在的 skill `{name}`")
                             ok = False
     if ok:
-        print(f"  ✅ {checked} 个用户可见文件，引用的命令与 skill 全部存在")
+        src = "上游本人" if live_cmds else "兜底快照"
+        print(f"  ✅ {checked} 个用户可见文件，引用的命令与 skill 全部存在（对照：{src}）")
     return 0 if ok else 1
 
 

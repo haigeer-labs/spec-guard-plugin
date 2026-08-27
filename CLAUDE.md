@@ -102,7 +102,7 @@ scripts/
 
 ### 校验器自己也有回归套件
 
-`scripts/test-checkers.sh`（17 个断言，已接进 `validate.sh`，免费）。
+`scripts/test-checkers.sh`（22 个断言，已接进 `validate.sh`，免费）。
 六个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
 
 **为什么单独有这一层**：一轮之内出过**四次**「新加的防线自己有毛病」——

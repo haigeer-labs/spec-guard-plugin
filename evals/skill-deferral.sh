@@ -2,13 +2,27 @@
 # ─────────────────────────────────────────────────────────────
 # skill-deferral —— 验证 0.7.0 那次瘦身赖以成立的那个假设
 #
-#   「15 行的声明块 + 一句触发指令，模型真的会去加载 spec-github-bridge」
+#   「模型真的会去加载 spec-github-bridge」
 #
 # 如果不会，那次瘦身就等于把细则删了。这个假设此前**一次都没验过** ——
 # 本仓的规矩是「标了『没实测』之后就该去测」。
 #
-# 做法：两个只差一个声明块的脚手架项目，同一句话，headless 跑，
-#       从 stream-json 里看有没有 Skill(spec-github-bridge) 的 tool_use。
+# 做法：两个脚手架项目，同一句话，headless 跑，从 stream-json 里看有没有
+#       Skill(spec-github-bridge) 的 tool_use。
+#
+#   A 组 = 写了 15 行声明块        —— 靠块里那句触发指令
+#   B 组 = 零足迹(--no-claude-md)  —— 靠 hook 注入的触发指令(0.7.5 起)
+#
+# **两组都必须加载。** 它们走的是两条不同的通路,但要的是同一个结果。
+#
+# ── 历史结果（别删，它是判据变过的理由）──
+#   2026-08-27 首跑（0.7.4）：A 第 8 个工具调用加载；**B 全程没加载**，
+#     转头按自己的想法设计表结构、问技术栈。当时判据写的是「A 加载 && B 不加载」，
+#     结论读成「声明块起作用了」。
+#   同日复跑（0.7.5，hook 给零足迹补了触发指令后）：**B 变成第 1 个工具调用就加载**，
+#     随后拒绝编造验收标准、明确拒绝建 todo.md、提出开 feat/identity 模块分支。
+#   → 判据据此改成「两组都必须加载」。首跑那份数据其实同时回答了两个问题，
+#     而当时只问了一个 —— 见 CHANGELOG 0.7.5。
 #
 # ⚠️ 会真的调模型、花 token。**不接进 validate.sh**，按需手动跑。
 #
@@ -62,10 +76,10 @@ PY
 }
 
 if [ "$MODE" = grade ]; then
-  grade "$DIR/armA.jsonl" "A 有声明块"; A=$?
-  grade "$DIR/armB.jsonl" "B 无声明块"; B=$?
-  [ "$A" -eq 0 ] && [ "$B" -ne 0 ] && { echo "  ✅ 结论成立：声明块是 skill 被加载的原因"; exit 0; }
-  echo "  ⚠️  结论不成立（A 应加载、B 应不加载）"; exit 1
+  grade "$DIR/armA.jsonl" "A 声明块"; A=$?
+  grade "$DIR/armB.jsonl" "B 零足迹"; B=$?
+  [ "$A" -eq 0 ] && [ "$B" -eq 0 ] && { echo "  ✅ 两条通路都能让 skill 被加载"; exit 0; }
+  echo "  ⚠️  有通路失效了（两组都应加载）"; exit 1
 fi
 
 mk() {  # $1=目录 $2=with|without
@@ -102,7 +116,7 @@ echo "  ✅ A 组 hook 已激活"
 if [ -z "$(CLAUDE_PROJECT_DIR="$WORK/armB" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$PLUG/hooks/phase-guard.sh" 2>/dev/null)" ]; then
   echo "  ⚠️  B 组 hook 也静默 —— 注意 B 组有 .agent/state.json，0.7.0 起它本身就是激活信号"
 else
-  echo "  ℹ  B 组 hook 同样激活（靠 .agent/state.json）—— 差异因此只来自声明块本身，这正是要的"
+  echo "  ℹ  B 组 hook 同样激活（靠 .agent/state.json）—— 它就是 --no-claude-md 零足迹模式"
 fi
 
 [ "$MODE" = scaffold ] && { echo "  --scaffold-only：到此为止，未调用模型"; exit 0; }
@@ -114,9 +128,9 @@ for arm in A B; do
       --allowedTools Read Glob Grep Skill ) > "$WORK/arm$arm.jsonl" 2>/dev/null
 done
 
-grade "$WORK/armA.jsonl" "A 有声明块"; A=$?
-grade "$WORK/armB.jsonl" "B 无声明块"; B=$?
-if [ "$A" -eq 0 ] && [ "$B" -ne 0 ]; then
-  echo "  ✅ 结论成立：声明块是 skill 被加载的原因"; exit 0
+grade "$WORK/armA.jsonl" "A 声明块"; A=$?
+grade "$WORK/armB.jsonl" "B 零足迹"; B=$?
+if [ "$A" -eq 0 ] && [ "$B" -eq 0 ]; then
+  echo "  ✅ 两条通路都能让 skill 被加载"; exit 0
 fi
-echo "  ⚠️  结论不成立（期望 A 加载、B 不加载）"; exit 1
+echo "  ⚠️  有通路失效了（两组都应加载）"; exit 1

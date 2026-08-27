@@ -92,6 +92,23 @@ scripts/
 
 **反向用例和正向一样重要** —— 这个项目修过的假断链比真 bug 多。
 
+### 按需评测（会花 token，不在 validate 里）
+
+```bash
+/bin/bash evals/skill-deferral.sh --scaffold-only   # 免费:只建脚手架 + 查 hook 激活
+/bin/bash evals/skill-deferral.sh                   # 真跑:两组 headless,判 skill 有没有被加载
+```
+
+验的是 0.7.0 那次瘦身赖以成立的假设：**15 行的声明块 + 一句触发指令，模型真的
+会去加载 `spec-github-bridge`**。不成立的话那次瘦身等于把细则删了。
+
+**改 `templates/claude-block-github.md` 的触发指令那几行，就该重跑一次。**
+2026-08-27 首跑结果：A 组（有块）第 8 个工具调用时加载了 skill；
+B 组（无块）全程没加载，转而「靠 plan.md 推断」直接开始设计表结构。
+
+> `claude plugin eval` 才是第一方格式，但它 early access、本账号未开通。
+> 开通后应迁过去。
+
 ---
 
 ## 发版

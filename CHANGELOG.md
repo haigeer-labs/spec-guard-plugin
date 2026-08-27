@@ -2,6 +2,39 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- **`evals/skill-deferral.sh`** —— 验 0.7.0 那次瘦身赖以成立的假设：
+  **15 行声明块 + 一句触发指令，模型真的会去加载 `spec-github-bridge` 吗？**
+
+  这个假设从 0.7.0 起就在那儿，**一次都没验过** —— 而它不成立的话，那次瘦身
+  等于把细则删了。本仓自己的规矩是「标了『没实测』之后就该去测」。
+
+  做法是两个只差一个声明块的脚手架项目、同一句话、headless 跑，从
+  stream-json 里看有没有 `Skill(spec-github-bridge)` 的 tool_use。
+
+  **2026-08-27 首跑（n=1）：**
+
+  | | 声明块 | 结果 |
+  |---|---|---|
+  | A | 15 行 | ✅ 第 8 个工具调用时加载了 skill |
+  | B | 无 | ❌ 全程没加载，转而「靠 plan.md 推断」直接设计表结构、问技术栈 |
+
+  两组都有 `.agent/state.json`（0.7.0 起它本身就是 hook 激活信号），
+  所以差异**只来自声明块本身**。
+
+  会花 token，**不接进 `validate.sh`**。`--scaffold-only` 是免费自检路径。
+
+  > 判据第一版把 skill 名写死成裸名，而实际是 `spec-guard:spec-github-bridge`，
+  > 把一次成功判成了失败 —— 本轮第四次「新加的防线自己有毛病」。已改成按末段比对。
+
+  > `claude plugin eval` 才是第一方格式，但它 early access、本账号未开通
+  > （`plugin eval is currently in early access`）。开通后应迁过去。
+
+  未升版本：`evals/` 在 `plugins/spec-guard/` 之外，对使用者零影响。
+
 ## [0.7.3] - 2026-08-27
 
 ### 新增

@@ -114,9 +114,14 @@ scripts/
 ### 按需评测（会花 token，不在 validate 里）
 
 ```bash
-/bin/bash evals/skill-deferral.sh --scaffold-only   # 免费:只建脚手架 + 查 hook 激活
-/bin/bash evals/skill-deferral.sh                   # 真跑:两组 headless,判 skill 有没有被加载
+/bin/bash evals/skill-deferral.sh --scaffold-only    # 免费:只建脚手架 + 查 hook 激活
+/bin/bash evals/skill-deferral.sh                    # 真跑:判 skill 有没有被加载(github 模式两条通路)
+/bin/bash evals/module-namespace.sh --scaffold-only  # 免费
+/bin/bash evals/module-namespace.sh                  # 真跑:判产物有没有落进 tasks/<module>/(local 模式)
 ```
+
+两个评测各管一个模式，加起来覆盖**我们发的四种配置**里有意义的三种
+（`local + --no-claude-md` 已被禁）。
 
 验的是 0.7.0 那次瘦身赖以成立的假设：**15 行的声明块 + 一句触发指令，模型真的
 会去加载 `spec-github-bridge`**。不成立的话那次瘦身等于把细则删了。
@@ -126,6 +131,12 @@ B 组（零足迹 / `--no-claude-md`）靠 hook 注入的那句。
 
 **改 `templates/claude-block-github.md` 的触发指令、或改 hook 的零足迹注入，
 就该重跑一次。**
+
+`module-namespace` 验的是 README 问题①（多模块产物互相覆盖）——
+**插件的头号卖点，从立项起没被行为验证过**。它的判据是**文件系统**不是
+transcript：跑完看 `tasks/` 下的产物落在哪，比读模型说了什么客观。
+2026-08-27 首跑：有约定 → `tasks/identity/{plan,todo}.md`（2/2）；
+无约定 → `tasks/{plan,todo}.md`（根下单例 2）—— 对照组精确复现了要治的那个 bug。
 
 2026-08-27：首跑（0.7.4）A 第 8 个工具调用加载、**B 全程没加载**；
 0.7.5 给零足迹补上触发指令后复跑，**B 变成第 1 个工具调用就加载**。

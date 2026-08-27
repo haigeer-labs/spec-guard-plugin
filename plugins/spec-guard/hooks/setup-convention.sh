@@ -38,6 +38,14 @@ if [ "$MODE" = local ] && [ "$NO_BLOCK" = true ]; then
   exit 2
 fi
 
+# ── 作用目录：项目根，不是当前 shell 的 cwd ────────────────
+#   会话里的工作目录是会被 `cd` 改掉的。从子目录跑的话，下面的
+#   `mkdir -p spec tasks .agent` 和 CLAUDE.md 声明块会落进**子目录**，
+#   项目里于是有了两套约定，而 hook 只认根上那套 —— 装了等于没装，
+#   还多出一堆孤儿文件。写操作必须先把作用目录钉死。
+ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"
@@ -52,6 +60,7 @@ skip(){ printf '  ⏭  %s\n' "$1"; }
 bad(){ printf '  ❌ %s\n' "$1"; F=1; }
 
 echo "═══ 前置检查 ═══"
+echo "  作用目录: ${ROOT}"
 command -v python3 >/dev/null 2>&1 && echo "  ✅ python3" || bad "python3 缺失（hook 依赖）"
 git rev-parse --git-dir >/dev/null 2>&1 && echo "  ✅ git 仓库" || bad "不在 git 仓库内，先 git init"
 

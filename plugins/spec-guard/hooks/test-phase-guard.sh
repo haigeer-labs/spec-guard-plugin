@@ -542,6 +542,32 @@ else
   printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 写操作必须钉死在项目根，不能跟着 cwd 跑 ────────────────
+# Bash 的工作目录在会话里会被 cd 改掉。从子目录跑的话，setup 会把
+# spec/ tasks/ .agent/ 和声明块建进**子目录**（项目里两套约定，hook 只认根上
+# 那套），teardown 则会去删子目录里并不存在的块、报「什么都没做」退 2,
+# 而根上的约定原封不动 —— 移除报成功却没移除。
+mktd; mkdir -p src/deep
+( cd src/deep && CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" >/dev/null 2>&1 )
+if [ ! -d "$TMP/td/src/deep/.agent" ] \
+   && [ -f "$TMP/td/.agent/state.json.disabled" ] \
+   && ! grep -q "BEGIN:agent-skills-convention" "$TMP/td/CLAUDE.md" 2>/dev/null; then
+  printf '  ✅ 子目录里跑 teardown 仍作用于项目根\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ teardown 跟着 cwd 跑了 —— 根上的约定没被移除\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/su"; mkdir -p "$TMP/su/src/deep"; cd "$TMP/su"; git init -q 2>/dev/null
+printf '# 我的项目\n' > CLAUDE.md
+( cd src/deep && bash "$SETUP" github >/dev/null 2>&1 )
+if [ -d "$TMP/su/spec" ] && [ ! -d "$TMP/su/src/deep/spec" ] \
+   && grep -q "BEGIN:agent-skills-convention" "$TMP/su/CLAUDE.md" 2>/dev/null \
+   && [ ! -f "$TMP/su/src/deep/CLAUDE.md" ]; then
+  printf '  ✅ 子目录里跑 setup 仍落在项目根\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ setup 把约定装进了子目录（项目里会有两套）\n'; FAIL=$((FAIL+1))
+fi
+
 # 自检不能因为 CLAUDE_PLUGIN_ROOT 没设就整段跳过。
 # 「实际跑一遍而不是让人相信一句话」是 0.7.9 把 teardown 改成脚本的唯一理由，
 # 而它自己会退回成一句话 —— 上面所有 teardown 用例都显式设了这个变量，

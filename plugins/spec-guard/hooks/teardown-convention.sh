@@ -31,6 +31,13 @@ for a in "$@"; do
   esac
 done
 
+# ── 作用目录：项目根，不是当前 shell 的 cwd ────────────────
+#   会话里的工作目录是会被 `cd` 改掉的。从子目录跑的话，本脚本会去删
+#   **子目录**里那份并不存在的声明块，然后报「什么都没做」退 2 ——
+#   而根上的约定原封不动还在。移除操作报成功却没移除，比报错更坏。
+ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
+
 MARK_B="<!-- BEGIN:agent-skills-convention -->"
 MARK_E="<!-- END:agent-skills-convention -->"
 STATE=".agent/state.json"
@@ -40,6 +47,7 @@ skip() { printf '  ⏭  %s\n' "$1"; }
 note() { printf '  ℹ  %s\n' "$1"; }
 
 echo "═══ 移除 spec-guard 约定 ═══"
+echo "  作用目录: ${ROOT}"
 
 DID=0
 

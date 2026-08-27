@@ -2,6 +2,70 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.13] - 2026-08-27
+
+体检续：这轮查的是**四个模型驱动、零测试的命令**（`/sync-map` `/next`
+`/deliver` `/phase`）。三处问题，形状相同 ——
+**不可逆操作没钉死「作用于什么」，也没记录「做到哪了」。**
+
+### 修复
+
+- **`/setup-convention` 和 `/teardown-convention` 的作用目录跟着 cwd 跑。**
+
+  两个脚本都直接在当前工作目录上动手，而 Bash 的工作目录在会话里会被
+  `cd` 改掉。从子目录跑时：
+
+  - setup 把 `spec/ tasks/ .agent/` 和声明块建进**子目录** ——
+    项目里于是有两套约定，而 hook 只认根上那套，装了等于没装
+  - teardown 去删子目录里并不存在的块，报「什么都没做」退 2，
+    根上的约定原封不动 —— **移除报成功却没移除**
+
+  两处都改成先解析项目根再 `cd`，并把作用目录打印出来：
+
+      ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+
+- **`/phase` 和 `/verify-artifacts` 从子目录跑会报假的「没装约定」。**
+
+  两条命令都写着 `CLAUDE_PROJECT_DIR=$(pwd)`。从子目录跑时 hook 找不到
+  CLAUDE.md，静默退 0（`verify-artifacts` 则退 2），命令于是报
+  「本项目没有启用 spec-guard 约定，先跑 `/setup-convention`」。
+
+  **假警报本身已经违反第一条不变量，它还会引出一次破坏性操作** ——
+  用户照着提示跑 setup，就触发了上面那条。
+
+- **`/sync-map` 中途失败后重跑会建出一套重复的 Epic 和模块 issue。**
+
+  原步骤是「建 Epic → 建 N 个模块 issue → 建依赖 → **最后**写
+  `.agent/state.json`」。而这一步在 GitHub 上做不可逆写入，且会中途失败：
+  网络、限流、`--type` 在个人仓库上被拒（陷阱表里那条「孤儿 issue」说的就是它）、
+  用户按停。任何一次都留下「GitHub 建了 k 个 / `state.json` 干干净净」，
+  而 `/sync-map` 的前置判据读的正是 `initiative.issue` —— 它是空的，
+  于是重跑从头再来一遍。
+
+  改成**每建成一个 issue 就立刻写回 state.json**，重跑因此可续：
+  `initiative.issue` 有值跳过建 Epic，`modules.<id>.issue` 有值跳过该模块。
+
+  > 重复的 issue 可以 `gh issue delete` 删（我上一版说过「删不掉」，那是错的），
+  > 但要先人工分辨哪套是哪套，依赖关系和 sub-issue 层级还得重连。
+
+### 测试
+
+断言 91 → **93**：子目录里跑 setup / teardown 必须仍作用于项目根。
+
+### 没做什么
+
+**没有把 `/sync-map` 脚本化。** 它要解析能力图、判断 issue types 可用性、
+按依赖表连边，确定性执行的收益还不足以抵掉一个 200 行脚本的维护面 ——
+这次治的是它那个具体的重复建 issue 缺陷，不是它的形态。
+
+### 已知限制
+
+- **`verify-artifacts` 查不出重复 Epic。** 它比对的是 `state.json` 指向的
+  那个 Epic 的 sub-issue 数与能力图模块数；一次失败重跑残留的**另一套** Epic
+  在这个判据之外，所以体检会全绿。上面的增量写回是在**防止**它发生，
+  不是在**检测**它。已经发生过的只能人工用 `gh issue list` 对一遍。
+- **`/sync-map` 仍是模型驱动，没有回归测试。** 本次只改了它的过程约定。
+
 ## [0.7.12] - 2026-08-27
 
 一次整体体检，五处实测复现的 bug。三处是**同一个 0.7.11 的修法只落了一边**，

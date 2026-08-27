@@ -79,7 +79,23 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
        gh issue edit <billing> --add-blocked-by <identity>
 
-5. 写 `.agent/state.json`，`activeModule` 设为 build order 的第一个
+5. 全部建完后把 `activeModule` 设为 build order 的第一个，写回 `.agent/state.json`
+
+**每建成一个 issue 就立刻写回 `.agent/state.json`，不要攒到最后一起写。**
+Epic 建好写 `initiative.issue`，每个模块 issue 建好写 `modules.<id>.issue`。
+
+理由是这一步**在外部系统上做不可逆的写入**，而它中途会失败：网络、限流、
+`--type` 在个人仓库上被拒（本页陷阱表最后一行说的「孤儿 issue」就是它）、
+用户按了停。攒到最后写的话，任何一次中途失败都留下
+「GitHub 上已经建了 k 个 / `state.json` 干干净净」的状态，而
+`/sync-map` 的前置判据读的正是 `initiative.issue` —— 它是空的，
+于是重跑**从头再建一遍**，Epic 和模块 issue 各来一套。
+
+增量写回之后重跑是可续的：`initiative.issue` 有值就跳过建 Epic，
+`modules.<id>.issue` 有值就跳过该模块，只补没建成的那些。
+
+> 重复建出来的 issue 可以 `gh issue delete` 删掉，但要先人工分辨哪套是哪套，
+> 而且依赖关系和 sub-issue 层级都得重连。别把它当成兜底。
 
 **不要**把 spec 全文复制进 issue 正文——spec 会改，复制会分叉。
 
@@ -255,6 +271,7 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 | "个人仓库没有 issue types，那这套用不了" | 只有 `--type` 用不了。层级和依赖照常，省略 `--type` 即可，流程一步不少。 |
 | "用 gh issue list --parent 列子任务" | **那个 flag 不存在**，只有 gh issue create 有 --parent。用 REST sub_issues。 |
 | "反正建了也报错，先试试 --type" | 会留下孤儿 issue —— gh 先建后校验。读 `state.json` 的 `issueTypes`，别试。 |
+| "issue 都建完了再一次性写 state.json，省事" | 中途失败就留下「GitHub 建了一半 / state.json 全空」，而重跑的判据读的就是 state.json —— 于是从头再建一套。每建成一个立刻写回。 |
 
 ## Red Flags
 
@@ -264,6 +281,8 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 - `.agent/state.json` 的 activeModule 和当前分支名不一致
 - PR 描述里没有 `Closes #<module-issue>`
 - 一个模块出现了多个 PR，或分支名里带 issue 号（说明退回了 task 级粒度）
+- 同一个 initiative 在 GitHub 上有两个 Epic，或同名模块 issue 出现两次
+  （`/sync-map` 中途失败后重跑的典型残留）
 - commit message 里没有 `Closes #<task-issue>`（那些 task issue 永远关不掉）
 
 ## Verification

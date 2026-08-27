@@ -6,7 +6,7 @@ allowed-tools: Bash
 跑一次产物落地校验：
 
 ```bash
-CLAUDE_PROJECT_DIR=$(pwd) bash "${CLAUDE_PLUGIN_ROOT}/hooks/verify-artifacts.sh"
+CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" bash "${CLAUDE_PLUGIN_ROOT}/hooks/verify-artifacts.sh"
 ```
 
 脚本输出已经是给人看的格式，**原样转述**，然后：

@@ -177,6 +177,62 @@ else
   printf '  ❌ 未启用约定应退出 2\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 模块分支：分支判定必须与 phase-guard 一致 ───────────────
+# 0.6.0 改了模块分支约定,只改了 phase-guard;这里留在 task 分支时代。
+# 后果:模块名自带数字时(feat/oauth2)那个 2 被当成 issue 号,
+# 报「PR 正文没有 Closes #2」的假失败 —— 而 PR 里写的是正确的模块 issue。
+mkdir -p "${TMP}/vbin"
+cat > "${TMP}/vbin/gh" <<'STUB'
+#!/bin/bash
+case "$*" in
+  *"pr view"*)    printf 'Closes #5
+
+## 变更
+模块交付
+' ;;
+  *"issue view"*) echo "" ;;
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)              echo "" ;;
+esac
+STUB
+chmod +x "${TMP}/vbin/gh"
+
+modrepo() {  # $1=分支名
+  rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/tasks/oauth2" "${TMP}/r/.agent"; cd "${TMP}/r"
+  git init -q 2>/dev/null
+  echo "## Agent Skills 集成约定" > CLAUDE.md
+  map oauth2; touch spec/oauth2.md
+  printf '# Plan\n\n> Tasks tracked in GitHub Issues #5\n\n- #11 建表\n' > tasks/oauth2/plan.md
+  echo '{"tracker":"github","activeModule":"oauth2","modules":{"oauth2":{"issue":5}}}' > .agent/state.json
+  git add -A >/dev/null 2>&1; git -c user.email=t@t -c user.name=t commit -qm i 2>/dev/null
+  git checkout -qb "$1" 2>/dev/null
+}
+
+vrun() { PATH="${TMP}/vbin:$PATH" CLAUDE_PROJECT_DIR="${TMP}/r" bash "${V}" 2>/dev/null; }
+
+modrepo feat/oauth2
+OUT="$(vrun)"
+case "${OUT}" in
+  *"Closes #2"*) printf '  ❌ 模块分支上把模块名里的数字当成 issue 号（假失败）\n'; FAIL=$((FAIL+1)) ;;
+  *"模块 PR 正文含 Closes #5"*) printf '  ✅ 模块分支比对的是模块 issue,不是分支里的数字\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 模块分支的 PR 检查没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+case "$(vrun)" in
+  *"条 commit 带 closing keyword"*) printf '  ✅ 数出模块分支上带 closing keyword 的 commit\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 没统计模块分支的 closing keyword\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 老约定的 task 分支仍按老规则(分支号 ≠ 模块 issue,PR 里没有它 → 真失败)
+modrepo fix/77-something
+case "$(vrun)" in
+  *"PR 正文没有 Closes #77"*) printf '  ✅ task 分支仍按老规则比对分支 issue 号\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ task 分支的老路径坏了\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # ── 零 CLAUDE.md 足迹：只有 .agent/state.json 也要生效（0.7.0）──
 # phase-guard 那边有同名用例，verify-artifacts 这边一直漏着 ——
 # 两个 hook 同时改的激活判据，只测了一个。

@@ -11,8 +11,10 @@
 # 为什么不并进 phase-guard：那个挂在 UserPromptSubmit 上，有 <1s 预算，
 # 而这里的检查要读文件内容、打 gh。按需跑，不是每轮跑。
 #
-# 与 phase-guard 有三项重叠（根目录 SPEC*.md / todo.md 并存 / 分支 issue 号），
+# 与 phase-guard 有三项重叠（根目录 SPEC*.md / todo.md 并存 / 分支归属），
 # 是刻意的：一个「随时提醒」，一个「按需体检」，体检漏项比重复更糟。
+# **重叠项的判定规则必须两边一致** —— 0.6.0 改了模块分支约定却只改了
+# phase-guard，verify-artifacts 留在 task 分支时代，直到 0.7.11 才补上。
 #
 # 退出码: 0=无 FAIL（可能有 WARN）  1=有 FAIL  2=约定未启用
 #
@@ -249,10 +251,50 @@ else
     fi
   fi
 
-  # 当前分支的 PR 是否含 Closes #n
+  # 当前分支是模块分支还是 task 分支
+  #
+  # 0.6.0 把 PR 粒度从 task 提到 module，phase-guard 同步改了，**这里没有** ——
+  # 当时误判「verify-artifacts 没有分支逻辑」（grep 找的是 BRANCH，而这里叫 BR）。
+  # 后果是模块名自带数字时（`feat/oauth2`）那个 `2` 被当成 issue 号，
+  # 报出「PR 正文没有 Closes #2」这种**假失败** —— 而 PR 正文里写的是
+  # 正确的 `Closes #<module-issue>`。
+  #
+  # 判定规则与 phase-guard 一致：**末段整段相等**，不是子串包含。
   BR=$(git branch --show-current 2>/dev/null || echo "")
-  BRI=$(printf '%s' "${BR}" | grep -oE '[0-9]+' | head -1 || true)
-  if [ -n "${BRI}" ]; then
+  ON_MOD=false
+  if [ -n "${BR}" ] && [ -n "${MODULE}" ]; then
+    case "${BR}" in "${MODULE}"|*/"${MODULE}") ON_MOD=true ;; esac
+  fi
+  BRI=""
+  [ "${ON_MOD}" = false ] && BRI=$(printf '%s' "${BR}" | grep -oE '[0-9]+' | head -1 || true)
+
+  if [ "${ON_MOD}" = true ]; then
+    # 模块分支：PR 正文该关的是**模块 issue**；task issue 靠 commit message 关
+    PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
+    if [ -z "${PRB}" ]; then
+      skip "模块分支 ${BR} 还没有 PR（模块跑完再开）"
+    elif grep -qiE "closes #${MI}\b" <<<"${PRB}"; then
+      ok "模块 PR 正文含 Closes #${MI}"
+    else
+      bad "模块 PR 正文没有 Closes #${MI} —— 模块 issue 不会自动关闭"
+    fi
+    BASE=""
+    for b in main master; do
+      git show-ref --verify --quiet "refs/heads/${b}" && { BASE="$b"; break; }
+    done
+    if [ -n "${BASE}" ] && [ "${BASE}" != "${BR}" ]; then
+      NC=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
+        | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
+        | grep -oE '[0-9]+' | sort -u | grep -c . || true)
+      [ -z "${NC}" ] && NC=0
+      if [ "${NC}" -gt 0 ]; then
+        ok "本分支 ${NC} 条 commit 带 closing keyword（task issue 靠它们关）"
+      else
+        warn "本分支没有一条 commit 带 Closes #<task-issue> —— 合并后 task issue 不会关"
+      fi
+    fi
+  elif [ -n "${BRI}" ]; then
+    # task 分支（老约定，仍然支持）
     PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
     if [ -z "${PRB}" ]; then
       skip "分支 ${BR} 还没有 PR"

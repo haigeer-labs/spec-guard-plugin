@@ -107,6 +107,9 @@ base; map identity; touch spec/identity.md
 mkdir -p tasks/identity; touch tasks/identity/todo.md
 echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
 has "todo.md 与 tracker 并存被抓到" "二者不能并存"
+# 0.7.0 把「归档豁免」这条知识从常驻 15 行挪进了报错文案 —— 只在真报错时才花
+# context。文案没了的话使用者面对违规无从下手，所以它是行为不是措辞。
+has "报违规时同时给出归档豁免办法" "已归档"
 
 # ── 归档识别：带「已归档」标记的 todo.md 不该报违规 ──
 base; map identity; touch spec/identity.md
@@ -172,6 +175,28 @@ if [ $? -eq 2 ]; then
   printf '  ✅ 未启用约定退出码 2\n'; PASS=$((PASS+1))
 else
   printf '  ❌ 未启用约定应退出 2\n'; FAIL=$((FAIL+1))
+fi
+
+# ── 零 CLAUDE.md 足迹：只有 .agent/state.json 也要生效（0.7.0）──
+# phase-guard 那边有同名用例，verify-artifacts 这边一直漏着 ——
+# 两个 hook 同时改的激活判据，只测了一个。
+rm -rf "${TMP}/zf"; mkdir -p "${TMP}/zf/.agent"
+echo "# 普通项目（没有约定标题）" > "${TMP}/zf/CLAUDE.md"
+echo '{"tracker":"none","activeModule":""}' > "${TMP}/zf/.agent/state.json"
+CLAUDE_PROJECT_DIR="${TMP}/zf" bash "${V}" >/dev/null 2>&1
+if [ $? -ne 2 ]; then
+  printf '  ✅ 零足迹：只有 state.json 也生效\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 零足迹下退出 2 —— --no-claude-md 装出来的项目校验不了\n'; FAIL=$((FAIL+1))
+fi
+
+# 反向：两个信号都没有，仍然必须退 2（上面那条不能把闸门整个拆了）
+rm -rf "${TMP}/zn"; mkdir -p "${TMP}/zn"; echo "# 普通项目" > "${TMP}/zn/CLAUDE.md"
+CLAUDE_PROJECT_DIR="${TMP}/zn" bash "${V}" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  printf '  ✅ 两个信号都没有仍退 2\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 无信号时不该生效 —— 会污染无关项目\n'; FAIL=$((FAIL+1))
 fi
 
 # ── 目录不存在不崩 ──

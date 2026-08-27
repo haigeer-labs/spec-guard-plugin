@@ -241,6 +241,31 @@ elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
   PHASE="IDLE (无活跃模块)"
   NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
 
+elif [ "$TRACKER" != "github" ]; then
+  # 显式声明的非 GitHub tracker（gitlab / jira / linear …）。
+  # 本插件的任务层自动化只覆盖 github 和 none，这里只做到 plan 层 ——
+  # 而关键是**不能给 GitHub 专属建议**。0.7.6 之前这里有两条都在发生：
+  #   · 有条目号 → 落进 GH_OK=false 分支，报「gh 不可用，恢复 gh 后 /next」
+  #     （gh 不是不可用，是跟这个项目无关，修好了也没用）
+  #   · 无条目号 → 建议 /sync-map，而那个命令会去 gh 建 GitHub issue
+  # 跟 0.7.6 的零足迹注入是同一个形状：tracker 盲。
+  # 走到这里时 activeModule 必非空 —— 空的情况上一分支已经按「刻意空闲」接住了。
+  if [ -z "$MODULE_ISSUE" ]; then
+    PHASE="SPECED (${TRACKER})"
+    broken "activeModule=[${MODULE}] 在 .agent/state.json 里没有对应的 ${TRACKER} 条目号 —— 链路在此断开"
+    NEXT="在 ${TRACKER} 里为 [${MODULE}] 建条目，把号写进 .agent/state.json 的 modules.${MODULE}.issue"
+  elif [ "$HAS_PLAN" = false ]; then
+    PHASE="TRACKED (${TRACKER})"
+    broken "模块 [${MODULE}] 有 spec 和条目，但没有 tasks/${MODULE}/plan.md —— 链路在此断开"
+    NEXT="/plan 为 [${MODULE}] 拆解任务"
+  elif [ "$DIRTY" -gt 0 ]; then
+    PHASE="BUILDING (${TRACKER})"
+    NEXT="/test 验证 → /review（有 ${DIRTY} 处未提交改动）"
+  else
+    PHASE="PLANNED (${TRACKER})"
+    NEXT="在 ${TRACKER} 里认领下一个任务后 /build —— 本插件的任务层自动化只覆盖 github 和 none"
+  fi
+
 elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then
   # 到这里说明：要么 state.json 根本不存在，要么 activeModule 有值却没有对应 issue。
   # 两种都是真断链。

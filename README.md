@@ -427,7 +427,8 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 ## 已知限制
 
-1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层。
+1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层 ——
+   0.7.7 起它们有自己的状态分支（`PLANNED (gitlab)` 等），不再被塞 GitHub 专属建议。
 2. **需要 `gh` ≥ 2.94.0**。
 3. ~~`/deliver` 的 PR 环节未经端到端实测~~ —— **0.7.1 起作废，已实测。**
    在 `sentinel-livelab` 上真跑了 4 个 PR（#65 #67 #70 #72），`gh pr create` →

@@ -94,6 +94,41 @@ else
   printf '  ❌ 断链文案未指名 activeModule\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 显式声明的非 GitHub tracker：只做到 plan 层，且不许给 GitHub 专属建议 ──
+gl() {  # $1=state.json
+  base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
+  git remote add origin https://gitlab.com/a/b.git 2>/dev/null
+  echo "$1" > .agent/state.json
+  git add -A >/dev/null 2>&1; git -c user.email=t@t -c user.name=t commit -qm p 2>/dev/null
+}
+gl '{"tracker":"gitlab","activeModule":"x","modules":{"x":{"issue":42}}}'
+chk "gitlab 齐全 → PLANNED (gitlab)" "PLANNED (gitlab)|断链0"
+
+gl '{"tracker":"jira","activeModule":"x","modules":{"x":{"issue":"AUTH-7"}}}'
+chk "jira 齐全 → PLANNED (jira)" "PLANNED (jira)|断链0"
+
+gl '{"tracker":"gitlab","activeModule":"x","modules":{"x":{}}}'
+chk "gitlab 缺条目号 → 真断链" "SPECED (gitlab)|断链1"
+
+# 反向：整份注入里不许出现 GitHub 专属说法。
+# 「gh 不可用 / 恢复 gh」对 GitLab 项目是指向一个无关的东西，
+# 「/sync-map」更糟 —— 那个命令会去 gh 建 GitHub issue。
+GLOUT=""
+for st in '{"tracker":"gitlab","activeModule":"x","modules":{"x":{"issue":42}}}' \
+          '{"tracker":"gitlab","activeModule":"x","modules":{"x":{}}}' \
+          '{"tracker":"jira","activeModule":"x","modules":{"x":{"issue":"AUTH-7"}}}'; do
+  gl "$st"
+  GLOUT="${GLOUT}$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)"
+done
+BADHIT=""
+case "$GLOUT" in *"sync-map"*) BADHIT="/sync-map" ;; esac
+case "$GLOUT" in *'gh \u4e0d\u53ef\u7528'*|*"gh 不可用"*) BADHIT="${BADHIT} gh不可用" ;; esac
+if [ -z "$BADHIT" ]; then
+  printf '  ✅ 非 GitHub tracker 不出现 GitHub 专属建议\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 非 GitHub tracker 仍出现:%s\n' "$BADHIT"; FAIL=$((FAIL+1))
+fi
+
 base; mkdir -p spec .agent; touch spec/a.md
 git remote add origin https://gitlab.com/a/b.git 2>/dev/null
 echo '{"activeModule":"x","modules":{"x":{}}}' > .agent/state.json

@@ -317,6 +317,10 @@ MODULE_DONE     模块无剩余 task                       → /next 推进模�
 
 1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 需要写各自的
    取任务命令等价实现。当前只检测到 plan 层。
+   > 0.7.7 之前这条限制的**表现**是错的：声明 `gitlab` / `jira` 的项目会落进
+   > 「gh 不可用，恢复 gh 后 /next」的降级分支（`gh` 不是不可用，是无关），
+   > 缺条目号时还会被建议 `/sync-map` —— 而那个命令会去 `gh` 建 GitHub issue。
+   > 「不支持」和「给错指引」是两回事：**前者是限制，后者是 bug。**
 2. **需要 `gh` ≥ 2.94.0** —— 低于此版本没有 `--type` / `--parent` / `--blocked-by`。
 3. **能力图的文件名是本项目约定的**（`spec/CAPABILITY-MAP.md`）。上游只说
    *Save the approved map at the project root*，没给具体文件名——这是上游的一处

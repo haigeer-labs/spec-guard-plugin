@@ -118,14 +118,23 @@ claude plugin update spec-guard@spec-guard-marketplace   # 之后要重启才生
 **「新约定 + 旧检查器」中间态**，只不过这次它是在插件作者自己的机器上，
 而且**存在了整整五个版本没被发现**。
 
-推得更远一点：`git push` 不是发版的终点，**「装着的那份 sha 对得上最新 commit」
+推得更远一点：`git push` 不是发版的终点，**「装着的那份跟仓库里的插件内容一致」
 才是**。核对办法：
 
 ```bash
-python3 -c "import json;d=json.load(open('$HOME/.claude/plugins/installed_plugins.json'));\
-print(d['plugins']['spec-guard@spec-guard-marketplace'][0]['gitCommitSha'][:7])"
-git rev-parse --short HEAD
+INST=$(python3 -c "import json,os;d=json.load(open(os.path.expanduser(
+  '~/.claude/plugins/installed_plugins.json')));print(
+  d['plugins']['spec-guard@spec-guard-marketplace'][0]['gitCommitSha'])")
+git merge-base --is-ancestor "$INST" HEAD \
+  && git diff --quiet "$INST" HEAD -- plugins/spec-guard \
+  && echo "✅ 装着的就是当前插件内容" \
+  || echo "⚠️  装着的落后了，跑上面两条 update"
 ```
+
+**不要直接拿 `installed sha` 和 `git rev-parse HEAD` 比。** 只改 `CLAUDE.md` /
+`docs/` 的提交会推进 HEAD 而不动插件内容 —— 那样比会得出「装着的落后了」的
+**假警报**，而这个项目对假警报的态度写在三条不可违反的性质里。
+判据要问的是「`plugins/spec-guard/` 有没有变」，不是「HEAD 有没有变」。
 
 ---
 

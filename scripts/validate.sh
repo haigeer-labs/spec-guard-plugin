@@ -41,6 +41,10 @@ echo "═══ bash 3.2 兼容（macOS 自带 bash）═══"
 python3 scripts/check-bash32.py $(find . -name "*.sh" -not -path "./.git/*") || F=1
 
 echo ""
+echo "═══ 用户可见输出里的命令名 ═══"
+python3 scripts/check-command-names.py || F=1
+
+echo ""
 echo "═══ 命令 frontmatter ═══"
 while IFS= read -r c; do
   grep -q -- "---" <<<"$(head -1 "$c")" && say "✅" "$c" || { say "❌" "$c 缺 frontmatter"; F=1; }

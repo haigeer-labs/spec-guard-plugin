@@ -157,11 +157,11 @@ elif [ "$TRACKER" = "none" ]; then
   if [ "$HAS_PLAN" = false ]; then
     PHASE="SPECED (本地模式)"
     broken "有 spec 但没有 tasks/$MODULE/plan.md —— 链路在此断开"
-    NEXT="/planning 为 [$MODULE] 拆解任务"
+    NEXT="/plan 为 [$MODULE] 拆解任务"
   elif [ "$HAS_TODO" = false ]; then
     PHASE="PLANNED (本地模式)"
     broken "有 plan.md 但没有 tasks/$MODULE/todo.md —— 链路在此断开"
-    NEXT="/planning 补出任务清单"
+    NEXT="/plan 补出任务清单"
   elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
     PHASE="BUILDING (本地模式)"
     NEXT="/test 验证 → /review"
@@ -199,7 +199,7 @@ elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then
 elif [ "$HAS_PLAN" = false ]; then
   PHASE="TRACKED"
   broken "模块 [$MODULE] 有 spec 和 issue，但没有 tasks/$MODULE/plan.md —— 链路在此断开"
-  NEXT="/planning 为 [$MODULE] 拆解任务"
+  NEXT="/plan 为 [$MODULE] 拆解任务"
 
 elif [ "$GH_OK" = false ]; then
   # gh 不可用（未安装 / 未登录 / 离线）：降级为纯本地判定，不报 GitHub 相关断链

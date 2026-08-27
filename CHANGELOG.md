@@ -2,6 +2,30 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.2] - 2026-08-27
+
+### 修复
+
+- **P0：hook 每轮注入的「建议下一步」指向一个不存在的命令。**
+  `phase-guard.sh` 三处、`setup-convention.sh` 两处、`verify-artifacts.sh` 一处
+  仍写着 `/planning`，模型照着调就报 `Unknown skill: agent-skills:planning`。
+
+  0.4.1 那次 `/planning` → `/plan` 的修复**只扫了 `*.md`**（用的
+  `rglob('*.md')`），**shell 脚本一个都没碰** —— 而 `phase-guard.sh` 恰恰是
+  每轮发言都注入的那个。一次不完整的替换，比不替换更隐蔽：文档全对了，
+  真正到用户眼前的输出还是错的。
+
+### 新增
+
+- `scripts/check-command-names.py` —— 校验**用户可见输出**里提到的斜杠命令
+  真实存在，已接入 `validate.sh`。检查范围刻意限定在会到达用户眼前的三处
+  （`hooks/*.sh`、`templates/*.md`、`commands/*.md`）；`docs/` 与 CHANGELOG
+  不查 —— 它们要能讨论「`/planning` 是错的」这件事本身。
+
+  > 这个 lint 的第一版**漏了双引号前缀**，抓不到 `NEXT="/plan …"` 这种写法，
+  > 也就抓不到它本该抓的那个 bug。加断言验证「注入坏名字要报错」之后才发现。
+  > **防线本身也要被测试。**
+
 ## [0.5.1] - 2026-08-26
 
 ### 修复

@@ -186,7 +186,7 @@ echo "── D. plan.md ──"
 if [ -z "${MODULE}" ]; then
   skip "state.json 没有 activeModule"
 elif [ ! -f "tasks/${MODULE}/plan.md" ]; then
-  warn "tasks/${MODULE}/plan.md 不存在 —— /planning 还没跑"
+  warn "tasks/${MODULE}/plan.md 不存在 —— /plan 还没跑"
 else
   PLAN="tasks/${MODULE}/plan.md"
   if [ "${TRACKER}" = "github" ]; then

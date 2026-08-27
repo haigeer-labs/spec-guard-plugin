@@ -2,6 +2,31 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.10] - 2026-08-27
+
+### 修复
+
+- **0.7.9 自己挖的坑：`setup-convention` 不认识 `state.json.disabled`。**
+
+  teardown 把 `state.json` 改名保留（issue 编号映射删了找不回来）。但 setup
+  只看 `state.json` 存不存在 —— 于是「teardown 之后改主意再 setup」会**静默
+  建一个空的 state.json**，真正的映射孤零零躺在 `.disabled` 里。
+
+  后果不只是丢数据：模型接着会看到「activeModule 没有对应 issue」→
+  建议 `/sync-map` → **在 GitHub 上建出一套重复的 Epic 和模块 issue**。
+  而 issue 在 GitHub 上删不掉。
+
+  现在：tracker 一致就**自动恢复**（往返无损）；不一致就**既不恢复也不新建**，
+  退非零并说明二选一，`.disabled` 原样保留。
+
+  > 这条是 0.7.9 发布**二十分钟后**发现的，用的是 0.7.9 自己刚补进 lens B1 的
+  > 那句话。已把它再推一层：**新增一个此前不存在的状态，也算改概念定义 ——
+  > 刚发的改动同样要过这一遍。**
+
+- `setup-convention` 落地阶段出现 ❌ 时会**明确退 1**，此前只打印不改退出码。
+
+- 断言 74 → 76。
+
 ## [0.7.9] - 2026-08-27
 
 ### 修复

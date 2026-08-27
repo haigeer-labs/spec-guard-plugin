@@ -474,6 +474,44 @@ else
   printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
 fi
 
+# ── setup ↔ teardown 往返:issue 映射不能丢 ─────────────────
+# 0.7.9 引入 state.json.disabled 这个新状态,而 setup 不认识它 ——
+# 「teardown 后改主意再 setup」会静默建一个空 state.json,真映射躺在 .disabled。
+# 后果不只是丢数据:模型看到「activeModule 没有 issue」会建议 /sync-map,
+# 在 GitHub 上建出一套重复 issue。
+rt() {
+  rm -rf "$TMP/rt"; mkdir -p "$TMP/rt"; cd "$TMP/rt"; git init -q 2>/dev/null
+  printf '# 我的项目\n' > CLAUDE.md
+  bash "$SETUP" github >/dev/null 2>&1
+  python3 -c "
+import json
+p='.agent/state.json'; d=json.load(open(p))
+d['modules']={'identity':{'issue':101},'billing':{'issue':102}}
+d['initiative']={'title':'x','issue':100,'map':'m'}
+json.dump(d, open(p,'w'))"
+  CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" >/dev/null 2>&1
+}
+
+rt
+bash "$SETUP" github >/dev/null 2>&1
+if python3 -c "
+import json,sys
+d=json.load(open('.agent/state.json'))
+sys.exit(0 if len(d.get('modules') or {})==2 and (d.get('initiative') or {}).get('issue')==100 else 1)" 2>/dev/null; then
+  printf '  ✅ teardown → setup 往返:issue 映射无损\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 往返丢了 issue 映射（下一步 /sync-map 会建重复 issue）\n'; FAIL=$((FAIL+1))
+fi
+
+rt
+bash "$SETUP" local >/dev/null 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && [ ! -f .agent/state.json ] && [ -f .agent/state.json.disabled ]; then
+  printf '  ✅ tracker 不符时拒绝恢复、也不新建（.disabled 原样保留）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ tracker 不符时行为不对（退出码 %s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

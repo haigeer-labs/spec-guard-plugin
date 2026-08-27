@@ -169,8 +169,32 @@ else
 fi
 
 # state.json：不覆盖
+#
+# teardown 会把它改名成 .disabled（保留 issue 编号映射）。这里必须认得出来 ——
+# 否则「teardown 之后改主意再 setup」会静默建一个空的 state.json，
+# 而真正的映射孤零零躺在 .disabled 里。后果不只是丢数据：模型会看到
+# 「activeModule 没有 issue」→ 建议 /sync-map → **在 GitHub 上建出一套重复 issue**。
 if [ -f .agent/state.json ]; then
   skip ".agent/state.json 已存在"
+elif [ -f .agent/state.json.disabled ]; then
+  OLDT=$(python3 -c "
+import json,sys
+try: print(json.load(open('.agent/state.json.disabled')).get('tracker') or '')
+except Exception: print('')" 2>/dev/null)
+  WANT=$( [ "$MODE" = github ] && echo github || echo none )
+  if [ "${OLDT}" = "${WANT}" ]; then
+    NMOD=$(python3 -c "
+import json
+try: print(len(json.load(open('.agent/state.json.disabled')).get('modules') or {}))
+except Exception: print(0)" 2>/dev/null)
+    [ "$DRY" = false ] && mv .agent/state.json.disabled .agent/state.json
+    act "恢复 .agent/state.json（teardown 留下的 .disabled，${NMOD} 个模块的 issue 映射保留）"
+  else
+    bad "存在 .agent/state.json.disabled 但它的 tracker=[${OLDT:-空}] 与本次的 [${WANT}] 不符"
+    printf '     不自动恢复也不新建 —— 新建会让 .disabled 里的 issue 映射被忘掉,\n'
+    printf '     而下一步 /sync-map 会在 GitHub 上建出一套重复 issue。\n'
+    printf '     二选一：用 %s 模式重跑；或先手工处理 .agent/state.json.disabled\n' "${OLDT:-原}"
+  fi
 else
   T=$( [ "$MODE" = github ] && echo github || echo none )
   # issueTypes: true=可用（加 --type）  false=不可用（省略 --type，靠层级区分）
@@ -220,6 +244,11 @@ else
 fi
 
 echo ""
+if [ "$F" -ne 0 ]; then
+  echo "═══ 未完成 ═══"
+  echo "上面有 ❌ 的项没做，先处理它再重跑。"
+  exit 1
+fi
 echo "═══ 完成 ═══"
 echo ""
 echo "⚠️  下列文件要提交进仓库，队友才能共享同一套约定："

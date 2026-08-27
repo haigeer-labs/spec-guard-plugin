@@ -188,6 +188,20 @@ else
   printf '  ❌ 有声明块的项目也被塞了零足迹提示（白花 context）\n'; FAIL=$((FAIL+1))
 fi
 
+# 本地模式零足迹：不能指向 spec-github-bridge —— 那个 skill 全篇是 gh issue,
+# 对 tracker=none 的项目毫无意义,指过去只会让它去建根本不存在的 issue
+rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r"; git init -q 2>/dev/null
+echo "# 普通项目" > CLAUDE.md
+echo '{"tracker":"none","activeModule":""}' > .agent/state.json
+LCTX="$(ctx)"
+if case "$LCTX" in *"spec-github-bridge\` skill 里"*) true ;; *) false ;; esac \
+   && case "$LCTX" in *"本地模式没有对应的 skill"*) true ;; *) false ;; esac; then
+  printf '  ✅ 本地模式零足迹：给的是「把块写回去」而不是「加载 github skill」\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 本地模式零足迹的提示不对\n'; FAIL=$((FAIL+1))
+fi
+
+
 # ── hook 自报版本 ──
 # 注意不能直接 grep 原始输出:emit() 有 jq 和 python3 两条路径,
 # python3 那条会把中文转义成 \uXXXX,grep 中文字面量抓不到。必须解 JSON。
@@ -257,6 +271,17 @@ else
   printf '  ❌ 重复写入声明块\n'; FAIL=$((FAIL+1))
 fi
 
+# local + --no-claude-md 是个装了等于没装的组合，必须被拒
+rm -rf "$TMP/nl"; mkdir -p "$TMP/nl"; cd "$TMP/nl"; git init -q 2>/dev/null
+echo "# 原有" > CLAUDE.md
+bash "$SETUP" local --no-claude-md >/dev/null 2>&1
+RC=$?
+if [ "$RC" -eq 2 ] && [ ! -d .agent ]; then
+  printf '  ✅ local + --no-claude-md 被拒（退 2 且零写入）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ local + --no-claude-md 没被拒（退出码 %s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
 # ── 声明块瘦身：行数是这次改动的核心指标，钉住它 ──
 GN=$(wc -l < "$PLUGDIR/templates/claude-block-github.md" | tr -d ' ')
 LN=$(wc -l < "$PLUGDIR/templates/claude-block-local.md" | tr -d ' ')
@@ -269,7 +294,8 @@ fi
 # ── 零 CLAUDE.md 足迹模式 ──
 rm -rf "$TMP/z"; mkdir -p "$TMP/z"; cd "$TMP/z"; git init -q 2>/dev/null
 echo "# 干净项目" > CLAUDE.md
-bash "$SETUP" local --no-claude-md >/dev/null 2>&1
+# 必须用 github 模式：local + --no-claude-md 是被禁的组合（见下）
+bash "$SETUP" github --no-claude-md >/dev/null 2>&1
 if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 0 ] && [ -f .agent/state.json ]; then
   printf '  ✅ --no-claude-md 不写声明块，但建了 state.json\n'; PASS=$((PASS+1))
 else

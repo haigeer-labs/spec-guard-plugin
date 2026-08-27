@@ -343,12 +343,26 @@ fi
 # 而让 skill 被加载的是那句**指令**。少了它，--no-claude-md 就是个陷阱。
 #
 # 只有零足迹项目才付这几行的代价；写了声明块的项目一个字都不多。
+#
+# **要分 tracker。** spec-github-bridge 全篇是 gh issue / --blocked-by / 模块级 PR，
+# 对 tracker=none 的本地模式项目毫无意义，指过去只会让它去建根本不存在的 issue。
+# 0.7.5 第一版没分，本地模式项目照样被指向那个 skill —— 又一次
+# 「在一个配置下验证、全局发货」。
 if [ "$HAS_BLOCK" = false ]; then
-  OUT="${OUT}
+  if [ "$TRACKER" = "github" ]; then
+    OUT="${OUT}
 **本项目没有 CLAUDE.md 声明块（零足迹模式）。**
 动 spec、拆任务、取任务、交付之前，先加载 \`spec-github-bridge\` skill ——
 目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。
 "
+  else
+    OUT="${OUT}
+**本项目没有 CLAUDE.md 声明块，而 tracker 是「${TRACKER}」。**
+零足迹模式只对 github 模式成立：那边的细则在 \`spec-github-bridge\` skill 里，
+按需加载即可。**本地模式没有对应的 skill，目录约定除了声明块无处可放。**
+建议跑 \`/setup-convention local\` 把声明块写回去（13 行）。
+"
+  fi
 fi
 
 OUT="${OUT}

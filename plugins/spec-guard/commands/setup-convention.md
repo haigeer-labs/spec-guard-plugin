@@ -22,7 +22,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 | 开关 | 什么时候用 |
 |---|---|
 | `--replace` | 项目里已有声明块，要**就地升级**到当前模板。只动 `BEGIN`/`END` 之间，标记外一个字节不碰。**不加它时已存在的块原样跳过** |
-| `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活 |
+| `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活。**只对 github 模式可用** |
 
 `--no-claude-md` 是给 `CLAUDE.md` 已经接近 200 行上限的项目用的（官方建议
 target under 200 lines，超了既费 context 又降低 adherence）。
@@ -30,6 +30,10 @@ target under 200 lines，超了既费 context 又降低 adherence）。
 0.7.5 起 hook 会在这个模式下**把触发指令补进每轮注入**（只有零足迹项目付这个
 代价）。在此之前这个模式是残的：实测 hook 激活了、状态注入了，但模型全程
 没加载 skill —— 状态不等于指令。
+
+**`local --no-claude-md` 会被拒（退出码 2）。** 零足迹靠 `spec-github-bridge`
+skill 承接细则，而本地模式没有对应的 skill —— 去掉声明块之后目录约定无处可放，
+装了等于没装，还比没装更迷惑（hook 照常报状态，看着像在工作）。
 
 ## 之后
 

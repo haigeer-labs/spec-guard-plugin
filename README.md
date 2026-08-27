@@ -284,7 +284,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 |---|---|
 | `/setup-convention [github\|local] [--dry-run]` | 落地约定（首次跑一次） |
 | `/setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
-| `/setup-convention … --no-claude-md` | 不写声明块，hook 改由 `.agent/state.json` 激活 |
+| `/setup-convention … --no-claude-md` | 不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github 模式**） |
 | `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/phase` | 查看当前链路状态和断链项 |
 | `/verify-artifacts` | 校验已落地的产物是否符合约定 |

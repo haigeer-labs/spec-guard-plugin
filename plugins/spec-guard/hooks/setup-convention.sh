@@ -27,6 +27,17 @@ for a in "$@"; do
 done
 case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exit 2 ;; esac
 
+# 零足迹模式靠 spec-github-bridge skill 承接细则，而本地模式**没有对应的 skill**。
+# 去掉声明块之后目录约定无处可放 —— 装了等于没装，还比没装更迷惑
+# （hook 会照常报状态，看着像在工作）。
+if [ "$MODE" = local ] && [ "$NO_BLOCK" = true ]; then
+  echo "❌ local 模式不支持 --no-claude-md。"
+  echo "   零足迹模式是靠 spec-github-bridge skill 承接细则的，本地模式没有对应的 skill；"
+  echo "   去掉声明块之后目录约定无处可放，装了等于没装。"
+  echo "   → 要么用 github 模式，要么写声明块（本地模式的块只有 13 行）。"
+  exit 2
+fi
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"

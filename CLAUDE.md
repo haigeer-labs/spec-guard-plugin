@@ -208,7 +208,11 @@ git merge-base --is-ancestor "$INST" HEAD \
 - **不要用 `jq` 作为硬依赖**
 - **不要写 `$VAR` 紧跟多字节字符** —— 如 `"…#$ISSUE）"`。macOS 自带 bash 3.2 会把
   全角括号的首字节吃进变量名，配上 `set -u` 直接致命退出，而 hook 失败是静默的。
-  一律写 `${VAR}`。`scripts/check-bash32.py` 会拦，CI 也加了 macOS matrix
+  一律写 `${VAR}`。`scripts/check-bash32.py` 会拦。
+  CI 里也配了 macOS matrix，但**账户级 Actions 被禁用，那个 workflow 从 v0.1.0
+  至今一次都没跑过**（`gh api …/actions/runs` → `total_count: 0`，
+  手动 dispatch 报 `Actions has been disabled for this user`）——
+  在恢复之前，bash 3.2 这一层的唯一保障是**本机用 `/bin/bash` 跑那三条**
 - **不要在 hook 里输出非 JSON** —— 宿主会拒绝，且失败是静默的
 - **不要写 `cmd | grep -q`** —— `grep -q` 命中即关管道，还在输出的 `cmd` 吃到
   SIGPIPE(141)，`set -o pipefail` 把它传出来，判断永远为假。用 herestring

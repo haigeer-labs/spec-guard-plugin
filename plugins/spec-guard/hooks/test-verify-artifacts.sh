@@ -13,7 +13,7 @@ PASS=0; FAIL=0
 
 # 空的骨架：启用约定 + git 仓库，其余按用例自己铺
 base() {
-  rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/.agent"; cd "${TMP}/r"
+  rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/.agent"; cd "${TMP}/r" || exit 1
   git init -q 2>/dev/null
   echo "## Agent Skills 集成约定" > CLAUDE.md
 }
@@ -198,7 +198,7 @@ STUB
 chmod +x "${TMP}/vbin/gh"
 
 modrepo() {  # $1=分支名
-  rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/tasks/oauth2" "${TMP}/r/.agent"; cd "${TMP}/r"
+  rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/tasks/oauth2" "${TMP}/r/.agent"; cd "${TMP}/r" || exit 1
   git init -q 2>/dev/null
   echo "## Agent Skills 集成约定" > CLAUDE.md
   map oauth2; touch spec/oauth2.md

@@ -319,34 +319,48 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 
 当前阶段: **TRACKED**
 
-  - tracker: github
   - 活跃模块: identity (issue #101)
+  - tracker: github
   - spec: 能力图=true, 模块 spec=3 份
   - plan: tasks/identity/plan.md=false
-  - GitHub: 0 个未关闭 task
   - git: 分支=main, 未提交=0
+  - spec-guard: v0.7.17
 
 **检测到断链：**
   ⚠ 模块 [identity] 有 spec 和 issue，但没有 tasks/identity/plan.md —— 链路在此断开
 
-处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。
+处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。
 
 建议下一步: /plan 为 [identity] 拆解任务
+
+以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。
 ```
 
-### 九个阶段
+### 阶段
+
+下面是**基名**。实际输出会带模式后缀（`(本地模式)` / `(gitlab)` /
+`(模块分支)` / `(gh 不可用，降级判定)`），组合起来共 28 种取值。
 
 ```
-IDLE          没有任何 spec                      → /spec
-MAP_ONLY      有能力图但没有模块 spec        ⚠断链 → /spec 递归
-SPECED        有 spec 但没有 issue 结构      ⚠断链 → /sync-map
-TRACKED       有 issue 但没有 plan.md        ⚠断链 → /plan
-PLANNED       全部就位                            → /next
-TASK_CLAIMED  认领了 task 但分支不对         ⚠断链 → 切分支
-BUILDING      在正确分支上有未提交改动            → /test → /deliver
-TASK_READY    改动已提交                          → /deliver
-MODULE_DONE   模块无剩余 task                     → /next 推进模块
+IDLE              没有任何 spec；或有 spec 但刻意没有活跃模块  → /spec
+MAP_ONLY          有能力图但没有模块 spec                ⚠断链 → /spec 递归
+SPECED            有 spec 但没有 issue 结构              ⚠断链 → /sync-map
+TRACKED           有 issue 但没有 plan.md                ⚠断链 → /plan
+PLANNED           全部就位                                    → /next
+PLANNED (任务未落库) plan.md 有任务，但模块 issue 下一个
+                  sub-issue 都没有                       ⚠断链 → skill 操作二
+TASK_CLAIMED      认领了 task，却既不在模块分支
+                  也不在带 issue 号的分支                ⚠断链 → 切模块分支
+MODULE_BRANCH     在模块分支上（gh 不可用时的降级判定）        → 恢复 gh 后 /next
+BUILDING          有未提交改动                                → /test → 提交
+TASK_READY        改动已提交，模块还有剩余 task                → /build auto 或 /next
+MODULE_READY      模块内 task 都有对应 commit                 → /deliver 开模块 PR
+READY (本地模式)   本地模式下 todo.md 就绪                     → /build
+MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /next 推进模块
 ```
+
+> `MODULE_DONE` 要求 sub-issue **建过**。「一条都没建过」判的是
+> `PLANNED (任务未落库)` —— 两者的「未关闭数」都是 0，但含义相反（见 0.7.15）。
 
 ### 三种违规检测
 
@@ -354,7 +368,7 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 |---|---|
 | 根目录有 `SPEC*.md` | `/build` 的路径规则找不到 |
 | 存在 `todo.md`（tracker 模式下） | 和 issue 二选一，并存必然分叉。**前 10 行含 `已归档`/`ARCHIVED` 的不计** —— 那是历史记录不是活清单 |
-| 认领了 issue 但分支不含 issue 号 | `Closes #n` 会关错单 |
+| 认领了 task，却既不在模块分支 `<type>/<module-id>`、也不在带 issue 号的分支上 | 大概率在错误分支上工作。**0.6.0 起交付粒度是模块**，所以「分支不含 issue 号」本身是正常的，不再是违规 |
 
 ---
 
@@ -414,8 +428,8 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 
 ```bash
 /bin/bash scripts/validate.sh                              # 仓库完整性
-/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh     # 19 个断言
-/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh # 21 个断言
+/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
+/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 ```
 
 > ⚠️ **macOS 上显式用 `/bin/bash`（那是 3.2）。** 装了 Homebrew 的话 `bash` 会指向

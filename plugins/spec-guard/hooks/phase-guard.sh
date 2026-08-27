@@ -133,7 +133,15 @@ fi
 # ── 2. spec 层 ─────────────────────────────────────────────
 HAS_MAP=false; SPEC_COUNT=0
 [ -f "spec/CAPABILITY-MAP.md" ] && HAS_MAP=true
-SPEC_COUNT=$(ls -1 spec/*.md 2>/dev/null | grep -v "CAPABILITY-MAP" | wc -l | tr -d ' ')
+# 用 glob 而不是 `ls | grep`：后者拿**子串**排除，`spec/CAPABILITY-MAP-old.md`
+# 这种也会被当成能力图剔掉。verify-artifacts 那边一直是整名相等
+# （`grep -v "^CAPABILITY-MAP$"`），两边现在一致。
+SPEC_COUNT=0
+for f in spec/*.md; do
+  [ -e "$f" ] || continue
+  case "${f##*/}" in CAPABILITY-MAP.md) continue ;; esac
+  SPEC_COUNT=$((SPEC_COUNT + 1))
+done
 
 # 违规：spec 放错位置
 if ls -1 SPEC*.md >/dev/null 2>&1; then

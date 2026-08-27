@@ -30,8 +30,13 @@ jobs:
       - name: verify-artifacts 回归测试
         run: /bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 
-      - name: ShellCheck
+      # 这一步原先结尾是 `|| true` —— 结果永远为 0，**一个永远返回 0 的
+      # 校验器和没有校验器没区别**。现在它是真门禁。
+      # 版本钉死：本地就是用这一版跑干净的，apt 的版本随发行版漂移，
+      # 「我验过」和「CI 跑的」就会是两回事。
+      # ⚠️ `shellcheck@4.1.0` 是 **npm 包**的版本，它装的二进制是 shellcheck
+      #    **v0.11.0**（`npx shellcheck@4.1.0 -V` 自己会说）。两个号不一样 ——
+      #    写 `shellcheck@0.11.0` 会 ETARGET，那个版本在 npm 上根本不存在。
+      - name: ShellCheck（阻塞；npm 4.1.0 = 二进制 v0.11.0）
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y shellcheck
-          shellcheck -S warning plugins/spec-guard/hooks/*.sh scripts/*.sh || true
+        run: npx --yes shellcheck@4.1.0 -S warning plugins/spec-guard/hooks/*.sh scripts/*.sh

@@ -2,6 +2,68 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.17] - 2026-08-28
+
+这轮扫的是**从没被审过的那两块**：CI 和 README。
+查出来的第一条是：**CI 从 v0.1.0 至今一次都没跑过。**
+
+### 发现（不是代码 bug，但比代码 bug 更该先说）
+
+- **`.github/workflows/validate.yml` 从未执行过一次。**
+
+  ```
+  gh api repos/{owner}/{repo}/actions/runs   → total_count: 0
+  gh workflow run validate.yml               → HTTP 422:
+      Actions has been disabled for this user.
+  ```
+
+  而所有本地信号都说它是好的：workflow 注册状态 `active`，
+  `repos/…/actions/permissions` 返回 `enabled: true`（**per-repo 的这个字段
+  会骗你**）。`sentinel-livelab` 同样是 0 次 —— 账户级，不是本仓配置问题。
+
+  后果：CI 存在的唯一理由 —— **macOS bash 3.2 matrix** —— 十六个版本里
+  从没验过一次。bash 3.2 这一层此前的实际保障只有「本机用 `/bin/bash` 跑那三条」。
+  `CLAUDE.md` 里那句「CI 也加了 macOS matrix」已改成实情。
+  （README 一直是老实的，写着「需要账户级 Actions 可用才会跑」。）
+
+### 修复
+
+- **ShellCheck 步骤结尾挂着 `|| true`，永远返回 0。** 它跑了、有输出、退出 0 ——
+  长得完全像通过。**一个永远返回 0 的校验器和没有校验器没区别。**
+
+  去掉之后（用 `npx shellcheck@0.11.0` 本地实跑）当场抓出 **15 条**：
+
+  | 规则 | 数量 | 是什么 |
+  |---|---|---|
+  | SC2164 | 12 | 测试脚本里 `cd` 不带 `\|\| exit`。`base()` 之后紧跟 `> CLAUDE.md`、`git add -A` —— cd 一失败就写到**仓库根**上去了 |
+  | SC2010 | 2 | `ls \| grep` |
+  | SC2034 | 1 | `verify-artifacts.sh` 里的 `L` 是死变量 |
+
+  15 条全修完，shellcheck 干净退 0。CI 那一步改成**阻塞**，版本钉死
+  （apt 的版本随发行版漂移，「我验过」和「CI 跑的」就会是两回事）。
+
+  > 钉版本时当场又踩一次同样的坑：先写的是 `npx shellcheck@0.11.0`，
+  > **那个版本在 npm 上不存在**（`ETARGET`）—— 0.11.0 是**二进制**的版本，
+  > npm 包的版本是 `4.1.0`。要不是跑了一遍，CI 恢复那天会挂在「装不上」，
+  > 而不是挂在真问题上。**判据写完不当场跑一遍**，这已经是第五次了。
+
+- **`phase-guard` 数模块 spec 时用的是子串排除。**
+  `ls -1 spec/*.md | grep -v "CAPABILITY-MAP"` 会把
+  `spec/CAPABILITY-MAP-old.md` 这类也剔掉。改成 glob + 整名相等 ——
+  `verify-artifacts` 那边一直是 `grep -v "^CAPABILITY-MAP$"`，两边现在一致。
+
+- **README 停在 0.6.0 之前**（`CLAUDE.md` 每版都跟，README 没有 —— D1 那条）：
+
+  - 断言数写着「19 个 / 21 个」，实际是 64 / 35。**直接删掉数字** ——
+    与其在两处记同一个数，不如只留一处（`CLAUDE.md`）
+  - 「九个阶段」的表缺 `MODULE_READY` / `MODULE_BRANCH` / `READY (本地模式)` /
+    `PLANNED (任务未落库)`，现在补齐并说明基名与模式后缀的关系（共 28 种取值）
+  - 违规表第三行还写着「认领了 issue 但分支不含 issue 号 → `Closes #n` 会关错单」，
+    那是 **0.6.0 之前**的 task 分支约定。模块级 PR 下「分支不含 issue 号」
+    本身就是正常的，照这条读会以为模块分支会被报违规
+  - hook 输出示例的字段顺序、`spec-guard: v…` 版本行、结尾那句都对不上，
+    换成真实跑出来的
+
 ## [0.7.16] - 2026-08-28
 
 拿 0.7.15 刚写下的 A5（「零」有两种成因）回头扫自己的判据层。

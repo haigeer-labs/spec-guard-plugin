@@ -183,7 +183,6 @@ fi
 if [ "${TRACKER}" != "none" ]; then
   T=$(live_todos | grep . || true)
   A=$(find tasks -name "todo.md" 2>/dev/null | wc -l | tr -d ' ')
-  L=$(printf '%s' "${T}" | grep -c . || true)
   if [ -n "${T}" ]; then
     bad "存在 $(printf '%s' "${T}" | tr '\n' ' ') 但已声明外部 tracker —— 二者不能并存，必然分叉"
     printf '     若它是已完成模块的历史记录：在前 10 行内写上「已归档」或 ARCHIVED 即可豁免\n'

@@ -13,7 +13,7 @@ trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
 
 base() {
-  rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r"
+  rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
   git init -q 2>/dev/null
   echo "## Agent Skills 集成约定" > CLAUDE.md
   git add -A >/dev/null 2>&1
@@ -306,7 +306,7 @@ try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
 except Exception: print("")'
 }
 
-rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r"; git init -q 2>/dev/null
+rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r" || exit 1; git init -q 2>/dev/null
 echo "# 普通项目（没有约定标题）" > CLAUDE.md
 echo '{"tracker":"none","activeModule":""}' > .agent/state.json
 if case "$(ctx)" in *"spec-github-bridge"*) true ;; *) false ;; esac; then
@@ -324,7 +324,7 @@ fi
 
 # 本地模式零足迹：不能指向 spec-github-bridge —— 那个 skill 全篇是 gh issue,
 # 对 tracker=none 的项目毫无意义,指过去只会让它去建根本不存在的 issue
-rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r"; git init -q 2>/dev/null
+rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r" || exit 1; git init -q 2>/dev/null
 echo "# 普通项目" > CLAUDE.md
 echo '{"tracker":"none","activeModule":""}' > .agent/state.json
 LCTX="$(ctx)"
@@ -413,10 +413,21 @@ echo "═══ setup-convention 回归 ═══"
 SETUP="$HOOKDIR/setup-convention.sh"
 export CLAUDE_PLUGIN_ROOT="$PLUGDIR"
 
-rm -rf "$TMP/s"; mkdir -p "$TMP/s"; cd "$TMP/s"; git init -q 2>/dev/null
+rm -rf "$TMP/s"; mkdir -p "$TMP/s"; cd "$TMP/s" || exit 1; git init -q 2>/dev/null
 echo "# 原有内容" > CLAUDE.md
 bash "$SETUP" local --dry-run >/dev/null 2>&1
-if [ "$(ls -A | grep -vc '^.git$')" -eq 1 ]; then
+# 用 glob 数，不用 `ls | grep`：后者对带换行/特殊字符的文件名不可靠，
+# 而且 `^.git$` 里的 `.` 是通配符，`Xgit` 这种名字也会被当成 .git 排掉。
+entries_except_git() {
+  local n=0 e
+  for e in * .[!.]* ..?*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    [ "$e" = ".git" ] && continue
+    n=$((n + 1))
+  done
+  printf '%s' "$n"
+}
+if [ "$(entries_except_git)" -eq 1 ]; then
   printf '  ✅ dry-run 零写入\n'; PASS=$((PASS+1))
 else
   printf '  ❌ dry-run 不该写文件\n'; FAIL=$((FAIL+1))
@@ -447,7 +458,7 @@ else
 fi
 
 # local + --no-claude-md 是个装了等于没装的组合，必须被拒
-rm -rf "$TMP/nl"; mkdir -p "$TMP/nl"; cd "$TMP/nl"; git init -q 2>/dev/null
+rm -rf "$TMP/nl"; mkdir -p "$TMP/nl"; cd "$TMP/nl" || exit 1; git init -q 2>/dev/null
 echo "# 原有" > CLAUDE.md
 bash "$SETUP" local --no-claude-md >/dev/null 2>&1
 RC=$?
@@ -467,7 +478,7 @@ else
 fi
 
 # ── 零 CLAUDE.md 足迹模式 ──
-rm -rf "$TMP/z"; mkdir -p "$TMP/z"; cd "$TMP/z"; git init -q 2>/dev/null
+rm -rf "$TMP/z"; mkdir -p "$TMP/z"; cd "$TMP/z" || exit 1; git init -q 2>/dev/null
 echo "# 干净项目" > CLAUDE.md
 # 必须用 github 模式：local + --no-claude-md 是被禁的组合（见下）
 bash "$SETUP" github --no-claude-md >/dev/null 2>&1
@@ -483,7 +494,7 @@ else
 fi
 
 # ── --replace 就地升级 ──
-rm -rf "$TMP/u"; mkdir -p "$TMP/u"; cd "$TMP/u"; git init -q 2>/dev/null
+rm -rf "$TMP/u"; mkdir -p "$TMP/u"; cd "$TMP/u" || exit 1; git init -q 2>/dev/null
 printf '# 我的项目\n\n标记之前的内容\n' > CLAUDE.md
 bash "$SETUP" local >/dev/null 2>&1
 printf '\n## 标记之后的内容\n' >> CLAUDE.md
@@ -525,7 +536,7 @@ fi
 TD="$HOOKDIR/teardown-convention.sh"
 
 mktd() {
-  rm -rf "$TMP/td"; mkdir -p "$TMP/td"; cd "$TMP/td"; git init -q 2>/dev/null
+  rm -rf "$TMP/td"; mkdir -p "$TMP/td"; cd "$TMP/td" || exit 1; git init -q 2>/dev/null
   printf '# 我的项目\n\n构建用 npm run build。\n' > CLAUDE.md
   bash "$SETUP" github >/dev/null 2>&1
 }
@@ -588,7 +599,7 @@ else
   printf '  ❌ teardown 跟着 cwd 跑了 —— 根上的约定没被移除\n'; FAIL=$((FAIL+1))
 fi
 
-rm -rf "$TMP/su"; mkdir -p "$TMP/su/src/deep"; cd "$TMP/su"; git init -q 2>/dev/null
+rm -rf "$TMP/su"; mkdir -p "$TMP/su/src/deep"; cd "$TMP/su" || exit 1; git init -q 2>/dev/null
 printf '# 我的项目\n' > CLAUDE.md
 ( cd src/deep && bash "$SETUP" github >/dev/null 2>&1 )
 if [ -d "$TMP/su/spec" ] && [ ! -d "$TMP/su/src/deep/spec" ] \
@@ -617,7 +628,7 @@ esac
 # 后果不只是丢数据:模型看到「activeModule 没有 issue」会建议 /sync-map,
 # 在 GitHub 上建出一套重复 issue。
 rt() {
-  rm -rf "$TMP/rt"; mkdir -p "$TMP/rt"; cd "$TMP/rt"; git init -q 2>/dev/null
+  rm -rf "$TMP/rt"; mkdir -p "$TMP/rt"; cd "$TMP/rt" || exit 1; git init -q 2>/dev/null
   printf '# 我的项目\n' > CLAUDE.md
   bash "$SETUP" github >/dev/null 2>&1
   python3 -c "

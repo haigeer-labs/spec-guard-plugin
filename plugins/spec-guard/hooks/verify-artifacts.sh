@@ -264,6 +264,33 @@ else
     fi
   fi
 
+  # 模块的 sub-issue 数 ↔ plan.md 的 Task List 条目数
+  #
+  # 补这一项是因为「任务落库」此前**完全没有产物校验**：SKILL 的 Verification
+  # 里写着「sub_issues 条目数 == plan.md 索引条数」，但没有任何东西真去比。
+  # 它一次盖住两种失败：
+  #   · 一条 sub-issue 都没有 = 任务从没落库（phase-guard 那边判 PLANNED (任务未落库)）
+  #   · 两边对不上 = 落库中途失败后重跑的残留，或 plan.md 没回写全
+  if [ -n "${MI}" ] && [ -f "tasks/${MODULE}/plan.md" ]; then
+    PN=$(grep -coE '^[[:space:]]*[-*][[:space:]]+#[0-9]+' "tasks/${MODULE}/plan.md" || true)
+    [ -z "${PN}" ] && PN=0
+    SUBJ=$(gh api "repos/{owner}/{repo}/issues/${MI}/sub_issues" 2>/dev/null \
+           | python3 -c "import json,sys;print(len(json.load(sys.stdin)))" 2>/dev/null || echo "")
+    if [ -z "${SUBJ}" ]; then
+      skip "读不到模块 issue #${MI} 的 sub-issue（网络或权限），跳过任务落库比对"
+    elif [ "${PN}" -eq 0 ] && [ "${SUBJ}" -eq 0 ]; then
+      warn "tasks/${MODULE}/plan.md 没有 issue 编号索引，#${MI} 下也没有 sub-issue —— 任务还没落库"
+    elif [ "${PN}" -eq 0 ]; then
+      warn "#${MI} 下有 ${SUBJ} 个 sub-issue，但 plan.md 的 Task List 一个编号都没写 —— 跨会话续接会找不到任务在哪"
+    elif [ "${SUBJ}" -eq 0 ]; then
+      bad "plan.md 索引了 ${PN} 个 task，但 #${MI} 下一个 sub-issue 都没有 —— 任务从没落库"
+    elif [ "${PN}" -ne "${SUBJ}" ]; then
+      warn "plan.md 索引 ${PN} 个 task，#${MI} 下有 ${SUBJ} 个 sub-issue —— 对不上（落库中途失败重跑的残留？或 plan.md 没回写全）"
+    else
+      ok "任务落库数与 plan.md 索引一致（${PN}）"
+    fi
+  fi
+
   # 当前分支是模块分支还是 task 分支
   #
   # 0.6.0 把 PR 粒度从 task 提到 module，phase-guard 同步改了，**这里没有** ——

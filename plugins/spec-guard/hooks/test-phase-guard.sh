@@ -188,6 +188,37 @@ git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T2
 Closes #12" 2>/dev/null
 chk "模块内 task 全部落 commit → 该开模块 PR 了" "MODULE_READY|断链0"
 
+# ── 「任务从没建过」不能被当成「任务都做完了」──────────────
+# 两者在 OPEN_TASKS 上长得一模一样（都是 0）。此前 phase-guard 一律判
+# MODULE_DONE，反过来劝人「推进到下一个模块」——**一个 task 都没做的模块
+# 被宣告完成**。成因是 skill 的四个操作里只有「操作二：任务落库」没有命令
+# 触发（一/三/四 分别是 /sync-map、/next、/deliver），/plan 跑完没有下一步指路。
+cat > "$TMP/bin/gh" <<'STUB0'
+#!/bin/bash
+echo '[]'
+STUB0
+chmod +x "$TMP/bin/gh"
+mod_repo; chk "plan 写了但一个 sub-issue 都没建 → 不是 MODULE_DONE" "PLANNED (任务未落库)|断链1"
+
+# 正向对照：确实建过、且全部关闭 → 才是 MODULE_DONE
+cat > "$TMP/bin/gh" <<'STUB1'
+#!/bin/bash
+echo '[{"number":11,"state":"closed","title":"T1","assignees":[]},
+       {"number":12,"state":"closed","title":"T2","assignees":[]}]'
+STUB1
+chmod +x "$TMP/bin/gh"
+mod_repo; chk "建过且全部关闭 → MODULE_DONE" "MODULE_DONE|断链0"
+
+# 还原给后面用例的桩
+cat > "$TMP/bin/gh" <<'STUB'
+#!/bin/bash
+cat <<'JSON'
+[{"number":11,"state":"open","title":"T1","assignees":[{"login":"me"}]},
+ {"number":12,"state":"open","title":"T2","assignees":[]}]
+JSON
+STUB
+chmod +x "$TMP/bin/gh"
+
 # 反向用例：真的在错误分支上（不是模块分支、也没 issue 号）仍然要报
 mod_repo
 chk "已认领却停在默认分支 → 真断链照报" "TASK_CLAIMED|断链1"

@@ -233,6 +233,91 @@ case "$(vrun)" in
   *) printf '  ❌ task 分支的老路径坏了\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── 任务落库：sub-issue 数 ↔ plan.md 索引条数 ──────────────
+# 「任务落库」此前完全没有产物校验。它一次盖住两种失败：一条都没建（任务从没落库），
+# 和两边对不上（落库中途失败后重跑的残留）。
+ghstub() { cat > "${TMP}/vbin/gh"; chmod +x "${TMP}/vbin/gh"; }
+
+modrepo feat/oauth2
+printf '# Plan\n\n## Task List\n> Tasks tracked in GitHub Issues #5\n\n- #11 建表\n- #12 签发\n' \
+  > tasks/oauth2/plan.md
+ghstub <<'STUB3'
+#!/bin/bash
+case "$*" in
+  *sub_issues*)   echo '[]' ;;
+  *"pr view"*)    echo "Closes #5" ;;
+  *"issue view"*) echo "摘要" ;;
+  *)              echo "" ;;
+esac
+STUB3
+case "$(vrun)" in
+  *"但 #5 下一个 sub-issue 都没有 —— 任务从没落库"*)
+    printf '  ✅ plan 索引了 task 但一条 sub-issue 都没有 → 判失败\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 任务从没落库没被抓到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 对不上（重跑残留的形状）
+ghstub <<'STUB4'
+#!/bin/bash
+case "$*" in
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T","assignees":[]},
+                          {"number":12,"state":"open","title":"T","assignees":[]},
+                          {"number":13,"state":"open","title":"T","assignees":[]}]' ;;
+  *"pr view"*)    echo "Closes #5" ;;
+  *"issue view"*) echo "摘要" ;;
+  *)              echo "" ;;
+esac
+STUB4
+case "$(vrun)" in
+  *"plan.md 索引 2 个 task，#5 下有 3 个 sub-issue"*)
+    printf '  ✅ 落库数与索引数对不上 → 警告\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 数量不一致没被抓到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 正向对照：数对得上就必须放行，不能变成新的误报源
+ghstub <<'STUB5'
+#!/bin/bash
+case "$*" in
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T","assignees":[]},
+                          {"number":12,"state":"open","title":"T","assignees":[]}]' ;;
+  *"pr view"*)    echo "Closes #5" ;;
+  *"issue view"*) echo "摘要" ;;
+  *)              echo "" ;;
+esac
+STUB5
+case "$(vrun)" in
+  *"任务落库数与 plan.md 索引一致（2）"*)
+    printf '  ✅ 数一致时放行（不制造新误报）\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 数一致却没放行\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 探测失败照例 skip，不发绿灯也不判失败
+ghstub <<'STUB6'
+#!/bin/bash
+case "$*" in
+  *sub_issues*)   exit 1 ;;
+  *"pr view"*)    echo "Closes #5" ;;
+  *"issue view"*) echo "摘要" ;;
+  *)              echo "" ;;
+esac
+STUB6
+case "$(vrun)" in
+  *"跳过任务落库比对"*)
+    printf '  ✅ 读不到 sub-issue 时 skip\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 读不到 sub-issue 时没 skip\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 还原成本节开头那个桩 —— 后面的用例依赖它（`issue view` 返回空 = 读不到正文）
+ghstub <<'STUBR'
+#!/bin/bash
+case "$*" in
+  *"pr view"*)    printf 'Closes #5\n\n## 变更\n模块交付\n' ;;
+  *"issue view"*) echo "" ;;
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)              echo "" ;;
+esac
+STUBR
+
 # ── 探测失败不能发绿灯 ─────────────────────────────────────
 # E 段段头写的是「探测失败就整段跳过，绝不误报」，但 issue 正文体量比对
 # 是拿 `wc -c` 数管道输出的：gh 失败 → 0 字节 → 落进 else → 打出

@@ -128,7 +128,18 @@ Epic 建好写 `initiative.issue`，每个模块 issue 建好写 `modules.<id>.i
 
     gh issue create ... --blocked-by <前置 issue>
 
-创建完成后，回写 `tasks/<module-id>/plan.md` 的 Task List 章节：
+**每建成一个 task issue 就立刻把编号写进 `tasks/<module-id>/plan.md` 的
+Task List，不要攒到最后一起回写。** 理由和操作一那条完全一样，
+而这一步建的 issue 更多（一个模块 N 条）：中途失败（限流 / 网络 /
+`--blocked-by` 指向还没建出来的 issue / 用户按停）就留下
+「GitHub 建了 k 条 / plan.md 一条没记」，重跑于是把 k 条**再建一遍**。
+
+重跑时：plan.md 的 Task List 里已经有编号的那几条跳过，只补没建的。
+
+> 依赖用 `--blocked-by` 的话，**建的顺序要让前置先出生** ——
+> 指向一个还不存在的编号会失败，而失败点之前建出来的 issue 已经留在仓库里了。
+
+回写后 `tasks/<module-id>/plan.md` 的 Task List 章节形如：
 
     ## Task List
     > Tasks tracked in GitHub Issues #<module-issue>
@@ -282,6 +293,7 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 | "用 gh issue list --parent 列子任务" | **那个 flag 不存在**，只有 gh issue create 有 --parent。用 REST sub_issues。 |
 | "反正建了也报错，先试试 --type" | 会留下孤儿 issue —— gh 先建后校验。读 `state.json` 的 `issueTypes`，别试。 |
 | "issue 都建完了再一次性写 state.json，省事" | 中途失败就留下「GitHub 建了一半 / state.json 全空」，而重跑的判据读的就是 state.json —— 于是从头再建一套。每建成一个立刻写回。 |
+| "task issue 都建完了再一次性回写 plan.md" | 同上，只是这次记录落在 plan.md 的 Task List 上，而且一个模块建 N 条，中途失败的窗口更大。每建成一个立刻写编号。 |
 
 ## Red Flags
 
@@ -293,6 +305,10 @@ task issue 靠 commit message 关，module issue 靠 PR 正文关。两者都要
 - 一个模块出现了多个 PR，或分支名里带 issue 号（说明退回了 task 级粒度）
 - 同一个 initiative 在 GitHub 上有两个 Epic，或同名模块 issue 出现两次
   （`/sync-map` 中途失败后重跑的典型残留）
+- 模块 issue 下同一个 task 标题出现两次（任务落库中途失败后重跑的残留）
+- `plan.md` 有 Task List 但模块 issue 下**一个 sub-issue 都没有** ——
+  任务从没落库。`phase-guard` 会把它判成 `PLANNED (任务未落库)`；
+  它跟「任务全部做完」在「未关闭数=0」上长得一样，别混
 - commit message 里没有 `Closes #<task-issue>`（那些 task issue 永远关不掉）
 
 ## Verification

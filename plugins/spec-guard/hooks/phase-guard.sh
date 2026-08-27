@@ -153,7 +153,7 @@ if [ "$TRACKER" != "none" ] && [ -n "$TODO_FOUND" ]; then
 fi
 
 # ── 4. GitHub 层 ───────────────────────────────────────────
-OPEN_TASKS="?"; ASSIGNED=""; GH_OK=false
+OPEN_TASKS="?"; TOTAL_TASKS="?"; ASSIGNED=""; GH_OK=false
 if command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
   # 必须用 REST sub_issues：`gh issue list` **没有** --parent 这个 flag
   # （--parent 只在 gh issue create 上）。早期版本用了它，结果每次都失败、
@@ -165,6 +165,12 @@ if command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
     OPEN_TASKS=$(printf '%s' "$RAW" | python3 -c "
 import json,sys
 try: print(len([i for i in json.load(sys.stdin) if i.get('state')=='open']))
+except Exception: print('?')" 2>/dev/null)
+    # 总数（含已关闭）。**「全做完了」和「从没建过」在 OPEN_TASKS 上长得一模一样**，
+    # 只有总数能把它们分开 —— 见下面 MODULE_DONE 前面那条分支。
+    TOTAL_TASKS=$(printf '%s' "$RAW" | python3 -c "
+import json,sys
+try: print(len(json.load(sys.stdin)))
 except Exception: print('?')" 2>/dev/null)
     ASSIGNED=$(printf '%s' "$RAW" | python3 -c "
 import json,sys
@@ -339,6 +345,20 @@ elif [ "$GH_OK" = false ]; then
     NEXT="恢复 gh 后 /next；或手动指定要做的 issue"
   fi
 
+elif [ "$OPEN_TASKS" = "0" ] && [ "$TOTAL_TASKS" = "0" ]; then
+  # 一个 sub-issue 都没有 ≠ 任务都做完了。
+  # 走到这里 HAS_PLAN 必为 true（上面 TRACKED 那条已经把没 plan 的接住了），
+  # 所以这是「plan.md 写了任务，但没人把它们建成 issue」。
+  #
+  # 为什么会漏：skill 的四个操作里，**只有「操作二：任务落库」没有命令触发**
+  # —— 操作一/三/四 分别由 /sync-map、/next、/deliver 点名，操作二没有。
+  # 于是 /plan 跑完就没有下一步指路，而 phase-guard 此前把
+  # OPEN_TASKS=0 一律当成 MODULE_DONE，反过来劝人「推进到下一个模块」——
+  # **一个 task 都没做的模块被宣告完成。**
+  PHASE="PLANNED (任务未落库)"
+  broken "模块 [$MODULE] 有 tasks/$MODULE/plan.md，但 issue #$MODULE_ISSUE 下一个 sub-issue 都没有 —— 任务没落库，链路在此断开"
+  NEXT="按 spec-github-bridge 的「操作二：任务落库」把 plan.md 里的任务建成 sub-issue（这个模块若确实不需要 task，在 plan.md 里写明）"
+
 elif [ "$OPEN_TASKS" = "0" ]; then
   PHASE="MODULE_DONE"
   NEXT="/next 推进到下一个模块（[$MODULE] 已无未关闭任务）"
@@ -379,7 +399,7 @@ fi
 add "tracker: $TRACKER"
 add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
-[ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task${ASSIGNED:+, 已认领 $ASSIGNED}"
+[ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"
 [ "${ON_MODULE_BRANCH}" = true ] && add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（issue 要到 PR 合入默认分支才关）"
 add "spec-guard: ${PLUGIN_VER}"

@@ -81,9 +81,9 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 52 个断言：`test-phase-guard.sh` 31 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+当前 54 个断言：`test-phase-guard.sh` 33 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
 刻意空闲 / 模块级分支 / 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
-零足迹激活、`--replace` 只动标记内）、
+零足迹激活、`--replace` 只动标记内、自报版本）、
 `test-verify-artifacts.sh` 21 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
 等反向用例）。
 
@@ -111,6 +111,10 @@ claude plugin update spec-guard@spec-guard-marketplace   # 之后要重启才生
 
 **版本号不升，使用者收不到更新** —— Claude Code 靠 `plugin.json` 的 `version`
 判断是否拉取新版。
+
+**怎么知道重启后跑的是哪一版**：0.7.3 起 hook 每轮注入的事实里带一行
+`spec-guard: v<version>`（开发副本显示「开发副本」）。在装了约定的项目里发一句话
+就能看见 —— 不用再去翻 `~/.claude/plugins/cache/*/.in_use`。
 
 **第 6 步不是多余的。** 2026-08-27 实测：连发 0.6.0 → 0.7.2 五个版本之后，
 本机装着的仍然是 **0.5.2** —— 而那台机器上的目标项目 `CLAUDE.md` 已经是

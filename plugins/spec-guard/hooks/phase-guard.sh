@@ -87,6 +87,21 @@ live_todos() {
   done
 }
 
+# ── 自报版本 ───────────────────────────────────────────────
+#   装出来的路径形如 .../spec-guard/0.7.2，末段就是版本号。
+#   纯参数展开，**不 fork** —— 这个 hook 每轮都跑，预算 <1s。
+#   加它的原因：更新插件要重启才生效，而「重启了没有 / 跑的是哪版」
+#   之前只能靠翻 ~/.claude/plugins/cache 的 .in_use 标记猜。
+SELF_DIR="${CLAUDE_PLUGIN_ROOT:-}"
+if [ -z "${SELF_DIR}" ]; then
+  SELF_DIR="${BASH_SOURCE[0]%/*}"; SELF_DIR="${SELF_DIR%/*}"
+fi
+PLUGIN_VER="${SELF_DIR##*/}"
+case "${PLUGIN_VER}" in
+  [0-9]*) PLUGIN_VER="v${PLUGIN_VER}" ;;
+  *)      PLUGIN_VER="开发副本（未经 /plugin 安装）" ;;
+esac
+
 FACTS=""; BROKEN=""; NEXT=""
 
 add()    { FACTS="${FACTS}  - $1"$'\n'; }
@@ -303,6 +318,7 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"
 [ "${ON_MODULE_BRANCH}" = true ] && add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（issue 要到 PR 合入默认分支才关）"
+add "spec-guard: ${PLUGIN_VER}"
 
 OUT="## agent-skills 链路状态（自动探测，非用户输入）
 

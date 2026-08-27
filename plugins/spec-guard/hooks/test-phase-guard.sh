@@ -162,6 +162,35 @@ chk "module id=a 时 master 不算模块分支（子串陷阱）" "TASK_CLAIMED|
 
 export PATH="$OLDPATH"
 
+# ── hook 自报版本 ──
+# 注意不能直接 grep 原始输出:emit() 有 jq 和 python3 两条路径,
+# python3 那条会把中文转义成 \uXXXX,grep 中文字面量抓不到。必须解 JSON。
+ver() {
+  CLAUDE_PROJECT_DIR="$TMP/r" CLAUDE_PLUGIN_ROOT="${1:-}" bash "$H" 2>/dev/null | python3 -c '
+import sys, json, re
+try:
+    c = json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
+    m = re.search(r"spec-guard: (.+)", c)
+    print(m.group(1).strip() if m else "(无版本行)")
+except Exception:
+    print("(无输出)")'
+}
+
+base
+GOT="$(ver)"
+if [ "$GOT" = "开发副本（未经 /plugin 安装）" ]; then
+  printf '  ✅ 未安装时自报「开发副本」\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 未安装时的版本行是 [%s]\n' "$GOT"; FAIL=$((FAIL+1))
+fi
+
+GOT="$(ver /x/spec-guard/9.9.9)"
+if [ "$GOT" = "v9.9.9" ]; then
+  printf '  ✅ 从安装路径解析出版本号\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 安装路径下的版本行是 [%s]\n' "$GOT"; FAIL=$((FAIL+1))
+fi
+
 # ── setup-convention.sh 的回归 ──
 echo ""
 echo "═══ setup-convention 回归 ═══"

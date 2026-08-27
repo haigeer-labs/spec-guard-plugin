@@ -14,6 +14,10 @@
 
 `docs/` 与 `CHANGELOG.md` **不查** —— 它们要能讨论「`/planning` 是错的」
 这件事本身，查了反而没法记录历史。
+
+`hooks/test-*.sh` 也**不查** —— 回归测试的输出只给跑测试的人看，而测试里必然
+出现构造的假路径（`CLAUDE_PLUGIN_ROOT=/x/spec-guard/9.9.9`）。把它们纳进来
+只会逼测试去迁就一个与自己无关的判据。
 """
 
 import pathlib
@@ -82,6 +86,11 @@ def main() -> int:
         known_skills = own_skills(plugin) | UPSTREAM_SKILLS
         for scope in SCOPES:
             for path in sorted(plugin.glob(scope)):
+                # 回归测试脚本不是「用户可见输出」—— 它们的输出只给跑测试的人看，
+                # 而里面必然出现构造的假路径（如 CLAUDE_PLUGIN_ROOT=/x/spec-guard/9.9.9）。
+                # 把它们纳进来只会逼测试去迁就一个与自己无关的判据。
+                if path.name.startswith("test-"):
+                    continue
                 checked += 1
                 for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                     for name in CMD.findall(line):

@@ -47,8 +47,9 @@ detect_tracker() {
 #   加第 2 条是为了让不想动 CLAUDE.md 的项目也能用：那个文件官方建议
 #   控制在 200 行内，而声明块曾经一口气占掉 100 多行。
 #   .agent/ 是本插件自己的目录，拿它当信号不会污染无关项目。
-ACTIVE=false
-[ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && ACTIVE=true
+HAS_BLOCK=false
+[ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && HAS_BLOCK=true
+ACTIVE="$HAS_BLOCK"
 [ -f ".agent/state.json" ] && ACTIVE=true
 [ "$ACTIVE" = true ] || exit 0
 
@@ -331,6 +332,22 @@ if [ -n "$BROKEN" ]; then
 **检测到断链：**
 $BROKEN
 处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。
+"
+fi
+
+# 零足迹模式（没有声明块，靠 state.json 激活）要把那句触发指令补回来。
+#
+# 实测依据：evals/skill-deferral.sh 的 B 组就是这个模式 —— hook 正常激活、
+# 状态照常注入，**模型全程没加载 skill**，转头按自己的想法设计表结构去了。
+# 原先文档写的「靠 hook 每轮兜底」是想当然：hook 注入的是**状态**，
+# 而让 skill 被加载的是那句**指令**。少了它，--no-claude-md 就是个陷阱。
+#
+# 只有零足迹项目才付这几行的代价；写了声明块的项目一个字都不多。
+if [ "$HAS_BLOCK" = false ]; then
+  OUT="${OUT}
+**本项目没有 CLAUDE.md 声明块（零足迹模式）。**
+动 spec、拆任务、取任务、交付之前，先加载 \`spec-github-bridge\` skill ——
+目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。
 "
 fi
 

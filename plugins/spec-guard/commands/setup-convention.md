@@ -25,9 +25,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 | `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活 |
 
 `--no-claude-md` 是给 `CLAUDE.md` 已经接近 200 行上限的项目用的（官方建议
-target under 200 lines，超了既费 context 又降低 adherence）。代价是模型在
-hook 注入之前对目录约定一无所知 —— 所以选它的项目要么自己在别处写一句
-「动 spec/tasks 之前先加载 `spec-github-bridge`」，要么接受靠 hook 每轮兜底。
+target under 200 lines，超了既费 context 又降低 adherence）。
+
+0.7.5 起 hook 会在这个模式下**把触发指令补进每轮注入**（只有零足迹项目付这个
+代价）。在此之前这个模式是残的：实测 hook 激活了、状态注入了，但模型全程
+没加载 skill —— 状态不等于指令。
 
 ## 之后
 

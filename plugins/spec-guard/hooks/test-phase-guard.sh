@@ -162,6 +162,32 @@ chk "module id=a 时 master 不算模块分支（子串陷阱）" "TASK_CLAIMED|
 
 export PATH="$OLDPATH"
 
+# ── 零足迹模式要把触发指令补回来 ──
+# 实测依据：evals 的 B 组(= 这个模式)hook 正常激活但模型全程没加载 skill。
+# hook 注入的是状态，而让 skill 被加载的是那句指令 —— 少了它这个模式就是陷阱。
+ctx() {
+  CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | python3 -c '
+import sys, json
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")'
+}
+
+rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r"; git init -q 2>/dev/null
+echo "# 普通项目（没有约定标题）" > CLAUDE.md
+echo '{"tracker":"none","activeModule":""}' > .agent/state.json
+if case "$(ctx)" in *"spec-github-bridge"*) true ;; *) false ;; esac; then
+  printf '  ✅ 零足迹：注入「先加载 spec-github-bridge」\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 零足迹下没注入触发指令 —— --no-claude-md 会退化成没有约定\n'; FAIL=$((FAIL+1))
+fi
+
+base   # 有声明块
+if case "$(ctx)" in *"零足迹模式"*) false ;; *) true ;; esac; then
+  printf '  ✅ 有声明块时一个字都不多\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 有声明块的项目也被塞了零足迹提示（白花 context）\n'; FAIL=$((FAIL+1))
+fi
+
 # ── hook 自报版本 ──
 # 注意不能直接 grep 原始输出:emit() 有 jq 和 python3 两条路径,
 # python3 那条会把中文转义成 \uXXXX,grep 中文字面量抓不到。必须解 JSON。

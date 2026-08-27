@@ -45,6 +45,10 @@ echo "═══ 用户可见输出里的命令名 ═══"
 python3 scripts/check-command-names.py || F=1
 
 echo ""
+echo "═══ 校验器自身的回归 ═══"
+bash scripts/test-checkers.sh || F=1
+echo ""
+
 echo "═══ README 内嵌声明块 ↔ templates ═══"
 python3 scripts/check-readme-sync.py || F=1
 echo ""

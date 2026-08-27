@@ -14,7 +14,10 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+# 默认是仓库根；接受一个可选参数指向别处 —— 这不是为了灵活，
+# 是为了**这个校验器自己能被测试**（见 scripts/test-checkers.sh）。
+# 写死 __file__ 的话，反向用例只能靠改真仓库的文件来构造，那比不测还糟。
+ROOT = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
 TPL = ROOT / "plugins/spec-guard/templates"
 

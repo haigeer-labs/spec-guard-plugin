@@ -33,6 +33,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUG="$(cd "$HERE/.." && pwd)/plugins/spec-guard"
 PROMPT="为 identity 模块拆任务，产出计划和任务清单文件"
 WORK="${TMPDIR:-/tmp}/spec-guard-ns-$$"
+REPO="$(cd "$HERE/.." && pwd)"
+# shellcheck source=evals/_preflight.sh
+. "${HERE}/_preflight.sh"
 
 mk() {  # $1=目录 $2=with|without
   rm -rf "$1"; mkdir -p "$1/spec"; ( cd "$1" && git init -q )
@@ -52,7 +55,7 @@ mk() {  # $1=目录 $2=with|without
   ( cd "$1" && git add -A >/dev/null && git -c user.email=t@t -c user.name=t commit -qm init )
 }
 
-judge() {  # $1=目录 $2=组名
+judge() {  # $1=目录 $2=组名 ; 0=落进命名空间 1=落错位置 2=什么都没产出
   local ns=0 flat=0
   [ -f "$1/tasks/identity/plan.md" ] && ns=$((ns+1))
   [ -f "$1/tasks/identity/todo.md" ] && ns=$((ns+1))
@@ -60,8 +63,19 @@ judge() {  # $1=目录 $2=组名
   [ -f "$1/tasks/todo.md" ] && flat=$((flat+1))
   echo "  [$2] tasks/ 下的产物：$(cd "$1" && find tasks -type f 2>/dev/null | sort | tr '\n' ' ' || echo '(无)')"
   echo "  [$2] 命名空间产物 ${ns}/2 · 根下单例产物 ${flat}"
+  # 「一个产物都没有」和「产物落错位置」是两回事。前者多半是模型压根没跑
+  # （或没写文件），把它读成「命名空间不成立」就是拿工具故障去指控产品 ——
+  # 这个仓库对假警报的态度写在三条不可违反的性质里。
+  if [ "${ns}" -eq 0 ] && [ "${flat}" -eq 0 ]; then
+    echo "  [$2] ⏭  tasks/ 下什么都没有 —— 模型没产出任何任务文件，**这一组没有结论**"
+    return 2
+  fi
   [ "$ns" -ge 1 ] && [ "$flat" -eq 0 ]
 }
+
+if [ "$MODE" != scaffold ]; then
+  preflight_installed_matches_repo "$REPO" || exit 1
+fi
 
 mkdir -p "$WORK"
 mk "$WORK/withblk" with
@@ -75,16 +89,29 @@ echo "  ✅ 有块那组 hook 已激活"
 
 [ "$MODE" = scaffold ] && { echo "  --scaffold-only：到此为止，未调用模型"; exit 0; }
 
+RUNFAIL=0
 for d in withblk noblk; do
   echo "  跑 $d …"
-  ( cd "$WORK/$d" && claude -p "$PROMPT" --max-turns 12 \
-      --allowedTools Read Glob Grep Skill Write Edit ) >/dev/null 2>&1
+  # 原先是 `>/dev/null 2>&1` —— claude 跑不起来时 tasks/ 空着，judge 于是
+  # 打出「插件的头号卖点不成立」。**拿工具故障去指控产品**，正是本仓最忌的那类。
+  run_headless "$WORK/$d" "$WORK/$d.out" \
+    -p "$PROMPT" --max-turns 12 --allowedTools Read Glob Grep Skill Write Edit \
+    || RUNFAIL=1
 done
+if [ "${RUNFAIL}" -ne 0 ]; then
+  echo ""
+  echo "  ⏭  评测没跑起来 —— **没有结论**，不要读成「卖点不成立」"
+  exit 2
+fi
 
 echo ""
 judge "$WORK/withblk" "有块"; W=$?
 judge "$WORK/noblk"   "无块"; N=$?
 echo ""
+if [ "$W" -eq 2 ]; then
+  echo "  ⏭  有块那组什么都没产出 —— **没有结论**，不要读成「卖点不成立」"
+  exit 2
+fi
 if [ "$W" -eq 0 ]; then
   echo "  ✅ 有约定时产物落进 tasks/<module>/ 命名空间 —— 头号卖点成立"
   [ "$N" -ne 0 ] && echo "  ℹ  无约定时落在 tasks/ 根下（上游默认行为，正是要治的那个）"

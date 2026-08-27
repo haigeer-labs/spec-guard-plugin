@@ -430,8 +430,11 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层。
 2. **需要 `gh` ≥ 2.94.0**。
 3. ~~`/deliver` 的 PR 环节未经端到端实测~~ —— **0.7.1 起作废，已实测。**
-   在 `sentinel-livelab` 上真跑了 5 个 PR，`gh pr create` → 正文/commit message 的
-   `Closes #n` → 合入默认分支自动关 issue → 分支清理，全链路验证通过。
+   在 `sentinel-livelab` 上真跑了 4 个 PR（#65 #67 #70 #72），`gh pr create` →
+   正文 / commit message 里的 `Closes #n` → 合入默认分支自动关 issue → 分支清理，
+   全链路验证通过。最干净的一条证据：PR #70 合并于 `13:20:34Z`，
+   issue #69 关闭于 `13:20:35Z`（`reason=COMPLETED`）。
+   详见 [docs/walkthrough.md 第三次实跑](docs/walkthrough.md)。
    > 这条免责声明在 0.6.0–0.7.0 期间已经不成立却还挂着 —— **一条过期的免责声明
    > 比过期文档更糟，它在劝退使用者用一个已经证明可用的功能。**
 4. **多人协作无加锁** —— 任务认领依赖 assignee，理论上存在竞态。

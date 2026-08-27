@@ -165,6 +165,47 @@ issue 有没有？ → 确定
 
 `/setup-convention` 是把两者接起来的那一步。
 
+0.7.0 补了两个开关：`--replace`（已装的声明块就地升级到当前模板，只动
+`BEGIN`/`END` 之间）和 `--no-claude-md`（完全不写声明块）。前者是必需的 ——
+没有它老用户没法迁移，原来遇到已存在的块是直接跳过的。
+
+### 决策 6：声明块只放事实，过程进 skill
+
+**0.7.0 把 CLAUDE.md 声明块从 106 行砍到 15 行。**
+
+起因是实测数字：接入后使用者项目的 `CLAUDE.md` 321 行，声明块占 108 行 = 34%。
+而官方对 CLAUDE.md 的原话是 *target under 200 lines per CLAUDE.md file. Longer
+files consume more context and reduce adherence.*
+
+排掉过一个看起来最顺手的方案：**`@path` import 省不了行数**。官方明说
+*splitting into imports helps organization but doesn't reduce context, since
+imported files load at launch* —— 它只解决维护。
+
+`.claude/rules/` + `paths:` 前缀作用域也没采用：它在 Claude **读到**匹配文件时才
+触发，而「不要在根目录建 `SPEC.md`」恰恰要在还没读任何文件时就知道。
+
+采用的是官方自己给的正解 —— *If an entry is a multi-step procedure or only
+matters for one part of the codebase, move it to a **skill** or a path-scoped
+rule instead.* 那 106 行绝大部分是「怎么做」，现在全在 `spec-github-bridge`
+skill 里按需加载。
+
+留在 CLAUDE.md 里的只有两样：
+
+1. **推导不出来的事实** —— 路径、tracker 类型、几条硬禁令
+2. **一句触发指令** —— 动 spec / 拆任务 / 取任务 / 交付之前先加载 skill
+
+**第 2 条不能省。** skill 是按需加载的，不写死的话模型可能在没加载 skill 的情况下
+就把 `SPEC.md` 建到根目录 —— 而那正是这个声明块当初存在的理由。
+
+配套：hook 的激活信号从「只认 CLAUDE.md 标题」扩成「标题 **或** `.agent/state.json`
+存在」，让选 `--no-claude-md` 的项目也认得出自己管的仓库。`.agent/` 是本插件
+自己的目录，拿它当信号不违反「默认不生效」那条不变量。
+
+顺带两个免费的发现：HTML 注释**不进 context**（官方：*block-level HTML comments
+are stripped before the content is injected*），所以 `BEGIN`/`END` 标记不计成本，
+给人看的维护说明也可以塞进注释；以及**知识可以放进报错文案** —— 「归档豁免」
+原先占 15 行常驻 context，现在只在真报「`todo.md` 与 tracker 并存」时才花。
+
 ---
 
 ## 五、对象模型
@@ -189,7 +230,8 @@ Issue #100  [Feature]  Initiative: 用户体系重构        ← 能力图
 | `plan.md` | ⚠️ **不进 GitHub**，留在仓库 |
 | 每个 task | sub-issue（type: Task） |
 | checkpoint | sub-issue，标题以 `Checkpoint:` 开头 |
-| task 完成 | PR，`Closes #n` |
+| task 完成 | **commit message** 里的 `Closes #<task-issue>` |
+| 模块完成 | **一个 PR**，正文 `Closes #<module-issue>` |
 
 **为什么 spec 正文不复制进 issue**：spec 会随讨论修改，复制一份必然分叉。
 
@@ -199,28 +241,45 @@ Issue #100  [Feature]  Initiative: 用户体系重构        ← 能力图
 ### 三个问题，三个答案，不重叠
 
 ```
-plan.md  回答「为什么这么拆」   → 留在仓库
-issue    回答「有哪些活、谁在做」→ 进 GitHub
-PR       回答「这个活干完了」   → 进 GitHub
+plan.md  回答「为什么这么拆」     → 留在仓库
+issue    回答「有哪些活、谁在做」  → 进 GitHub
+commit   回答「这个 task 干完了」  → 进 GitHub（Closes #<task-issue>）
+PR       回答「这个模块交付了」    → 进 GitHub（Closes #<module-issue>）
 ```
 
 常见误解是把「为什么」和「有哪些活」混成一层，或者把「有哪些活」和「干完了」
 混成一层。
+
+> **0.6.0 把 PR 从「这个活干完了」提到「这个模块交付了」。** 原先是一个 task 一个
+> PR，结果一个需求被切成 N 个互不相干的合并事件：评审看不到完整交付面，做的人
+> 每条都要停下来等合并。而「干完了」这件事 commit 本来就能回答 —— closing keyword
+> 在 commit message 里同样生效（官方：*the issue will be closed when you merge the
+> commit into the **default branch***）。
+>
+> 推论：**合并只能用 merge commit 或 rebase**。squash 把 N 条 message 压成一条，
+> 「一个 task 一条 commit」这个回滚点当场消失。（注意理由不是「会漏关 issue」——
+> GitHub 默认 `squash_merge_commit_message: COMMIT_MESSAGES` 会拼接 message，
+> closing keyword 多半还在；但那是个可改的设置，不该拿它当保证。见 0.6.1。）
 
 ---
 
 ## 六、状态机
 
 ```
-IDLE          没有任何 spec                      → /spec
-MAP_ONLY      有能力图但没有模块 spec        ⚠断链 → /spec 递归
-SPECED        有 spec 但没有 issue 结构      ⚠断链 → /sync-map
-TRACKED       有 issue 但没有 plan.md        ⚠断链 → /plan
-PLANNED       全部就位                            → /next
-TASK_CLAIMED  认领了 task 但分支不对         ⚠断链 → 切分支
-BUILDING      在正确分支上有未提交改动            → /test → /deliver
-TASK_READY    改动已提交                          → /deliver
-MODULE_DONE   模块无剩余 task                     → /next 推进模块
+IDLE            没有任何 spec                        → /spec
+IDLE(无活跃模块) 有 spec 但 activeModule 刻意为空       → 起新模块 / /spec
+MAP_ONLY        有能力图但没有模块 spec          ⚠断链 → /spec 递归
+SPECED          有 spec 但没有 issue 结构        ⚠断链 → /sync-map
+TRACKED         有 issue 但没有 plan.md          ⚠断链 → /plan
+PLANNED         全部就位                              → /next
+TASK_CLAIMED    认领了 task，分支既不含 issue 号
+                也不属于当前模块                ⚠断链 → 切分支
+BUILDING(模块分支)   模块分支上有未提交改动           → /test → 提交带 Closes #<task>
+TASK_READY(模块分支) 模块分支干净，还有 task 没落      → /build auto 继续
+MODULE_READY    模块的 task 在本分支都有对应 commit    → /deliver 开模块 PR
+BUILDING        （task 分支，老约定）有未提交改动      → /test → /deliver
+TASK_READY      （task 分支，老约定）改动已提交        → /deliver
+MODULE_DONE     模块无剩余 task                       → /next 推进模块
 ```
 
 ### 额外检测的三种违规
@@ -229,7 +288,15 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
 |---|---|
 | 根目录有 `SPEC*.md` | `/build` 的路径规则只认 `spec/` 通配，找不到 |
 | 存在 `todo.md`（tracker 模式下） | 和 issue 二选一，并存必然分叉 |
-| 认领了 issue 但分支不含 issue 号 | 大概率在错误分支上工作，`Closes #n` 会关错单 |
+| 认领了 issue，分支**既不含 issue 号、也不是当前模块的分支** | 大概率在错误分支上工作 |
+
+> ⚠️ **这一条 0.6.0 改过判据，改之前它是个假断链制造机。** 原判据只看「分支不含
+> issue 号」—— 而模块级分支 `feat/<module-id>` 按定义就不含，约定一落地它每轮都在报。
+> 现在要「两个都不满足」才报。模块分支的识别用**末段整段相等**而不是子串包含：
+> 子串匹配下 module id 叫 `a` 时分支 `master` 会被认成模块分支（已有反向用例钉住）。
+>
+> 这是本项目「假断链比不报断链危害大得多」那条不变量的又一个实例 ——
+> **改约定必须同改状态机，否则新约定的正常状态就是旧状态机眼里的违规。**
 
 ---
 
@@ -256,6 +323,13 @@ MODULE_DONE   模块无剩余 task                     → /next 推进模块
    自相矛盾：它同时声称「是这张图、而不是猜文件名，构成了『存在哪些东西』的索引」，
    却没规定索引本身的位置。
 4. **多人协作的任务认领依赖 assignee**，没有加锁机制，理论上存在竞态。
+5. **`--no-claude-md` 模式下模型对目录约定的感知晚一步。** hook 注入的是**状态**
+   不是**约定**，那句「先加载 skill」的触发指令就没有了。选这个模式要么自己在
+   别处补一句，要么接受靠 hook 每轮兜底。这是「省 context」和「早知道」之间的
+   真实取舍，没有两全的做法。
+6. **`MODULE_READY` 的判定只认 `main` / `master` 作为基线分支。** 默认分支叫别的
+   （`trunk`、`develop`）时它恒不触发，表现是一直建议「继续取任务」。
+   这是**保守失败**（不会误报断链），但要人自己判断什么时候开 PR。
 
 ---
 

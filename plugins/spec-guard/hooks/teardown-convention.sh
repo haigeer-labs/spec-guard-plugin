@@ -92,7 +92,11 @@ fi
 #   命令文里原来写「无输出即为成功」,但那句话在 0.7.0 之后就不成立了。
 #   这里实际跑一遍,而不是让人相信一句话。
 if [ "${DRY}" = false ]; then
+  # 兜底到脚本自己旁边的那份 —— setup-convention.sh 一直是这么做的，
+  # 这里没跟上：CLAUDE_PLUGIN_ROOT 没设时自检整段被跳过，而
+  # 「实际跑一遍而不是让人相信一句话」正是 0.7.9 把 teardown 改成脚本的唯一理由。
   HK="${CLAUDE_PLUGIN_ROOT:-}/hooks/phase-guard.sh"
+  [ -f "${HK}" ] || HK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/phase-guard.sh"
   if [ -f "${HK}" ]; then
     if [ -z "$(CLAUDE_PROJECT_DIR="$(pwd)" bash "${HK}" 2>/dev/null)" ]; then
       echo "  ✅ 已验证：hook 不再注入任何内容"

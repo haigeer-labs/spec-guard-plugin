@@ -32,7 +32,11 @@ cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去目录: ${ROOT}"; exit 1; }
 #   放前 10 行是刻意的：只认头部声明，避免正文里偶然提到就被误判。
 is_archived() {
   [ -f "$1" ] || return 1
-  head -10 "$1" 2>/dev/null | grep -qiE '已归档|ARCHIVED'
+  # herestring 而非管道：`head | grep -q` 里 grep 命中即关管道，还在写的 head
+  # 吃到 SIGPIPE(141)，pipefail 把它传出来 —— 归档豁免失效，报出假违规。
+  # 实测门槛是前 10 行约 256KB（真实 todo.md 到不了），但这是本仓明令禁止
+  # 的写法，且同一条规则已经修过三次了。
+  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)"
 }
 
 # 列出所有**非归档**的 todo.md
@@ -241,13 +245,22 @@ else
   # 模块 issue 正文是否粘贴了 spec 全文
   MI=$(jread "${STATE}" "d.get('modules',{}).get('${MODULE}',{}).get('issue')")
   if [ -n "${MI}" ] && [ -f "spec/${MODULE}.md" ]; then
-    BL=$(gh issue view "${MI}" --json body -q '.body' 2>/dev/null | wc -c | tr -d ' ')
+    # 读不到正文（被删 / 权限 / 网络）时**必须 skip，不能报 ok**。
+    # 原先 gh 失败 → BL=0 → 落进 else → 打出「✅ 正文是摘要而非 spec 全文」,
+    # 把「没查成」算成「查过了没问题」。本段段头写的是「探测失败就整段跳过,
+    # 绝不误报」,同段另外三处（Epic / 父 issue / PR 正文）都老实 skip,
+    # 只有这一处发没挣来的绿灯 —— 而这个脚本存在的意义就是不发这种绿灯。
+    IBODY=$(gh issue view "${MI}" --json body -q '.body' 2>/dev/null || echo "")
     SL=$(wc -c < "spec/${MODULE}.md" | tr -d ' ')
-    if [ -n "${BL}" ] && [ "${BL}" -gt 0 ] && [ "${SL}" -gt 0 ] \
-       && [ "${BL}" -gt $((SL * 2 / 3)) ]; then
-      warn "issue #${MI} 正文 ${BL} 字节 vs spec ${SL} 字节 —— 疑似粘贴了 spec 全文，spec 会改，复制必然分叉"
+    if [ -z "${IBODY}" ]; then
+      skip "读不到 issue #${MI} 的正文（网络/权限，或正文本就是空的），跳过体量比对"
     else
-      ok "issue #${MI} 正文是摘要而非 spec 全文"
+      BL=$(printf '%s' "${IBODY}" | wc -c | tr -d ' ')
+      if [ "${SL}" -gt 0 ] && [ "${BL}" -gt $((SL * 2 / 3)) ]; then
+        warn "issue #${MI} 正文 ${BL} 字节 vs spec ${SL} 字节 —— 疑似粘贴了 spec 全文，spec 会改，复制必然分叉"
+      else
+        ok "issue #${MI} 正文是摘要而非 spec 全文"
+      fi
     fi
   fi
 

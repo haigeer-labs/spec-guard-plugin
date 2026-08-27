@@ -88,7 +88,11 @@ except Exception:
 #   放前 10 行是刻意的：只认头部声明，避免正文里偶然提到就被误判。
 is_archived() {
   [ -f "$1" ] || return 1
-  head -10 "$1" 2>/dev/null | grep -qiE '已归档|ARCHIVED'
+  # herestring 而非管道：`head | grep -q` 里 grep 命中即关管道，还在写的 head
+  # 吃到 SIGPIPE(141)，pipefail 把它传出来 —— 归档豁免失效，报出假违规。
+  # 实测门槛是前 10 行约 256KB（真实 todo.md 到不了），但这是本仓明令禁止
+  # 的写法，且同一条规则已经修过三次了。
+  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)"
 }
 
 # 列出所有**非归档**的 todo.md
@@ -175,21 +179,30 @@ fi
 BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 DIRTY=$(git status --porcelain 2>/dev/null | grep -vE "^\?\? (spec/|tasks/|\.agent/)" | wc -l | tr -d " ")
 [ -z "$DIRTY" ] && DIRTY=0
-BRANCH_ISSUE=$(printf '%s' "$BRANCH" | grep -oE '[0-9]+' | head -1)
-
 # ── 模块级分支识别 ─────────────────────────────────────────
 #   模块级 PR 约定下分支名是 <type>/<module-id>，**不含 issue 号**。
 #   没有这一判定，下面「已认领但分支不含 issue 号」会把正常的模块分支报成
 #   断链 —— 假断链比不报断链危害大得多。
-#   带 issue 号的分支优先按 task 分支处理，老约定不受影响。
+#
+#   **必须先判模块、判不中才去捡号**，不能反过来。
+#   反过来的话 module id 自带数字（`feat/oauth2`）时，那个 `2` 会被当成
+#   task issue 号，模块分支被降级成 task 分支，接着建议「/deliver 开 PR
+#   （Closes #2）」—— 号是从分支名里捡的，跟这个模块毫无关系；而且它在
+#   模块分支上劝你开 task PR，正是 0.6.0 要治的那件事。
+#   verify-artifacts 0.7.11 修的就是这个，当时只修了那一边（见该文件顶部
+#   「重叠项的判定规则必须两边一致」），phase-guard 到 0.7.12 才跟上。
 ON_MODULE_BRANCH=false
-if [ -n "${BRANCH}" ] && [ -n "${MODULE}" ] && [ -z "${BRANCH_ISSUE}" ]; then
+if [ -n "${BRANCH}" ] && [ -n "${MODULE}" ]; then
   # 必须是**末段整段**相等，不是子串包含 —— 子串匹配下 module id 叫 "a"
   # 时分支 "master" 会被认成模块分支。
   case "${BRANCH}" in
     "${MODULE}"|*/"${MODULE}") ON_MODULE_BRANCH=true ;;
   esac
 fi
+# 带 issue 号的 task 分支（老约定）仍然支持，但模块分支优先。
+BRANCH_ISSUE=""
+[ "${ON_MODULE_BRANCH}" = false ] \
+  && BRANCH_ISSUE=$(printf '%s' "$BRANCH" | grep -oE '[0-9]+' | head -1 || true)
 
 # 本分支已经落了几个 task。模块级 PR 下 task issue 要到 PR 合并才关，
 # OPEN_TASKS 全程不减 —— 「这个模块做完没有」只能从 commit message 的
@@ -218,6 +231,37 @@ elif [ "$HAS_MAP" = true ] && [ "$SPEC_COUNT" -eq 0 ]; then
   broken "能力图已存在但一份模块 spec 都没有 —— Phase 0 走完了但没递归"
   NEXT="/spec 按 build order 为第一个模块生成 spec"
 
+elif [ "$TRACKER" = "other" ] && [ -z "$MODULE_ISSUE" ]; then
+  PHASE="SPECED (非 GitHub tracker)"
+  broken "远端不是 GitHub，但 state.json 未声明 tracker 类型 —— 无法判定任务托管在哪"
+  NEXT="在 .agent/state.json 里显式声明 \"tracker\": \"none\"（本地 todo.md）或 \"gitlab\"/\"jira\" 等"
+
+elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
+  # state.json 在、但 activeModule 是空的 —— 这是**刻意声明的空闲**，不是断链。
+  # 项目在两个 initiative 之间(上一批全部交付、下一批还没起)本来就是这个样子。
+  # 早期版本在这里报断链，对着一堆已交付的 spec 催「去建 issue」—— 假断链。
+  #
+  # **这一条必须排在所有 tracker 分支之前。** 0.7.12 之前它排在本地模式之后，
+  # 于是 tracker=none 的项目根本够不到豁免，落进下面那条，报出
+  # 「有 spec 但没有 tasks//plan.md」+「/plan 为 [] 拆解任务」——
+  # 路径里那个双斜杠和空的 [] 就是 MODULE="" 漏出来的。
+  # 而本地模式没有任何命令负责给**第一个**模块设 activeModule
+  # （/sync-map 是 github 专属），所以这是本地模式跑完 /spec 的必经状态。
+  PHASE="IDLE (无活跃模块)"
+  NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
+
+elif [ -z "$MODULE" ]; then
+  # 到这里：有 spec、activeModule 为空、且 state.json **不存在**
+  # （存在的话上一条已经接住了）。这是真断链，但要说对断的是什么 ——
+  # 不能再往下走，否则下面每条分支都会把空 MODULE 拼进路径里。
+  PHASE="SPECED"
+  broken "spec 已存在但没有 .agent/state.json —— 无从知道活跃模块是哪个"
+  if [ "$TRACKER" = "github" ]; then
+    NEXT="/sync-map 把能力图和模块落成 issue"
+  else
+    NEXT="跑 /setup-convention 建出 .agent/state.json，并把 activeModule 写进去"
+  fi
+
 elif [ "$TRACKER" = "none" ]; then
   # ── 本地模式：任务清单是 tasks/<module>/todo.md，不涉及任何 issue 系统 ──
   if [ "$HAS_PLAN" = false ]; then
@@ -238,18 +282,6 @@ elif [ "$TRACKER" = "none" ]; then
     PHASE="READY (本地模式)"
     NEXT="/build 取 todo.md 里下一个未勾选任务"
   fi
-
-elif [ "$TRACKER" = "other" ] && [ -z "$MODULE_ISSUE" ]; then
-  PHASE="SPECED (非 GitHub tracker)"
-  broken "远端不是 GitHub，但 state.json 未声明 tracker 类型 —— 无法判定任务托管在哪"
-  NEXT="在 .agent/state.json 里显式声明 \"tracker\": \"none\"（本地 todo.md）或 \"gitlab\"/\"jira\" 等"
-
-elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
-  # state.json 在、但 activeModule 是空的 —— 这是**刻意声明的空闲**，不是断链。
-  # 项目在两个 initiative 之间(上一批全部交付、下一批还没起)本来就是这个样子。
-  # 早期版本在这里报断链，对着一堆已交付的 spec 催「去建 issue」—— 假断链。
-  PHASE="IDLE (无活跃模块)"
-  NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
 
 elif [ "$TRACKER" != "github" ]; then
   # 显式声明的非 GitHub tracker（gitlab / jira / linear …）。
@@ -277,14 +309,10 @@ elif [ "$TRACKER" != "github" ]; then
   fi
 
 elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then
-  # 到这里说明：要么 state.json 根本不存在，要么 activeModule 有值却没有对应 issue。
-  # 两种都是真断链。
+  # activeModule 有值却没有对应 issue。真断链。
+  # （「连 state.json 都没有」由上面那条单独接住，所以这里 MODULE 必非空。）
   PHASE="SPECED"
-  if [ -n "$MODULE" ]; then
-    broken "activeModule=[$MODULE] 但 .agent/state.json 里没有它的 issue —— 链路在此断开"
-  else
-    broken "spec 已存在但没有 .agent/state.json —— 链路在此断开"
-  fi
+  broken "activeModule=[$MODULE] 但 .agent/state.json 里没有它的 issue —— 链路在此断开"
   NEXT="/sync-map 把能力图和模块落成 issue"
 
 elif [ "$HAS_PLAN" = false ]; then

@@ -233,6 +233,61 @@ case "$(vrun)" in
   *) printf '  ❌ task 分支的老路径坏了\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── 探测失败不能发绿灯 ─────────────────────────────────────
+# E 段段头写的是「探测失败就整段跳过，绝不误报」，但 issue 正文体量比对
+# 是拿 `wc -c` 数管道输出的：gh 失败 → 0 字节 → 落进 else → 打出
+# 「✅ 正文是摘要而非 spec 全文」，把「没查成」算成「查过了没问题」。
+# 同段另外三处（Epic / 父 issue / PR 正文）失败时都老实 skip，只有这处不是。
+modrepo feat/oauth2          # 桩里 `issue view` 返回空 = 读不到正文
+case "$(vrun)" in
+  *"issue #5 正文是摘要而非 spec 全文"*)
+    printf '  ❌ 读不到 issue 正文却报了 ✅（没挣来的绿灯）\n'; FAIL=$((FAIL+1)) ;;
+  *"读不到 issue #5 的正文"*)
+    printf '  ✅ 读不到 issue 正文时 skip，不发绿灯\n'; PASS=$((PASS+1)) ;;
+  *)
+    printf '  ❌ issue 正文这一项整个没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 正向对照：正文读得到、且确实是 spec 全文粘贴 → 必须仍然 warn
+# （skip 不能扩大化成「什么都不查」）
+modrepo feat/oauth2
+python3 -c "open('spec/oauth2.md','w').write('模块规格 '*200)"
+cat > "${TMP}/vbin/gh" <<'STUB2'
+#!/bin/bash
+case "$*" in
+  *"issue view"*) cat spec/oauth2.md ;;
+  *"pr view"*)    echo "Closes #5" ;;
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)              echo "" ;;
+esac
+STUB2
+chmod +x "${TMP}/vbin/gh"
+case "$(vrun)" in
+  *"疑似粘贴了 spec 全文"*)
+    printf '  ✅ 正文确为 spec 全文时照样 warn\n'; PASS=$((PASS+1)) ;;
+  *)
+    printf '  ❌ spec 全文粘贴没被抓到 —— skip 扩大化了\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# ── 归档识别不能被大文件搞挂（与 phase-guard 同一条判据）──
+# is_archived 两边是同一份实现，`head -10 | grep -q` 的 SIGPIPE 也是同一个。
+# 本仓的规矩：两个 hook 共用的判据要在两边都加用例。
+base; map identity; touch spec/identity.md
+mkdir -p tasks/identity; echo "## Task List" > tasks/identity/plan.md
+printf '> Tasks tracked in GitHub\n' >> tasks/identity/plan.md
+echo '{"tracker":"github","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+python3 -c "open('tasks/identity/todo.md','w').write('已归档 '+'y'*400000+chr(10))"
+case "$(CLAUDE_PROJECT_DIR="${TMP}/r" bash "${V}" 2>/dev/null)" in
+  *"二者不能并存"*) printf '  ❌ 前10行超大的已归档 todo.md 被误报成并存\n'; FAIL=$((FAIL+1)) ;;
+  *)                printf '  ✅ 前10行超大的已归档 todo.md 仍被豁免\n'; PASS=$((PASS+1)) ;;
+esac
+
+python3 -c "open('tasks/identity/todo.md','w').write('活的清单 '+'y'*400000+chr(10))"
+case "$(CLAUDE_PROJECT_DIR="${TMP}/r" bash "${V}" 2>/dev/null)" in
+  *"二者不能并存"*) printf '  ✅ 同样大但没归档声明的 todo.md 照报并存\n'; PASS=$((PASS+1)) ;;
+  *)                printf '  ❌ 大文件把并存检测整个吞掉了\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # ── 零 CLAUDE.md 足迹：只有 .agent/state.json 也要生效（0.7.0）──
 # phase-guard 那边有同名用例，verify-artifacts 这边一直漏着 ——
 # 两个 hook 同时改的激活判据，只测了一个。

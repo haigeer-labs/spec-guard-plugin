@@ -2,6 +2,90 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.12] - 2026-08-27
+
+一次整体体检，五处实测复现的 bug。三处是**同一个 0.7.11 的修法只落了一边**，
+另两处是**没挣来的绿灯**。
+
+### 修复
+
+- **`phase-guard` 也有 0.7.11 那个「模块 id 带数字」的 bug —— 而且它每轮都跑。**
+
+  0.7.11 修 `verify-artifacts` 时在文件顶部写下「重叠项的判定规则必须两边一致」，
+  但只修了那一边。`phase-guard` 的判定顺序是反的：先从分支名捡数字，
+  捡到了就不判模块。于是 `feat/oauth2` 里的 `2` 让模块分支判定整条失效：
+
+  ```
+  当前阶段: TASK_READY            ← 实际在模块分支上
+  建议下一步: /deliver 开 PR（Closes #2）
+  ```
+
+  `#2` 是从分支名里捡的，跟这个模块毫无关系；而且它在模块分支上劝你开
+  task PR，正是 0.6.0 要治的那件事。同一条分支、同一份 state.json，
+  两个脚本结论相反。
+
+  现在两边一律**先判模块、判不中才捡号**。老约定的 task 分支不受影响。
+
+- **本地模式永远够不到「刻意空闲」豁免。**
+
+  `activeModule` 为空的豁免（c37fe46 加的）排在 tracker 分支**之后**，
+  而 `tracker=none` 在它前面就把控制流截走了。结果：
+
+  ```
+  ⚠ 有 spec 但没有 tasks//plan.md —— 链路在此断开
+  建议下一步: /plan 为 [] 拆解任务
+  ```
+
+  路径里那个双斜杠和空的 `[]` 就是 `MODULE=""` 漏出来的。
+  这不是边角料：本地模式**没有任何命令**负责给第一个模块设 `activeModule`
+  （`/sync-map` 是 github 专属），所以它是本地模式跑完 `/spec` 的必经状态。
+
+  豁免上移到所有 tracker 分支之前；「连 state.json 都没有」单独接住，
+  不再把空模块名拼进任何路径。
+
+- **`verify-artifacts` 在 gh 读不到 issue 正文时发绿灯。**
+
+  E 段段头写着「探测失败就整段跳过，绝不误报」，同段另外三处（Epic /
+  父 issue / PR 正文）失败时都老实 `skip`，只有正文体量比对是拿
+  `wc -c` 数管道输出的：gh 失败 → 0 字节 → 落进 else → 打出
+  「✅ 正文是摘要而非 spec 全文」。**把「没查成」算成「查过了没问题」，
+  而这个脚本存在的意义就是不发这种绿灯。**
+
+- **`teardown` 的自检会因为环境变量没设就整段跳过。**
+
+  `HK="${CLAUDE_PLUGIN_ROOT:-}/hooks/phase-guard.sh"` 没有兜底，
+  而 `setup-convention.sh` 一直有 `$HERE` 兜底。「实际跑一遍而不是让人
+  相信一句话」是 0.7.9 把 teardown 改成脚本的**唯一理由**，它自己会
+  退回成一句话。此前所有 teardown 用例都显式设了这个变量，所以三个版本没人发现。
+
+- **`is_archived` 用了本仓明令禁止的 `cmd | grep -q`**（两个 hook 各一处）。
+
+  `head -10 "$f" | grep -qiE '已归档|ARCHIVED'`：grep 命中即关管道，
+  head 吃 SIGPIPE(141)，pipefail 传出 → 归档豁免失效 → 假违规。
+  实测门槛是前 10 行约 256KB（真实 todo.md 到不了），**所以这条是卫生
+  问题不是活 bug**。值得记的是 `verify-artifacts.sh` 里隔了 80 行就写着
+  「herestring：管道 + grep -q 会 SIGPIPE」—— 同一个文件改了一处漏了另一处。
+
+- `setup-convention` 在 `.disabled` 的 tracker 不符时提示「用 `gitlab` 模式重跑」，
+  而本脚本只收 `github|local` —— 那个建议做不到。
+
+### 新增
+
+- **`scripts/check-grep-pipe.py`** —— 静态拦 `cmd | grep -q`。
+  这条规则写在 CLAUDE.md 里，已经被违反三次（gh `--help`、`find todo.md`、
+  `is_archived`），每次都是修一处漏一处。它的姊妹规则 `check-bash32`
+  一直有检查器，这条没有。注释里提到该模式是允许的。
+
+### 测试
+
+断言 79 → **91**（`test-phase-guard` 52 → 60，`test-verify-artifacts` 27 → 31），
+`test-checkers` 11 → 14。
+
+两条老断言被**改了期望值**：`spec无issue(无remote→本地)` 和
+`根目录SPEC(无remote→本地)` 断的正是上面那个 `tasks//plan.md`。
+它们只比对「阶段|断链数」、从不看正文，所以那个畸形路径在 52 条断言底下
+躺了很久 —— 新增的用例直接对正文做断言。
+
 ## [0.7.11] - 2026-08-27
 
 ### 修复

@@ -49,11 +49,15 @@ chk "空仓库" "IDLE|断链0"
 base; mkdir -p spec; touch spec/CAPABILITY-MAP.md
 chk "只有能力图" "MAP_ONLY|断链1"
 
+# 没有 state.json 就无从知道活跃模块，断链措辞要说这件事本身。
+# 0.7.12 之前这两条落进本地模式分支，报的是「有 spec 但没有 tasks//plan.md」
+# —— 双斜杠是 MODULE="" 拼出来的。而本套断言只比对「阶段|断链数」，
+# 从不看正文，所以那个畸形路径在 52 条断言底下躺了很久。
 base; mkdir -p spec; touch spec/CAPABILITY-MAP.md spec/a.md
-chk "spec无issue(无remote→本地)" "SPECED (本地模式)|断链1"
+chk "有 spec 但无 state.json" "SPECED|断链1"
 
 base; touch SPEC.md; mkdir -p spec; touch spec/a.md
-chk "根目录SPEC(无remote→本地)" "SPECED (本地模式)|断链2"
+chk "根目录SPEC + 无 state.json" "SPECED|断链2"
 
 base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/todo.md
 echo '{"tracker":"github","activeModule":"x","modules":{"x":{"issue":9}}}' > .agent/state.json
@@ -88,7 +92,7 @@ chk "activeModule 有值但无 issue → 真断链" "SPECED|断链1"
 # 文案要指名道姓,不能只说「没有模块 issue」
 base; mkdir -p spec .agent; touch spec/a.md
 echo '{"tracker":"github","activeModule":"x","modules":{}}' > .agent/state.json
-if CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | grep -q "activeModule=\[x\]"; then
+if grep -q "activeModule=\[x\]" <<<"$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)"; then
   printf '  ✅ 断链文案指名 activeModule\n'; PASS=$((PASS+1))
 else
   printf '  ❌ 断链文案未指名 activeModule\n'; FAIL=$((FAIL+1))
@@ -188,6 +192,20 @@ chk "模块内 task 全部落 commit → 该开模块 PR 了" "MODULE_READY|断�
 mod_repo
 chk "已认领却停在默认分支 → 真断链照报" "TASK_CLAIMED|断链1"
 
+# module id 自带数字时，分支名里那串数字不能被当成 task issue 号。
+# 0.7.12 之前判定顺序是「先捡号、有号就不判模块」，于是 `feat/oauth2` 里的
+# `2` 让模块分支判定整条失效，接着在模块分支上建议「/deliver 开 PR
+# （Closes #2）」—— 号是从分支名里捡的，跟这个模块毫无关系。
+base; mkdir -p spec tasks/oauth2 .agent; touch spec/a.md tasks/oauth2/plan.md
+echo '{"tracker":"github","activeModule":"oauth2","modules":{"oauth2":{"issue":9}}}' > .agent/state.json
+git add -A >/dev/null 2>&1; git -c user.email=t@t -c user.name=t commit -qm p 2>/dev/null
+git checkout -qb feat/oauth2 2>/dev/null
+chk "module id 带数字仍认模块分支（feat/oauth2 的 2 不是 issue 号）" "TASK_READY (模块分支)|断链0"
+
+# 正向对照：真正的 task 分支（老约定）仍按 issue 号判定，不能被这次调整弄回归
+mod_repo; git checkout -qb feat/11-login 2>/dev/null
+chk "task 分支仍按 issue 号判定（老约定不回归）" "TASK_READY|断链0"
+
 # 反向用例：module id 是单字母时，"master" 不能被当成模块分支
 base; mkdir -p spec tasks/a .agent; touch spec/a.md tasks/a/plan.md
 echo '{"tracker":"github","activeModule":"a","modules":{"a":{"issue":9}}}' > .agent/state.json
@@ -196,6 +214,56 @@ git checkout -qb master 2>/dev/null || git checkout -q master 2>/dev/null
 chk "module id=a 时 master 不算模块分支（子串陷阱）" "TASK_CLAIMED|断链1"
 
 export PATH="$OLDPATH"
+
+# ── 「刻意空闲」豁免必须覆盖本地模式 ───────────────────────
+# 0.7.12 之前这条豁免排在 tracker 分支**之后**，tracker=none 根本够不到，
+# 落进本地模式分支报出「有 spec 但没有 tasks//plan.md」+「/plan 为 [] 拆解任务」
+# —— 路径里那个双斜杠和空的 [] 就是 MODULE="" 漏出来的。
+# 而本地模式没有任何命令负责给**第一个**模块设 activeModule（/sync-map 是
+# github 专属），所以这是本地模式跑完 /spec 的必经状态，不是边角料。
+base; mkdir -p spec .agent; touch spec/CAPABILITY-MAP.md spec/a.md
+echo '{"tracker":"none","activeModule":""}' > .agent/state.json
+chk "本地模式 activeModule 为空 → 刻意空闲，不是断链" "IDLE (无活跃模块)|断链0"
+
+# 正向对照：有 activeModule 却缺 plan，断链照报（豁免不能扩大化）
+base; mkdir -p spec .agent; touch spec/CAPABILITY-MAP.md spec/a.md
+echo '{"tracker":"none","activeModule":"a"}' > .agent/state.json
+chk "本地模式有活跃模块却缺 plan → 真断链照报" "SPECED (本地模式)|断链1"
+
+# 反向：连 state.json 都没有是真断链，但措辞不能把空 MODULE 拼进路径
+base; mkdir -p spec; touch spec/CAPABILITY-MAP.md spec/a.md
+OUT_NS="$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)"
+case "$OUT_NS" in
+  *'tasks//plan.md'*|*'为 []'*)
+    printf '  ❌ 空 activeModule 漏进了路径或建议\n'; FAIL=$((FAIL+1)) ;;
+  *'没有 .agent/state.json'*)
+    printf '  ✅ 无 state.json → 报的是真问题，不拼空模块名\n'; PASS=$((PASS+1)) ;;
+  *)
+    printf '  ❌ 无 state.json 时的断链措辞不对\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# ── 归档识别不能被大文件搞挂 ───────────────────────────────
+# is_archived 原来写的是 `head -10 | grep -qiE`，正是本仓明令禁止的
+# 「cmd | grep -q」：grep 命中即关管道，head 吃 SIGPIPE(141)，pipefail 传出
+# → 归档豁免失效 → 假违规。实测门槛是前 10 行约 256KB。
+mk_todo() {  # $1=首行前缀
+  base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
+  python3 -c "import sys;open('tasks/x/todo.md','w').write(sys.argv[1]+'y'*400000+chr(10))" "$1"
+  echo '{"tracker":"github","activeModule":"x","modules":{"x":{"issue":9}}}' > .agent/state.json
+}
+
+mk_todo '已归档 '
+case "$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)" in
+  *"二者不能并存"*) printf '  ❌ 前10行超大的已归档 todo.md 被误报成并存\n'; FAIL=$((FAIL+1)) ;;
+  *)                printf '  ✅ 前10行超大的已归档 todo.md 仍被豁免\n'; PASS=$((PASS+1)) ;;
+esac
+
+# 正向对照：同样大、但**没有**归档声明的，必须照报
+mk_todo '活的清单 '
+case "$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)" in
+  *"二者不能并存"*) printf '  ✅ 同样大但没归档声明的 todo.md 照报并存\n'; PASS=$((PASS+1)) ;;
+  *)                printf '  ❌ 大文件把并存检测整个吞掉了\n'; FAIL=$((FAIL+1)) ;;
+esac
 
 # ── 零足迹模式要把触发指令补回来 ──
 # 实测依据：evals 的 B 组(= 这个模式)hook 正常激活但模型全程没加载 skill。
@@ -473,6 +541,18 @@ if [ -f .agent/state.json ] && [ -n "$(CLAUDE_PROJECT_DIR="$TMP/td" bash "$H" 2>
 else
   printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
 fi
+
+# 自检不能因为 CLAUDE_PLUGIN_ROOT 没设就整段跳过。
+# 「实际跑一遍而不是让人相信一句话」是 0.7.9 把 teardown 改成脚本的唯一理由，
+# 而它自己会退回成一句话 —— 上面所有 teardown 用例都显式设了这个变量，
+# 所以三个版本没人发现。setup-convention.sh 一直有 $HERE 兜底。
+mktd
+case "$(bash "$TD" 2>&1)" in
+  *"已验证：hook 不再注入"*)
+    printf '  ✅ 不设 CLAUDE_PLUGIN_ROOT 时自检仍然真跑\n'; PASS=$((PASS+1)) ;;
+  *)
+    printf '  ❌ 自检被静默跳过 —— teardown 退回成「相信一句话」\n'; FAIL=$((FAIL+1)) ;;
+esac
 
 # ── setup ↔ teardown 往返:issue 映射不能丢 ─────────────────
 # 0.7.9 引入 state.json.disabled 这个新状态,而 setup 不认识它 ——

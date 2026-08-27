@@ -193,7 +193,14 @@ except Exception: print(0)" 2>/dev/null)
     bad "存在 .agent/state.json.disabled 但它的 tracker=[${OLDT:-空}] 与本次的 [${WANT}] 不符"
     printf '     不自动恢复也不新建 —— 新建会让 .disabled 里的 issue 映射被忘掉,\n'
     printf '     而下一步 /sync-map 会在 GitHub 上建出一套重复 issue。\n'
-    printf '     二选一：用 %s 模式重跑；或先手工处理 .agent/state.json.disabled\n' "${OLDT:-原}"
+    # 不能写「用 <tracker> 模式重跑」—— 本脚本只收 github|local，
+    # .disabled 里的 tracker 若是 gitlab/jira，那个建议根本做不到。
+    case "${OLDT}" in
+      github|none) printf '     二选一：用 %s 模式重跑；或先手工处理 .agent/state.json.disabled\n' \
+                     "$( [ "${OLDT}" = github ] && echo github || echo local )" ;;
+      *)           printf '     本脚本只收 github|local，而它是 [%s] —— 手工处理 .agent/state.json.disabled\n' \
+                     "${OLDT:-空}" ;;
+    esac
   fi
 else
   T=$( [ "$MODE" = github ] && echo github || echo none )

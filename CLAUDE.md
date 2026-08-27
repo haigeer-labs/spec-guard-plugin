@@ -43,7 +43,7 @@ plugins/spec-guard/
 docs/design.md                          ← 需求与设计
 scripts/
 ├── validate.sh                     ← 仓库完整性校验（下面几个 check 由它调）
-└── check-*.py                      ← manifests / bash32 / 命令名 / README↔模板同步
+└── check-*.py                      ← manifests / bash32 / grep-pipe / 命令名 / README↔模板同步
 ```
 
 ---
@@ -86,11 +86,11 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 79 个断言：`test-phase-guard.sh` 52 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+当前 91 个断言：`test-phase-guard.sh` 60 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
 刻意空闲 / 模块级分支 / 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
-`test-verify-artifacts.sh` 27 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
-「零足迹激活」等反向用例）。
+`test-verify-artifacts.sh` 31 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
+「零足迹激活」「探测失败不发绿灯」等反向用例）。
 
 **两个 hook 共用的判据要在两边都加用例。** 0.7.0 同时改了 `phase-guard` 和
 `verify-artifacts` 的激活判据，但只给前者加了测试，后者漏了三个版本。
@@ -102,8 +102,8 @@ scripts/
 
 ### 校验器自己也有回归套件
 
-`scripts/test-checkers.sh`（11 个断言，已接进 `validate.sh`，免费）。
-四个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
+`scripts/test-checkers.sh`（14 个断言，已接进 `validate.sh`，免费）。
+五个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
 
 **为什么单独有这一层**：一轮之内出过**四次**「新加的防线自己有毛病」——
 `check-command-names` 漏双引号前缀、`check-readme-sync` 没跑反向用例、
@@ -212,7 +212,9 @@ git merge-base --is-ancestor "$INST" HEAD \
 - **不要在 hook 里输出非 JSON** —— 宿主会拒绝，且失败是静默的
 - **不要写 `cmd | grep -q`** —— `grep -q` 命中即关管道，还在输出的 `cmd` 吃到
   SIGPIPE(141)，`set -o pipefail` 把它传出来，判断永远为假。用 herestring
-  （`grep -q pat <<<"$var"`）或纯 bash `case`
+  （`grep -q pat <<<"$var"`）或纯 bash `case`。
+  `scripts/check-grep-pipe.py` 会拦（0.7.12 加的 —— 这条规则在只有文字的
+  三个版本里被违反了三次，注释里提到该模式是允许的）
 - **不要给 hook 加长耗时操作** —— 它在每次用户发言前跑，超过 1s 就会有体感
 
 ---

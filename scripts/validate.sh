@@ -41,6 +41,11 @@ echo "═══ bash 3.2 兼容（macOS 自带 bash）═══"
 python3 scripts/check-bash32.py $(find . -name "*.sh" -not -path "./.git/*") || F=1
 
 echo ""
+echo "═══ 管道 + grep -q（SIGPIPE 陷阱）═══"
+# shellcheck disable=SC2046
+python3 scripts/check-grep-pipe.py $(find . -name "*.sh" -not -path "./.git/*") || F=1
+
+echo ""
 echo "═══ 用户可见输出里的命令名 ═══"
 python3 scripts/check-command-names.py || F=1
 

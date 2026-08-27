@@ -47,6 +47,18 @@ printf 'X=1\necho "（#%s{ISSUE}）"\n' "$D" > "$TMP/good32.sh"
 want fail "bash32: \$VAR 紧跟全角括号 → 报错" python3 "$ROOT/scripts/check-bash32.py" "$TMP/bad32.sh"
 want pass "bash32: \${VAR} 写法 → 放行"       python3 "$ROOT/scripts/check-bash32.py" "$TMP/good32.sh"
 
+# ── check-grep-pipe.py ──
+# 踩过的真 bug（三次）：`cmd | grep -q` 里 grep 命中即关管道，上游吃 SIGPIPE(141)，
+# pipefail 传出 → 判断永远为假。坏样本同样**运行时拼装**，理由和上面那条一样：
+# 写成字面量的话 validate.sh 里的 check-grep-pipe 会抓自己的测试脚本。
+Q='q'
+printf 'f(){ head -1 x | grep -%s pat; }\n' "$Q" > "$TMP/badgp.sh"
+printf 'f(){ grep -%s pat <<<"$(head -1 x)"; }\n' "$Q" > "$TMP/goodgp.sh"
+printf '# 注释里写 cmd | grep -%s 是允许的\necho ok\n' "$Q" > "$TMP/cmtgp.sh"
+want fail "grep-pipe: 管道 + grep -q → 报错"   python3 "$ROOT/scripts/check-grep-pipe.py" "$TMP/badgp.sh"
+want pass "grep-pipe: herestring 写法 → 放行"  python3 "$ROOT/scripts/check-grep-pipe.py" "$TMP/goodgp.sh"
+want pass "grep-pipe: 注释里提到不算 → 放行"   python3 "$ROOT/scripts/check-grep-pipe.py" "$TMP/cmtgp.sh"
+
 # ── check-manifests.py ──
 mkm() {  # $1=目录 $2=plugin.json 里的 name
   rm -rf "$1"; mkdir -p "$1/.claude-plugin" "$1/plugins/demo/.claude-plugin"

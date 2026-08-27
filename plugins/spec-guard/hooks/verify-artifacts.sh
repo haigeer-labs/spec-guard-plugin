@@ -47,8 +47,13 @@ bad()  { printf '  ❌ %s\n' "$1"; F=$((F+1)); }
 skip() { printf '  ⏭  %s\n' "$1"; }
 
 # ── 约定未启用就别装懂 ──────────────────────────────────────
-if [ ! -f CLAUDE.md ] || ! grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null; then
-  echo "本项目没有启用 spec-guard 约定（CLAUDE.md 缺约定标题）。"
+# 激活信号两种，满足其一即可：CLAUDE.md 的约定标题，或 .agent/state.json 存在
+# （后者是零 CLAUDE.md 足迹模式，见 phase-guard.sh 同处注释）
+ACTIVE=false
+[ -f CLAUDE.md ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && ACTIVE=true
+[ -f .agent/state.json ] && ACTIVE=true
+if [ "$ACTIVE" != true ]; then
+  echo "本项目没有启用 spec-guard 约定（CLAUDE.md 缺约定标题，且无 .agent/state.json）。"
   echo "先跑 /setup-convention。"
   exit 2
 fi
@@ -175,6 +180,7 @@ if [ "${TRACKER}" != "none" ]; then
   L=$(printf '%s' "${T}" | grep -c . || true)
   if [ -n "${T}" ]; then
     bad "存在 $(printf '%s' "${T}" | tr '\n' ' ') 但已声明外部 tracker —— 二者不能并存，必然分叉"
+    printf '     若它是已完成模块的历史记录：在前 10 行内写上「已归档」或 ARCHIVED 即可豁免\n'
   else
     ok "无活的 todo.md 与 tracker 并存$( [ "${A}" -gt 0 ] && echo "（${A} 份已归档，不计）" )"
   fi

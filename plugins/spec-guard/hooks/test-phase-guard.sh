@@ -202,6 +202,67 @@ else
   printf '  ❌ 重复写入声明块\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 声明块瘦身：行数是这次改动的核心指标，钉住它 ──
+GN=$(wc -l < "$PLUGDIR/templates/claude-block-github.md" | tr -d ' ')
+LN=$(wc -l < "$PLUGDIR/templates/claude-block-local.md" | tr -d ' ')
+if [ "$GN" -le 20 ] && [ "$LN" -le 20 ]; then
+  printf '  ✅ 声明块保持精简（github %s 行 / local %s 行，上限 20）\n' "$GN" "$LN"; PASS=$((PASS+1))
+else
+  printf '  ❌ 声明块又胖了（github %s / local %s，上限 20）—— 细则该进 skill\n' "$GN" "$LN"; FAIL=$((FAIL+1))
+fi
+
+# ── 零 CLAUDE.md 足迹模式 ──
+rm -rf "$TMP/z"; mkdir -p "$TMP/z"; cd "$TMP/z"; git init -q 2>/dev/null
+echo "# 干净项目" > CLAUDE.md
+bash "$SETUP" local --no-claude-md >/dev/null 2>&1
+if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 0 ] && [ -f .agent/state.json ]; then
+  printf '  ✅ --no-claude-md 不写声明块，但建了 state.json\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ --no-claude-md 行为不对\n'; FAIL=$((FAIL+1))
+fi
+if [ -n "$(CLAUDE_PROJECT_DIR="$TMP/z" bash "$H" 2>/dev/null)" ]; then
+  printf '  ✅ 零足迹下 hook 仍由 state.json 激活\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 零足迹下 hook 静默了 —— 这个模式等于没用\n'; FAIL=$((FAIL+1))
+fi
+
+# ── --replace 就地升级 ──
+rm -rf "$TMP/u"; mkdir -p "$TMP/u"; cd "$TMP/u"; git init -q 2>/dev/null
+printf '# 我的项目\n\n标记之前的内容\n' > CLAUDE.md
+bash "$SETUP" local >/dev/null 2>&1
+printf '\n## 标记之后的内容\n' >> CLAUDE.md
+python3 - <<'PYEOF'
+p='CLAUDE.md'; s=open(p,encoding='utf-8').read()
+s=s.replace('<!-- END:agent-skills-convention -->', ('旧版遗留的一大段' + chr(10)) * 30 + '<!-- END:agent-skills-convention -->')
+open(p,'w',encoding='utf-8').write(s)
+PYEOF
+BEFORE=$(wc -l < CLAUDE.md)
+bash "$SETUP" local --replace >/dev/null 2>&1
+AFTER=$(wc -l < CLAUDE.md)
+if [ "$AFTER" -lt "$BEFORE" ] && [ "$(grep -c '旧版遗留' CLAUDE.md)" -eq 0 ]; then
+  printf '  ✅ --replace 换掉块内旧内容（%s → %s 行）\n' "$BEFORE" "$AFTER"; PASS=$((PASS+1))
+else
+  printf '  ❌ --replace 没清掉块内旧内容\n'; FAIL=$((FAIL+1))
+fi
+if grep -q "我的项目" <<<"$(head -1 CLAUDE.md)" && [ "$(grep -c '标记之后的内容' CLAUDE.md)" -eq 1 ]; then
+  printf '  ✅ --replace 不碰标记外的内容\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ --replace 动了标记外的内容 —— 这是用户自己的文档\n'; FAIL=$((FAIL+1))
+fi
+if [ "$(grep -c 'BEGIN:agent-skills-convention' CLAUDE.md)" -eq 1 ] \
+   && [ "$(grep -c 'END:agent-skills-convention' CLAUDE.md)" -eq 1 ]; then
+  printf '  ✅ --replace 后标记仍只有一对\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 标记重复或丢失\n'; FAIL=$((FAIL+1))
+fi
+BEFORE2=$(wc -l < CLAUDE.md)
+bash "$SETUP" local >/dev/null 2>&1
+if [ "$(wc -l < CLAUDE.md)" -eq "$BEFORE2" ]; then
+  printf '  ✅ 不加 --replace 时已有块原样不动\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 无 --replace 却改了 CLAUDE.md\n'; FAIL=$((FAIL+1))
+fi
+
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

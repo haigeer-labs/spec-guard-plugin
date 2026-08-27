@@ -2,6 +2,61 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] - 2026-08-27
+
+### 变更（需要重跑 `/setup-convention --replace` 迁移）
+
+- **CLAUDE.md 声明块从 106 行瘦到 15 行**（local 模式 27 → 13）。搬走的过程细则
+  全部进了 `spec-github-bridge` skill（219 → 277 行）。
+
+  起因是使用者的实测：接入后项目 CLAUDE.md 321 行，声明块占 108 行 = 34%。
+  而官方对 CLAUDE.md 的原话是 **target under 200 lines per CLAUDE.md file.
+  Longer files consume more context and reduce adherence.**
+
+  查文档时排掉了一个看起来对的方案：**`@path` import 省不了行数**。官方明说
+  splitting into imports *helps organization but doesn't reduce context, since
+  imported files load at launch* —— 它只解决维护，不解决占用。
+
+  正解是官方自己给的：*If an entry is a multi-step procedure or only matters for
+  one part of the codebase, move it to a **skill** or a path-scoped rule instead.*
+  那 106 行里绝大部分是过程，而插件本来就有一个 skill，内容还重复了一半。
+
+  留在 CLAUDE.md 里的只有两样：**推导不出来的事实**（路径、tracker 类型、
+  几条硬禁令）+ **一句触发指令**（动 spec/拆任务/取任务/交付之前先加载 skill）。
+  触发指令不能省 —— skill 是按需加载的，不写死的话模型可能在没加载 skill 的
+  情况下就把 `SPEC.md` 建到根目录了，而那正是这个块当初存在的理由。
+
+  `.claude/rules/` + `paths:` 前缀作用域**没有采用**：它在 Claude 读到匹配文件时
+  才触发，而「不要在根目录建 SPEC.md」恰恰要在还没读任何文件时就知道。
+
+### 新增
+
+- **`/setup-convention --replace`** —— 已存在的声明块就地升级到当前模板。
+  只替换 `BEGIN`/`END` 之间，标记外一个字节不碰（有反向用例钉住）。
+  没有它的话老用户没法迁移：原来遇到已存在的块是直接跳过的。
+- **`/setup-convention --no-claude-md`** —— 完全不写声明块。
+- **`.agent/state.json` 成为第二个激活信号。** 两个 hook 原先只认 CLAUDE.md 里的
+  约定标题，现在「有标题」或「有 state.json」满足其一即可。这是上一条的配套：
+  不写声明块的项目也得让 hook 认得出自己管的项目。`.agent/` 是本插件自己的目录，
+  拿它当信号不会污染无关仓库 —— 「默认不生效」那条不变量仍然成立。
+
+### 改进
+
+- **把「归档豁免」这条知识挪进报错文案。** 原先它占声明块 15 行常驻 context，
+  而它只在报「todo.md 与 tracker 并存」那一刻才有用。现在两个 hook 的报错里都
+  带上「在前 10 行内写『已归档』即可豁免」—— **只在真报错时才花 context**。
+  顺带发现 HTML 注释是免费的：官方原话 block-level HTML comments *are stripped
+  before the content is injected into Claude's context*，所以 BEGIN/END 标记不计成本。
+
+### 已知限制（补充）
+
+- **`--no-claude-md` 模式下模型对目录约定的感知晚一步。** hook 挂在
+  `UserPromptSubmit` 上，注入时机其实早于对话，但它注入的是**状态**不是**约定**；
+  选这个模式的项目要么自己在别处写一句「动 spec/tasks 前先加载
+  `spec-github-bridge`」，要么接受这一点。
+- **`--replace` 认的是完整标记行**（`<!-- BEGIN:agent-skills-convention -->`）。
+  手工改坏了标记（比如删掉 `<!-- -->`）的项目会被当成「没装过」而追加第二块。
+
 ## [0.6.1] - 2026-08-27
 
 ### 修复

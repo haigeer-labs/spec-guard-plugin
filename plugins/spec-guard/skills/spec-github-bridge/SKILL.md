@@ -33,6 +33,25 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 ---
 
+## 目录约定（硬约束 —— CLAUDE.md 里只写了结论）
+
+| 放什么 | 路径 | 不能怎样 |
+|---|---|---|
+| 能力图 | `spec/CAPABILITY-MAP.md` | 未经人工评审不落 issue |
+| 模块 spec | `spec/<module-id>.md` | kebab-case，**一次选定中途绝不改名**（改名 = state.json / issue / 分支三处同时失联） |
+| 计划文档 | `tasks/<module-id>/plan.md` | 不共用 `tasks/plan.md`，多模块时会互相覆盖 |
+| 任务清单 | **GitHub Issues** | **不创建任何 `todo.md`** —— 两份真相源必然分叉 |
+| 项目状态 | `.agent/state.json` | `activeModule` + `modules.<id>.issue` |
+
+**不要在项目根建 `SPEC.md` 或 `SPEC-<module>.md`。** `/build` 的 spec 查找规则只有三条
+路径：根目录 `SPEC.md`、`docs/SPEC.md`、`spec/` 下的文件 —— **只有第三条是通配的**。
+根目录的 `SPEC-identity.md` 它根本找不到，会当作「没有 spec」直接停下。
+
+`plan.md` 的 Task List 章节**只放 issue 编号的有序索引，不重复 checklist**，开头注明
+`> Tasks tracked in GitHub Issues #<module-issue>`。写成 checkbox 就是第二份真相源。
+
+---
+
 ## 操作一：能力图落库（bootstrap）
 
 **输入**：`spec/CAPABILITY-MAP.md` 已经过人工评审
@@ -135,6 +154,45 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 把 issue 正文的验收标准交给 `/build`，替代它原本从 todo.md 读取的内容。
 
 **如果当前模块没有可执行 task**：检查是否所有 task 都已关闭 → 若是，把该模块 issue 关闭，按 build order 推进 `activeModule`，写回 state.json。
+
+---
+
+## 归档的任务清单
+
+已完成模块的 `todo.md` 是**历史记录**，不是活的任务清单。检查器默认会把它当成
+「与 tracker 并存」报违规 —— 那是误报，而**误报会让人关掉整个机制**。
+
+豁免办法：在文件的**前 10 行**内写上 `已归档` 或 `ARCHIVED`：
+
+    # Todo: <模块名>
+
+    > ## ⚠️ 已归档 —— 任务级全部完成
+    > 落地记录：issue #34 已关闭 · PR #36 已合入 main
+
+只认前 10 行是刻意的 —— 避免正文里偶然提到「已归档」就被误判。
+`phase-guard` 与 `verify-artifacts` 共用这条判据。
+
+---
+
+## 连贯推进一个模块（`/build auto`）
+
+模块分支建好后用 `/build auto` 跑完整个模块，而不是 `/next` → `/build` 逐条停。
+它只在开跑前要一次确认，之后每个 task 照样 RED → GREEN → 回归 → **单独 commit**，
+去掉的是人在 task 之间的停顿，**不是验证**。
+
+本约定下它的任务来源是 issue，不是 `plan.md` 的 checkbox（见操作三）：
+按 sub_issues 顺序、跳过被 `blocked-by` 阻塞的，逐个做。
+
+它会在这三种情况停下来问，**别绕过** —— 那是这条流水线上仅剩的刹车：
+测试改不红 / 构建坏了、spec 没覆盖到的决策、高风险不可逆的改动。
+
+---
+
+## 切换模块
+
+切换 `activeModule` 前，当前模块必须没有 in-progress 的 task。
+切换后**重读**该模块的 `spec/<module-id>.md` 和 `tasks/<module-id>/plan.md` ——
+不重读的话，你手里还是上一个模块的上下文。
 
 ---
 

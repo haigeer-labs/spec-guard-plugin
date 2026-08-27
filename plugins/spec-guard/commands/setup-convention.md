@@ -1,6 +1,6 @@
 ---
 description: 在当前项目落地多 Spec 目录约定（首次使用本插件时跑一次）
-argument-hint: "[github|local] [--dry-run]"
+argument-hint: "[github|local] [--dry-run] [--replace] [--no-claude-md]"
 allowed-tools: Bash
 ---
 
@@ -17,6 +17,18 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 
 `$ARGUMENTS` 缺省时传 `github`。用户说「先看看会做什么」就加 `--dry-run`。
 
+### 另外两个开关
+
+| 开关 | 什么时候用 |
+|---|---|
+| `--replace` | 项目里已有声明块，要**就地升级**到当前模板。只动 `BEGIN`/`END` 之间，标记外一个字节不碰。**不加它时已存在的块原样跳过** |
+| `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活 |
+
+`--no-claude-md` 是给 `CLAUDE.md` 已经接近 200 行上限的项目用的（官方建议
+target under 200 lines，超了既费 context 又降低 adherence）。代价是模型在
+hook 注入之前对目录约定一无所知 —— 所以选它的项目要么自己在别处写一句
+「动 spec/tasks 之前先加载 `spec-github-bridge`」，要么接受靠 hook 每轮兜底。
+
 ## 之后
 
 把脚本输出**原样转述**给用户（它已经是给人看的格式），然后补充一句：
@@ -30,5 +42,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 但 `CLAUDE.md` 声明块、`spec/`、`.agent/state.json` 必须写进**项目仓库并提交**——
 其中 CLAUDE.md 那段声明是激活 agent-skills 内置 External Tracker 分支的开关，
 不在仓库里，队友的 `/plan` 还是会写 todo.md。
+
+声明块**只放推导不出来的事实**（路径、tracker 类型、几条硬禁令），
+「怎么做」全在 `spec-github-bridge` skill 里 —— skill 按需加载，不占每轮 context。
+这是官方对 CLAUDE.md 的明确建议：多步过程应该移进 skill 或 path-scoped rule。
 
 插件不能替用户往仓库写文件，所以需要这个命令。

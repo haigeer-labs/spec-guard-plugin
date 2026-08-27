@@ -41,7 +41,16 @@ detect_tracker() {
 }
 
 # ── 只在启用了本约定的仓库生效 ──────────────────────────────
-[ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null || exit 0
+#   两种激活信号，满足其一即可：
+#     1. CLAUDE.md 里的约定标题（常规模式）
+#     2. .agent/state.json 存在（**零 CLAUDE.md 足迹模式**）
+#   加第 2 条是为了让不想动 CLAUDE.md 的项目也能用：那个文件官方建议
+#   控制在 200 行内，而声明块曾经一口气占掉 100 多行。
+#   .agent/ 是本插件自己的目录，拿它当信号不会污染无关项目。
+ACTIVE=false
+[ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && ACTIVE=true
+[ -f ".agent/state.json" ] && ACTIVE=true
+[ "$ACTIVE" = true ] || exit 0
 
 STATE=".agent/state.json"
 
@@ -110,7 +119,7 @@ HAS_TODO=false
 [ -n "$MODULE" ] && [ -f "tasks/$MODULE/todo.md" ] && HAS_TODO=true
 TODO_FOUND=$(live_todos | head -1)
 if [ "$TRACKER" != "none" ] && [ -n "$TODO_FOUND" ]; then
-  broken "存在 ${TODO_FOUND}，但本项目已声明外部 tracker —— 二者不能并存"
+  broken "存在 ${TODO_FOUND}，但本项目已声明外部 tracker —— 二者不能并存。若它是已完成模块的历史记录，在前 10 行内写上「已归档」即可豁免"
 fi
 
 # ── 4. GitHub 层 ───────────────────────────────────────────

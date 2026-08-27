@@ -6,14 +6,25 @@
 # 理由：写文件是幂等性和安全性要求高的操作，不能有非确定性。
 #
 # 用法:
-#   bash setup-convention.sh github [--dry-run]
-#   bash setup-convention.sh local  [--dry-run]
+#   bash setup-convention.sh github [--dry-run] [--replace] [--no-claude-md]
+#   bash setup-convention.sh local  [--dry-run] [--replace] [--no-claude-md]
+#
+#   --replace       已存在的声明块就地升级到当前模板（只动 BEGIN/END 之间）
+#   --no-claude-md  完全不写声明块，hook 改由 .agent/state.json 激活
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
 MODE="${1:-github}"
 DRY=false
-for a in "$@"; do [ "$a" = "--dry-run" ] && DRY=true; done
+REPLACE=false      # 已存在的声明块：默认跳过，--replace 才就地升级
+NO_BLOCK=false     # 零 CLAUDE.md 足迹：完全不写声明块，靠 .agent/state.json 激活
+for a in "$@"; do
+  case "$a" in
+    --dry-run)      DRY=true ;;
+    --replace)      REPLACE=true ;;
+    --no-claude-md) NO_BLOCK=true ;;
+  esac
+done
 case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exit 2 ;; esac
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -99,9 +110,8 @@ fi
 echo ""
 echo "═══ 落地约定（模式：${MODE}）═══"
 
-# 已安装则只报告
+# 已安装则只报告（--replace 时改为就地升级）
 if [ -f CLAUDE.md ] && grep -q "$MARK_B" CLAUDE.md 2>/dev/null; then
-  skip "CLAUDE.md 声明块已存在（如需换模式，手动替换标记之间的内容）"
   ALREADY=true
 else
   ALREADY=false
@@ -110,15 +120,41 @@ fi
 if [ "$DRY" = false ]; then mkdir -p spec tasks .agent; fi
 act "目录 spec/ tasks/ .agent/"
 
-# CLAUDE.md：追加，绝不覆盖
-if [ "$ALREADY" = false ]; then
-  SRC="$TPL/claude-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
+# CLAUDE.md：追加，绝不覆盖标记之外的任何内容
+SRC="$TPL/claude-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
+if [ "$NO_BLOCK" = true ]; then
+  skip "CLAUDE.md 声明块（--no-claude-md）—— 改由 .agent/state.json 激活 hook"
+elif [ "$ALREADY" = true ] && [ "$REPLACE" = false ]; then
+  skip "CLAUDE.md 声明块已存在（升级到当前模板：加 --replace）"
+elif [ "$ALREADY" = true ]; then
+  # 就地替换标记之间的内容。**只动标记内**，标记外一个字节不碰。
+  # 用 python3 而不是 sed：bash 3.2 的 sed 在多字节内容上不可靠。
+  [ -f "$SRC" ] || bad "模板缺失: $SRC"
+  if [ "$DRY" = false ] && [ -f "$SRC" ]; then
+    OLDN=$(python3 - "$SRC" "$MARK_B" "$MARK_E" <<'PYEOF'
+import sys
+src, mb, me = sys.argv[1], sys.argv[2], sys.argv[3]
+lines = open('CLAUDE.md', encoding='utf-8').read().split('\n')
+b = next(i for i, l in enumerate(lines) if l.strip() == mb)
+e = len(lines) - 1 - next(i for i, l in enumerate(reversed(lines)) if l.strip() == me)
+body = open(src, encoding='utf-8').read().rstrip('\n').split('\n')
+out = lines[:b + 1] + body + lines[e:]
+open('CLAUDE.md', 'w', encoding='utf-8').write('\n'.join(out))
+print(e - b - 1)
+PYEOF
+) || OLDN="?"
+    NEWN=$(wc -l < "$SRC" | tr -d ' ')
+    act "CLAUDE.md 声明块（就地升级：${OLDN} 行 → ${NEWN} 行）"
+  else
+    act "CLAUDE.md 声明块（就地升级）"
+  fi
+else
   [ -f "$SRC" ] || bad "模板缺失: $SRC"
   if [ "$DRY" = false ] && [ -f "$SRC" ]; then
     [ -f CLAUDE.md ] && printf '\n' >> CLAUDE.md
     { echo "$MARK_B"; cat "$SRC"; echo "$MARK_E"; } >> CLAUDE.md
   fi
-  act "CLAUDE.md 声明块（追加）"
+  act "CLAUDE.md 声明块（追加，$(wc -l < "$SRC" | tr -d ' ') 行）"
 fi
 
 # state.json：不覆盖

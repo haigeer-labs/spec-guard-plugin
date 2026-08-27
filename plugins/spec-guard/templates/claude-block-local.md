@@ -1,27 +1,13 @@
 ## Agent Skills 集成约定
 
-> 本块由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 保留 `<!-- BEGIN/END -->` 标记，`/setup-convention --replace` 靠它升级本块。
 
-### Spec 布局（多模块）
-
-- 能力图：`spec/CAPABILITY-MAP.md`
-- 模块 spec：`spec/<module-id>.md`（kebab-case，一次选定，中途绝不改名）
-- **不要**在项目根创建 `SPEC.md` 或 `SPEC-<module>.md`
-
-### Planning 产物
-
-- 计划文档：`tasks/<module-id>/plan.md`
-- 任务清单：`tasks/<module-id>/todo.md`
-
-每个模块的产物互相隔离，不要共用 `tasks/plan.md`。
-
-### Build 输入源
-
-1. 读 `.agent/state.json` 确认 `activeModule`
-2. 从 `tasks/<activeModule>/todo.md` 取第一个未勾选任务
-3. 不要跨模块取任务
-
-### 切换模块
-
-切换 `activeModule` 前，当前模块必须没有进行中的 task。
-切换后重读该模块的 spec 和 plan。
+- 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
+- **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、
+  `docs/SPEC.md`、`spec/` 三条路径，**只有第三条是通配的**
+- 每个模块的产物互相隔离：`tasks/<module-id>/plan.md` + `tasks/<module-id>/todo.md`，
+  **不要共用 `tasks/plan.md`**
+- `/build` 取任务：读 `.agent/state.json` 的 `activeModule`，从该模块的 `todo.md`
+  取第一个未勾选项，**不跨模块取**
+- 切换 `activeModule` 前当前模块不能有进行中的 task；切换后重读该模块的 spec 和 plan

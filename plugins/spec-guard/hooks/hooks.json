@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "SCRIPT=\"${CLAUDE_PLUGIN_ROOT}/hooks/phase-guard.sh\"; [ -f \"$SCRIPT\" ] || SCRIPT=\"${CLAUDE_PROJECT_DIR}/.claude/hooks/phase-guard.sh\"; [ -f \"$SCRIPT\" ] && bash \"$SCRIPT\" || true"
+            "command": "SCRIPT=\"${CLAUDE_PLUGIN_ROOT}/hooks/phase-guard.sh\"; [ -f \"$SCRIPT\" ] || SCRIPT=\"${CLAUDE_PROJECT_DIR}/.claude/hooks/phase-guard.sh\"; if [ -f \"$SCRIPT\" ]; then bash \"$SCRIPT\" || printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"spec-guard: phase-guard.sh 执行失败(非零退出),本轮没有链路状态注入。这不是「未启用」—— 未启用时它静默退 0。排查: CLAUDE_PROJECT_DIR=$(pwd) bash -x \\\"$SCRIPT\\\"\"}}'; fi"
           }
         ]
       }

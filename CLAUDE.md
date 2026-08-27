@@ -81,7 +81,7 @@ scripts/
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 65 个断言：`test-phase-guard.sh` 41 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+当前 68 个断言：`test-phase-guard.sh` 44 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
 刻意空闲 / 模块级分支 / 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
 `test-verify-artifacts.sh` 24 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
@@ -223,5 +223,6 @@ CLAUDE_PROJECT_DIR=/path/to/test-project bash plugins/spec-guard/hooks/phase-gua
   | python3 -c "import sys,json;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])"
 ```
 
-**无输出**的两种可能：目标项目的 CLAUDE.md 没有约定标题（正常），或脚本报错
-（用 `bash -x` 排查）。
+**无输出**现在只剩一种可能：两个激活信号都不满足（正常）。
+0.7.8 起脚本**非零退出会注入一条说明**而不是被 `hooks.json` 的 `|| true` 吞掉 ——
+「没输出」和「崩了」以前长得一模一样，那正是第一次实跑那条教训说的形状。

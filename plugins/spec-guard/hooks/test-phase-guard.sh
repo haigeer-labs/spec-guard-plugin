@@ -266,6 +266,47 @@ else
   printf '  ❌ 安装路径下的版本行是 [%s]\n' "$GOT"; FAIL=$((FAIL+1))
 fi
 
+# ── 失败必须可观察 ──────────────────────────────────────────
+# 第一次实跑的教训是「一个永远在降级的探测器和一个坏掉的探测器没区别」。
+# 同一句话对「崩掉的」也成立:0.7.8 之前 hooks.json 结尾是 `|| true`,
+# 脚本非零退出被吞掉,宿主收到空输出 —— 和「未启用」一模一样。
+HJ="$PLUGDIR/hooks/hooks.json"
+HCMD=$(python3 -c "
+import json,sys
+print(json.load(open(sys.argv[1]))['hooks']['UserPromptSubmit'][0]['hooks'][0]['command'])" "$HJ")
+
+rm -rf "$TMP/hk"; mkdir -p "$TMP/hk/crash/hooks" "$TMP/hk/ok/hooks"
+printf '#!/bin/bash\nexit 3\n' > "$TMP/hk/crash/hooks/phase-guard.sh"
+printf '#!/bin/bash\nexit 0\n' > "$TMP/hk/ok/hooks/phase-guard.sh"
+
+CR=$(CLAUDE_PLUGIN_ROOT="$TMP/hk/crash" CLAUDE_PROJECT_DIR="$TMP/hk" bash -c "$HCMD" 2>/dev/null)
+if printf '%s' "$CR" | python3 -c 'import sys,json;c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"];sys.exit(0 if "执行失败" in c else 1)' 2>/dev/null; then
+  printf '  ✅ hook 崩溃时输出合法 JSON 并说明失败\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ hook 崩溃被静默吞掉（和「未启用」分不开）\n'; FAIL=$((FAIL+1))
+fi
+
+OK=$(CLAUDE_PLUGIN_ROOT="$TMP/hk/ok" CLAUDE_PROJECT_DIR="$TMP/hk" bash -c "$HCMD" 2>/dev/null)
+if [ -z "$OK" ]; then
+  printf '  ✅ 静默退 0 时确实无输出（未启用的正常表现）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 未启用时不该有输出\n'; FAIL=$((FAIL+1))
+fi
+
+# emit():jq 和 python3 都没有时,宁可静默也不能吐半截 JSON。
+# 原先是无条件 printf 拼 JSON,python3 一失败命令替换就是空,吐出 {"...":}
+rm -rf "$TMP/nobin"; mkdir -p "$TMP/nobin"
+for b in bash git grep sed find ls wc tr head cat; do
+  BP=$(command -v "$b" 2>/dev/null) && ln -sf "$BP" "$TMP/nobin/$b" 2>/dev/null
+done
+base
+NB=$(PATH="$TMP/nobin" CLAUDE_PROJECT_DIR="$TMP/r" /bin/bash "$H" 2>/dev/null)
+if [ -z "$NB" ]; then
+  printf '  ✅ 无 jq 无 python3 时静默（不吐半截 JSON）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 无编码器时输出了 [%s]\n' "$NB"; FAIL=$((FAIL+1))
+fi
+
 # ── setup-convention.sh 的回归 ──
 echo ""
 echo "═══ setup-convention 回归 ═══"

@@ -16,13 +16,23 @@ ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$ROOT" 2>/dev/null || exit 0
 
 emit() {
+  # 两条编码路径:jq 优先,python3 兜底。任一失败都往下一条走。
+  out=""
   if command -v jq >/dev/null 2>&1; then
-    jq -cn --arg c "$1" \
-      '{hookSpecificOutput:{hookEventName:"UserPromptSubmit",additionalContext:$c}}'
-  else
-    printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":%s}}\n' \
-      "$(printf '%s' "$1" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')"
+    out=$(jq -cn --arg c "$1" \
+      '{hookSpecificOutput:{hookEventName:"UserPromptSubmit",additionalContext:$c}}' 2>/dev/null)
   fi
+  if [ -z "$out" ] && command -v python3 >/dev/null 2>&1; then
+    out=$(printf '%s' "$1" | python3 -c '
+import json, sys
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
+                                         "additionalContext": sys.stdin.read()}}))' 2>/dev/null)
+  fi
+  # 两条都失败就**什么都不输出**。原先是无条件 printf 拼 JSON,
+  # python3 一失败命令替换就是空,吐出 {"...":} —— 半截 JSON。
+  # 宿主会拒绝整个 hook,而拒绝同样是静默的:一样坏,但更难查。
+  # 宁可静默,也不要形如 JSON 的垃圾。
+  [ -n "$out" ] && printf '%s\n' "$out"
   exit 0
 }
 

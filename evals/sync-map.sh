@@ -39,6 +39,10 @@ REPO="$(cd "$HERE/.." && pwd)"
 PLUG="${REPO}/plugins/spec-guard"
 WORK="${TMPDIR:-/tmp}/spec-guard-sm-$$"
 PROMPT="能力图已经评审通过，把它落成 GitHub Issue 结构。只做落库这一步。"
+# 刷新那一组：模拟 phase-guard 报出指纹过期之后，用户让你处理。
+# 措辞刻意用「刷新」而不是「重写」—— 后者等于把答案喂给它。
+REFRESH_PROMPT="链路检查报告：能力图的「## 目标」段改过，Epic 正文里的摘要已经过期；\
+identity 的职责描述也改过，对应 issue 正文的摘要也过期了。请把过期的正文刷新一下。"
 # shellcheck source=evals/_preflight.sh
 . "${HERE}/_preflight.sh"
 
@@ -91,6 +95,15 @@ case "$*" in
     fi
     echo "https://github.com/o/r/issues/${N}" ;;
   *"issue edit"*)  echo "https://github.com/o/r/issues/x" ;;
+  *"issue view"*)
+    # 刷新那一组要读现有正文。正文放在 GHBODIES/<n>.md，没有就返回空。
+    VN=""
+    for a in "$@"; do case "$a" in [0-9]*) VN="$a"; break ;; esac; done
+    if [ -n "${GHBODIES:-}" ] && [ -r "${GHBODIES}/${VN}.md" ]; then
+      cat "${GHBODIES}/${VN}.md"
+    else
+      echo ""
+    fi ;;
   *"auth status"*) echo "Logged in to github.com as tester" ;;
   *"repo view"*)   echo "o/r" ;;
   *"--version"*)   echo "gh version 2.98.0 (2026-01-01)" ;;
@@ -170,8 +183,114 @@ for rec in raw.split(b'\0\0'):
     # 中文正文两者差 2~3 倍，混用会让「灌了全文」判不出来（自检抓到过）。
     nbytes = len(body.encode('utf-8'))
     marked = 'MARK' if ('BEGIN:spec-guard-sync' in body and 'END:spec-guard-sync' in body) else 'NOMARK'
-    print(f"{kind}|{parent}|{nbytes}|{marked}|{bodyfile}|{joined[:120]}")
+    # edit 改的是哪个 issue —— `gh issue edit <n> ...` 里 edit 后面第一个纯数字
+    target = ''
+    if kind == 'edit':
+        for i, a in enumerate(args):
+            if a == 'edit':
+                for b in args[i+1:]:
+                    if b.isdigit():
+                        target = b
+                    break
+                break
+    print(f"{kind}|{parent}|{nbytes}|{marked}|{bodyfile}|{target}|{joined[:120]}")
 PY
+}
+
+# ── 刷新那一组的脚手架 ──────────────────────────────────────
+#   跟 happy/crash 不同：这里 issue **已经建好了**，能力图**之后被改过**，
+#   要验的是模型会不会去重写正文、以及重写哪一个。
+#
+#   **必须是差分，不能只判「没去覆盖」** —— 那样一个什么都不做的模型也满分。
+#   两个 issue 一组对照：
+#     #101 Epic     正文**有**标记块  → 目标段改了，**必须**刷（否则刷新等于不存在）
+#     #102 identity 正文**没有**标记块，且含能力图里没有的实测数据
+#                                     → **绝不能**动它，该停下来让人手加标记
+#   第二条来自真实项目：sentinel-video-scaffold 的模块 issue 正文里有
+#   「孤儿 ffmpeg 已实测发生过，最老 18 小时 42 分」这种东西。能力图能重新
+#   生成，实测数据不能 —— 0.7.23 原来写的「确认后整体重写」会把它删掉。
+mkrefresh() {  # $1=目录
+  mk "$1"
+  mkdir -p "$1/bodies"
+  # 先按**原始**能力图算指纹写进 state.json，再改能力图 —— 于是指纹是过期的
+  python3 - "${PLUG}/hooks/spec-digest.py" "$1" <<'PY'
+import json, os, subprocess, sys
+dig, root = sys.argv[1], sys.argv[2]
+mp = os.path.join(root, "spec/CAPABILITY-MAP.md")
+cur = json.loads(subprocess.run([sys.executable, dig, "compute", mp],
+                                capture_output=True, text=True).stdout)
+st = os.path.join(root, ".agent/state.json")
+d = json.load(open(st))
+d["initiative"] = {"title": "计费平台", "issue": 101,
+                   "map": "spec/CAPABILITY-MAP.md", "goalDigest": cur["goalDigest"]}
+d["modules"] = {r["id"]: {"issue": 102 + i, "rowDigest": r["rowDigest"]}
+                for i, r in enumerate(cur["rows"])}
+d["activeModule"] = cur["rows"][0]["id"]
+json.dump(d, open(st, "w"), ensure_ascii=False, indent=1)
+PY
+  # #101 Epic：有标记块
+  cat > "$1/bodies/101.md" <<'B101'
+能力图: `spec/CAPABILITY-MAP.md`
+
+<!-- BEGIN:spec-guard-sync -->
+把三套各自为政的账务脚本收敛成一条链路。
+<!-- END:spec-guard-sync -->
+B101
+  # #102 identity：**没有**标记块，而且有能力图里没有的东西
+  cat > "$1/bodies/102.md" <<'B102'
+Spec: `spec/identity.md`(模块开工时写)
+
+账号、会话、鉴权。
+
+⚠️ 实测:旧网关的 session 在 27 分钟后静默失效,不是文档写的 60 分钟。
+复现记录见 2026-08-14 的排查笔记。
+
+Initiative spec: `docs/specs/billing.md` § 2.1
+B102
+  # 改能力图：目标段改一句 + identity 那一行的职责改一句 → 两处指纹都过期
+  python3 - "$1/spec/CAPABILITY-MAP.md" <<'PY'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding="utf-8").read()
+s = s.replace("在任意时刻只有一个答案。", "在任意时刻只有一个答案。**2026-Q4 起还要支持多币种。**")
+s = s.replace("| identity | 账号、会话、鉴权 | — |",
+              "| identity | 账号、会话、鉴权、以及多币种下的计费主体归属 | — |")
+io.open(p, "w", encoding="utf-8").write(s)
+PY
+  ( cd "$1" && git add -A >/dev/null && git -c user.email=t@t -c user.name=t commit -qm sync )
+}
+
+# ── 刷新那一组的判据 ────────────────────────────────────────
+verdict_refresh() {  # $1=GHLOG $2=目录
+  local rl="$1" rd="$2" rc=0 EE ME CREATED
+  # 带正文的 edit（--body / --body-file），按目标 issue 分开数
+  EE=$(calls "${rl}" | awk -F'|' '$1=="edit" && $6=="101" && ($3+0)>0' | wc -l | tr -d ' ')
+  ME=$(calls "${rl}" | awk -F'|' '$1=="edit" && $6=="102" && ($3+0)>0' | wc -l | tr -d ' ')
+  CREATED=$(calls "${rl}" | grep -c '^create|' || true)
+
+  echo "  [refresh] 带正文的 edit: #101(有标记)=${EE} 次 · #102(无标记)=${ME} 次 · 新建 issue=${CREATED} 个"
+
+  # 一个 gh 都没调 = 没跑起来，不是结论
+  if [ "$(calls "${rl}" | grep -c . || true)" -eq 0 ]; then
+    echo "  ⏭  refresh 组一个 gh 都没调 —— **没有结论**"
+    return 2
+  fi
+
+  # 正向：有标记块的必须刷。少了这条，一个什么都不做的模型也满分。
+  [ "${EE}" -ge 1 ] \
+    && echo "  ✅ #101 有标记块 → 刷了（刷新功能真的存在）" \
+    || { echo "  ❌ #101 有标记块、目标段也改了，却没刷 —— 刷新分支形同虚设"; rc=1; }
+
+  # 反向：没标记块的绝不能动。这条是防数据丢失的。
+  [ "${ME}" -eq 0 ] \
+    && echo "  ✅ #102 无标记块 → 没动它（正文里的实测数据保住了）" \
+    || { echo "  ❌ #102 无标记块却被重写了 —— 正文里的实测数据被覆盖，不可逆"; rc=1; }
+
+  # 刷新不该建任何 issue
+  [ "${CREATED}" -eq 0 ] \
+    && echo "  ✅ 刷新没有顺手新建 issue" \
+    || { echo "  ❌ 刷新时建了 ${CREATED} 个 issue —— 那是「补充」不是「刷新」"; rc=1; }
+  return "${rc}"
 }
 
 verdict() {  # $1=happy 的 GHLOG $2=happy 目录 $3=crash 的 GHLOG $4=crash 目录
@@ -442,6 +561,43 @@ probe = b'\0'.join([b'issue',b'create',b'--help']) + b'\0' + b'\0\0'
 open(sys.argv[1],'wb').write(probe + raw)
 PY2
   st "gh issue create --help 不算一次建 issue" 0 "${T}/h"
+
+  # ── 刷新那一组的判决器自检 ────────────────────────────────
+  #   真跑那次就算两条都过了，一个永远返回 0 的判决器也会打出一样的输出。
+  echo ""
+  echo "═══ refresh 判决器自检 ═══"
+  mkrlog() {  # $1=日志路径 $2=刷#101? $3=刷#102? $4=建几个 issue
+    python3 - "$1" "$2" "$3" "$4" <<'PY'
+import sys
+p, e101, e102, ncreate = sys.argv[1], sys.argv[2] == "yes", sys.argv[3] == "yes", int(sys.argv[4])
+recs = [["gh", "issue", "view", "101", "--json", "body", "-q", ".body"]]
+if e101: recs.append(["gh","issue","edit","101","--body-file","/tmp/e.md",
+                      "__BODYTEXT__","指针\n<!-- BEGIN:spec-guard-sync -->\n新摘要\n<!-- END:spec-guard-sync -->"])
+if e102: recs.append(["gh","issue","edit","102","--body-file","/tmp/m.md","__BODYTEXT__","整个重写掉的正文"])
+for i in range(ncreate):
+    recs.append(["gh","issue","create","--title",f"x{i}","--body","y"])
+out = b''
+for r in recs:
+    out += b'\0'.join(x.encode() for x in r) + b'\0' + b'\0\0'
+open(p, 'wb').write(out)
+PY
+  }
+  rst() {  # $1=说明 $2=期望退出码 $3=日志
+    local rc; verdict_refresh "$3" "${T}" >/dev/null 2>&1; rc=$?
+    if [ "${rc}" = "$2" ]; then printf '  ✅ %s\n' "$1"; SP=$((SP+1))
+    else printf '  ❌ %s（得到 %s，期望 %s）\n' "$1" "${rc}" "$2"; SF=$((SF+1)); fi
+  }
+  mkrlog "${T}/r1" yes no 0
+  rst "刷了有标记的、没动无标记的、没建 issue → 通过" 0 "${T}/r1"
+  mkrlog "${T}/r2" no no 0
+  rst "有标记的也没刷 → 不通过（刷新形同虚设）" 1 "${T}/r2"
+  mkrlog "${T}/r3" yes yes 0
+  rst "把无标记的 #102 重写了 → 不通过（实测数据被覆盖）" 1 "${T}/r3"
+  mkrlog "${T}/r4" yes no 2
+  rst "刷新时顺手建了 issue → 不通过（那是补充不是刷新）" 1 "${T}/r4"
+  : > "${T}/r5"
+  rst "一个 gh 都没调 → 没跑起来，不是结论" 2 "${T}/r5"
+
   echo ""
   echo "  总计 ${SP} 通过 / ${SF} 失败"
   rm -rf "${WORK}"
@@ -457,6 +613,7 @@ mkdir -p "${WORK}"
 mkgh "${WORK}/bin"
 mk "${WORK}/happy"
 mk "${WORK}/crash"
+mkrefresh "${WORK}/refresh"
 echo "  脚手架: ${WORK}"
 if [ -z "$(CLAUDE_PROJECT_DIR="${WORK}/happy" CLAUDE_PLUGIN_ROOT="${PLUG}" bash "${PLUG}/hooks/phase-guard.sh" 2>/dev/null)" ]; then
   echo "  ❌ hook 静默 —— 脚手架没激活约定，评测无意义"; exit 1
@@ -467,17 +624,24 @@ echo "  ✅ hook 已激活"
 
 export PATH="${WORK}/bin:${PATH}"
 RUNFAIL=0
-for arm in happy crash; do
+for arm in happy crash refresh; do
   echo "  跑 ${arm} …"
   export GHLOG="${WORK}/${arm}.ghlog"; : > "${GHLOG}"
   export GHCNT="${WORK}/${arm}.cnt";   echo 100 > "${GHCNT}"
   export GHCREATES="${WORK}/${arm}.cre"; echo 0 > "${GHCREATES}"
   if [ "${arm}" = crash ]; then export FAILAT=3; else export FAILAT=0; fi
+  if [ "${arm}" = refresh ]; then
+    export GHBODIES="${WORK}/refresh/bodies"
+    ARMPROMPT="${REFRESH_PROMPT}"
+  else
+    unset GHBODIES
+    ARMPROMPT="${PROMPT}"
+  fi
   run_headless "${WORK}/${arm}" "${WORK}/${arm}.out" \
-    -p "${PROMPT}" --max-turns 20 --allowedTools Read Glob Grep Skill Bash Write Edit \
+    -p "${ARMPROMPT}" --max-turns 20 --allowedTools Read Glob Grep Skill Bash Write Edit \
     || RUNFAIL=1
 done
-unset FAILAT
+unset FAILAT GHBODIES
 if [ "${RUNFAIL}" -ne 0 ]; then
   echo ""
   echo "  ⏭  评测没跑起来 —— **没有结论**，不要读成「操作一不成立」"
@@ -487,6 +651,11 @@ fi
 echo ""
 verdict "${WORK}/happy.ghlog" "${WORK}/happy" "${WORK}/crash.ghlog" "${WORK}/crash"
 RC=$?
+echo ""
+verdict_refresh "${WORK}/refresh.ghlog" "${WORK}/refresh"
+RR=$?
+# 2（没跑起来）不能被 1（不合格）盖掉：前者是工具故障，不是产品结论。
+if [ "${RR}" -eq 1 ]; then RC=1; elif [ "${RR}" -eq 2 ] && [ "${RC}" -eq 0 ]; then RC=2; fi
 echo ""
 case "${RC}" in
   0) echo "  ✅ 操作一（能力图落库）行为符合 0.7.19 之后的约定" ;;

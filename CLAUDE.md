@@ -124,7 +124,7 @@ scripts/
 
 ### 校验器自己也有回归套件
 
-`scripts/test-checkers.sh`（22 个断言，已接进 `validate.sh`，免费）。
+`scripts/test-checkers.sh`（26 个断言，已接进 `validate.sh`，免费）。
 六个 `check-*.py` 每个至少一正一反：喂已知坏输入必须非零退出，喂好输入必须零退出。
 
 **为什么单独有这一层**：一轮之内出过**四次**「新加的防线自己有毛病」——
@@ -157,6 +157,10 @@ python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键�
 **标 `equivalent` 必须写清楚为什么** —— 否则它就是给漏测发的免死金牌。
 不接进 `validate.sh`：每个变异体要跑一整套。
 
+**它在工作区就地改文件。** 所以有两道闸：锁文件（不许两个实例）、目标文件必须
+相对 HEAD 干净（否则拒跑）。别在它跑的时候跑测试或 commit —— 踩过：读到被注入
+变异的 `phase-guard.sh` 得到假失败，`git diff` 里的坏算法差点被提交出去。
+
 ### 按需评测（会花 token，不在 validate 里）
 
 ```bash
@@ -167,7 +171,7 @@ python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键�
 /bin/bash evals/next-redo.sh --selftest               # 免费:喂坏输入验判决器自己(已接进 validate)
 /bin/bash evals/next-redo.sh --scaffold-only          # 免费
 /bin/bash evals/next-redo.sh                          # 真跑:判 /next 会不会重取刚做完的 task
-/bin/bash evals/sync-map.sh --selftest                # 免费(已接进 validate,14 条)
+/bin/bash evals/sync-map.sh --selftest                # 免费(已接进 validate,19 条)
 /bin/bash evals/sync-map.sh --scaffold-only           # 免费
 /bin/bash evals/sync-map.sh                           # 真跑:判操作一(能力图落库)
 ```

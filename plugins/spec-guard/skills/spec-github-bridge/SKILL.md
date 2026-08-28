@@ -38,10 +38,46 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 | 放什么 | 路径 | 不能怎样 |
 |---|---|---|
 | 能力图 | `spec/CAPABILITY-MAP.md` | 未经人工评审不落 issue |
-| 模块 spec | `spec/<module-id>.md` | kebab-case，**一次选定中途绝不改名**（改名 = state.json / issue / 分支三处同时失联） |
+| 模块 spec | `spec/<module-id>.md` | kebab-case，**一次选定中途绝不改名**（见下面「一个名字，五处用」） |
 | 计划文档 | `tasks/<module-id>/plan.md` | 不共用 `tasks/plan.md`，多模块时会互相覆盖 |
 | 任务清单 | **GitHub Issues** | **不创建任何 `todo.md`** —— 两份真相源必然分叉 |
-| 项目状态 | `.agent/state.json` | `activeModule` + `modules.<id>.issue` |
+| 项目状态 | `.agent/state.json` | 字段由本插件定义，**不要自己加字段**（见下面「state.json 的字段」）|
+
+### module id：一个名字，五处用
+
+格式是 **kebab-case**：`^[a-z0-9]+(-[a-z0-9]+)*$`。像 `lab-page-skeleton`、
+`telemetry-envelope`。**只有 `/verify-artifacts` 会校验它**，`phase-guard` 不查 ——
+所以定稿那一刻就得对。
+
+同一个 id 同时是五样东西的名字：
+
+    能力图表格第一列    lab-page-skeleton
+    模块 spec           spec/lab-page-skeleton.md
+    计划与任务          tasks/lab-page-skeleton/plan.md
+    项目状态            .agent/state.json 的 modules["lab-page-skeleton"]
+    交付分支            feat/lab-page-skeleton
+
+所以能力图评审项里那句「**之后绝不改名**」不是洁癖：改一次要同时动五处，
+而其中两处改不动 —— 已经建好的 issue 标题，和已经推上去的分支。
+
+> `modules.<id>` 是**路径记法，不是字面 key**。kebab-case 的 id 在 jq / JS 里
+> 写不了点号，要写 `modules["lab-page-skeleton"]`；python 里
+> `.get("lab-page-skeleton")` 没问题，两个 hook 用的就是这个。
+
+### state.json 的字段
+
+`.agent/state.json` 的字段**由本插件定义**。当前全部字段：
+
+    tracker  issueTypes  activeModule  updatedAt
+    initiative{ title issue map goalDigest }
+    modules.<id>{ issue rowDigest }
+
+**不要往里加插件不读的字段。** 已经发生过一次：某个项目的
+`modules.<id>` 里长出了 `dependsOn` —— 插件里零引用，谁也不读，而它是
+能力图 `Depends on` 那一列的复制品。复制必然分叉，而这一份连指纹都没有。
+
+依赖关系去看两个活的载体：能力图的 `Depends on` 列（设计意图）、
+GitHub 的 `--add-blocked-by` 边（被执行的那份）。别造第三份。
 
 **不要在项目根建 `SPEC.md` 或 `SPEC-<module>.md`。** `/build` 的 spec 查找规则只有三条
 路径：根目录 `SPEC.md`、`docs/SPEC.md`、`spec/` 下的文件 —— **只有第三条是通配的**。
@@ -194,10 +230,27 @@ issue 正文没法看），而是**给复制留指纹**：写投影的同时把�
 4. **成功之后**才把新 digest 写回 `state.json`。顺序反了的话，`gh` 失败
    而指纹已经更新 —— 分歧被抹掉，检测再也不会报，正文永远是旧的。
 
-**正文里没有那对标记**（0.7.22 之前建的 issue，或被人删了）：不要猜边界，
-不要把新摘要往末尾追加。停下来告诉用户「这个 issue 是旧格式，刷新会覆盖
-整个正文」，得到确认后再整体重写；用户不确认就跳过它，并且**不要**写指纹
+**正文里没有那对标记**（0.7.23 之前建的 issue，或被人删了）：不要猜边界，
+不要把新摘要往末尾追加，**也不要急着提议整体重写**。
+
+先看正文。实测的老 issue 里，摘要之外常常还有能力图里没有的东西 ——
+补充说明、实测数据（「孤儿 ffmpeg 最老 18 小时 42 分」）、
+`Initiative spec: … § 4` 这类指针。**整体重写会把它们全删掉**，
+而它们恰恰是最贵的那部分：能力图能重新生成，实测数据不能。
+
+所以推荐的迁移方向是**人手加标记，不是机器覆盖**：
+
+> 这个 issue 是 0.7.23 之前建的，正文里没有 `<!-- BEGIN/END:spec-guard-sync -->`。
+> 我不能替你判断哪一段是「照着能力图写的摘要」、哪一段是你后来补的 ——
+> 猜错就是删掉你写的东西。
+>
+> 建议你在正文里手动加一对标记，把**照着能力图写的那一段**框起来，
+> 其余留在标记外。加完之后 `/sync-map` 刷新就能工作，而且永远只动框里的。
+
+一次性、可控、零丢失。用户不想动就跳过它，并且**不要**写指纹
 （写了等于谎报已同步）。
+
+只有用户明确说「整个重写吧，正文里没有我要留的东西」时，才整体重写。
 
 刷新不改 issue 标题、不动 sub-issue 层级、不动依赖关系。
 

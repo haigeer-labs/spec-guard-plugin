@@ -35,7 +35,18 @@ except Exception:
     echo "       claude plugin update spec-guard@spec-guard-marketplace   # 之后要重启"
     return 1
   fi
-  echo "  ✅ 装着的插件内容与仓库一致（${inst:0:7}）"
+  # **还要工作区干净。** 上面比的是 installed sha 与 HEAD 两个**提交**；
+  # 插件文件在工作区里改了没提交的话，两边照样「一致」，而 `claude -p` 加载的
+  # 是装着的那份 —— 评测于是安静地测了上一版，结论却会被读成当前版的。
+  # 这跟 mutation-check 那个「脏工作区」是同一类洞：判据看的对象和真正生效的
+  # 对象不是同一个。
+  if ! git -C "${repo}" diff --quiet HEAD -- plugins/spec-guard 2>/dev/null; then
+    echo "  ❌ plugins/spec-guard 在工作区里有未提交的改动 ——"
+    echo "     \`claude -p\` 加载的是**装着的那份**，测不到你刚改的东西，"
+    echo "     而结论会被读成当前版的。先 commit + 发版 + update。"
+    return 1
+  fi
+  echo "  ✅ 装着的插件内容与仓库一致（${inst:0:7}），且工作区干净"
   return 0
 }
 

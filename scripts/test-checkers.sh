@@ -190,6 +190,35 @@ printf 'y\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-local.m
 printf '# README\n没有 SYNC 标记\n' > "$TMP/rsmissing/README.md"
 want fail "readme-sync: README 里缺 SYNC 标记 → 报错" python3 "$ROOT/scripts/check-readme-sync.py" "$TMP/rsmissing"
 
+# ── mutation-check.py 的两道安全闸 ──────────────────────────
+#   它**在工作区就地改文件**。实测踩过：后台跑的时候另一边跑测试，读到的是
+#   被注入变异的 phase-guard.sh，得到一条假失败；而 `git diff` 里躺着的
+#   坏指纹算法差点被 commit 出去。两道闸都在跑任何变异之前就退出，所以这组
+#   断言很快 —— 免费。
+echo ""
+echo "═══ mutation-check 的安全闸 ═══"
+MC="$ROOT/scripts/mutation-check.py"
+LOCK="$ROOT/.mutation-check.lock"
+
+# 锁存在 → 拒跑。（放前面：它不依赖工作区状态，任何时候都测得了）
+rm -f "$LOCK"; echo 99999 > "$LOCK"
+want fail "mutation-check: 锁存在 → 拒跑" python3 "$MC" --only 不存在的关键词
+rm -f "$LOCK"
+
+# 目标文件脏 → 拒跑。真去弄脏一个再还原，不靠模拟。
+DIRTY="$ROOT/plugins/spec-guard/hooks/spec-digest.py"
+if git -C "$ROOT" diff --quiet HEAD -- "$DIRTY" 2>/dev/null; then
+  printf '\n# test-checkers 临时弄脏\n' >> "$DIRTY"
+  want fail "mutation-check: 目标文件脏 → 拒跑" python3 "$MC" --only 不存在的关键词
+  git -C "$ROOT" checkout -- "$DIRTY"
+  # 干净 + 无锁 + 匹配不到任何变异体 → 正常走完退 0（正向用例）
+  want pass "mutation-check: 干净且无锁 → 放行" python3 "$MC" --only 不存在的关键词
+  [ -f "$LOCK" ] && { printf '  ❌ mutation-check: 跑完没清锁\n'; FAIL=$((FAIL+1)); } \
+                 || { printf '  ✅ mutation-check: 跑完清掉了锁\n'; PASS=$((PASS+1)); }
+else
+  printf '  ⏭  mutation-check 脏工作区用例跳过（spec-digest.py 本来就不干净）\n'
+fi
+
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

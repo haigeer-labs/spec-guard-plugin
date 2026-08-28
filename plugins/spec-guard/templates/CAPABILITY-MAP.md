@@ -26,7 +26,9 @@ Build order: example-a → example-b
 
 - [ ] 模块边界确认（砍掉或替换一个模块，不需要重写其他模块的需求）
 - [ ] 依赖方向单向无环（互相依赖 = 它们本来就是一个模块）
-- [ ] module id 已定稿（kebab-case，之后绝不改名）
+- [ ] module id 已定稿（kebab-case，之后绝不改名 —— 同一个 id 同时是
+      `spec/<id>.md`、`tasks/<id>/`、`state.json`、`feat/<id>` 分支和 issue 标题的名字，
+      其中后两处改不动）
 - [ ] 构建顺序符合依赖拓扑
 
 评审人：

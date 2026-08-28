@@ -10,13 +10,67 @@
 不接进 validate.sh：每个变异体要跑一遍整套，几分钟起步。
 用法: python3 scripts/mutation-check.py [--only <关键词>]
 """
-import subprocess, sys, os
+import atexit, signal, subprocess, sys, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 H = os.path.join(ROOT, "plugins/spec-guard/hooks")
 PG, VA = os.path.join(H, "phase-guard.sh"), os.path.join(H, "verify-artifacts.sh")
 DG = os.path.join(H, "spec-digest.py")   # 指纹算法：两个 hook 和 /sync-map 共用的那一份
 TPG, TVA = os.path.join(H, "test-phase-guard.sh"), os.path.join(H, "test-verify-artifacts.sh")
+
+# ── 安全闸：这个工具**在工作区就地改文件** ────────────────────
+#   实测踩过：它在后台跑的时候，另一边跑测试读到的是被注入变异的
+#   phase-guard.sh，得到一条假失败；而 `git diff` 里躺着的
+#   `rows.append((mid, mid))` 差点被 commit 出去 —— 那是个坏掉的指纹算法。
+#   两道闸各挡一种：
+#     1. 锁文件 —— 不许两个实例、也提醒别在跑的时候干别的
+#     2. 目标文件必须干净 —— 否则「你的改动」和「上一次没还原的变异」分不开
+#   另加 SIGTERM/SIGINT 兜底还原：try/finally 挡不住被 kill。
+LOCK = os.path.join(ROOT, ".mutation-check.lock")
+
+
+def _die(msg):
+    print(msg)
+    sys.exit(2)
+
+
+if os.path.exists(LOCK):
+    try:
+        pid = open(LOCK).read().strip()
+    except Exception:
+        pid = "?"
+    _die("  ⛔ 已有一个 mutation-check 在跑（pid %s）。\n"
+         "     它会就地改 hooks/ 里的文件，两个实例同时跑必然互相污染。\n"
+         "     确认没在跑就删掉 %s" % (pid, LOCK))
+
+TARGETS = [PG, VA, DG]
+# **只列真脏的那个。** 把三个全列出来是误导性报错 —— 读的人会去看两个
+# 根本没动过的文件。管得太宽的判据和管得太窄的一样是缺陷（lenses A3）。
+_dirty = [t for t in TARGETS if subprocess.run(
+    ["git", "-C", ROOT, "diff", "--quiet", "HEAD", "--", t]).returncode != 0]
+if _dirty:
+    _die("  ⛔ 这些将被变异的文件相对 HEAD 不干净：\n"
+         "     " + "  ".join(os.path.relpath(t, ROOT) for t in _dirty) + "\n"
+         "     跑之前必须干净 —— 否则跑完还原时会把你自己的改动一起抹掉，\n"
+         "     而且中途 `git diff` 里的东西分不清是你写的还是注入的变异。\n"
+         "     先 commit 或 stash。")
+
+open(LOCK, "w").write(str(os.getpid()))
+
+
+def _cleanup(*_a):
+    # 还原所有目标文件 + 删锁。被 kill 时 try/finally 不会跑，这里兜住。
+    subprocess.run(["git", "-C", ROOT, "checkout", "--"] + TARGETS,
+                   capture_output=True)
+    try:
+        os.remove(LOCK)
+    except OSError:
+        pass
+
+
+atexit.register(_cleanup)
+for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+    signal.signal(_sig, lambda *_a: sys.exit(130))
 
 # 每条: (说明, 被改的文件, 跑哪套, old, new, 预期)
 #   预期 "killed"     = 必须被抓到

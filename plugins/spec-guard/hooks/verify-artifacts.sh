@@ -241,6 +241,28 @@ else
     skip "state.json 没有 initiative.issue，跳过 Epic 比对"
   fi
 
+  # Epic 正文是否粘贴了能力图全文
+  #   这一处到 0.7.19 才有。此前只体检模块 issue 的正文，而**唯一一处流程
+  #   明确指示粘贴全文的地方恰恰是 Epic**（操作一步骤 2 原来写的是
+  #   `--body-file spec/CAPABILITY-MAP.md`）—— 检查器盖不到发布方自己写的
+  #   那条错。规则写在 skill 里，判据落在这里，两边差了一个 issue 的距离。
+  #   比的是 Epic 正文 vs 能力图本身，同一份文档，粘贴全文时比值 ≈ 1，
+  #   摘要通常远低于 1/3，2/3 这个阈值和模块那处是可比的。
+  if [ -n "${EPIC}" ] && [ -f "${MAP}" ]; then
+    EBODY=$(gh issue view "${EPIC}" --json body -q '.body' 2>/dev/null || echo "")
+    ML=$(wc -c < "${MAP}" | tr -d ' ')
+    if [ -z "${EBODY}" ]; then
+      skip "读不到 Epic #${EPIC} 的正文（网络/权限，或正文本就是空的），跳过体量比对"
+    else
+      EL=$(printf '%s' "${EBODY}" | wc -c | tr -d ' ')
+      if [ "${ML}" -gt 0 ] && [ "${EL}" -gt $((ML * 2 / 3)) ]; then
+        warn "Epic #${EPIC} 正文 ${EL} 字节 vs 能力图 ${ML} 字节 —— 疑似灌了能力图全文，能力图会改，复制必然分叉"
+      else
+        ok "Epic #${EPIC} 正文是摘要而非能力图全文"
+      fi
+    fi
+  fi
+
   # 模块 issue 正文是否粘贴了 spec 全文
   MI=$(jread "${STATE}" "d.get('modules',{}).get('${MODULE}',{}).get('issue')")
   if [ -n "${MI}" ] && [ -f "spec/${MODULE}.md" ]; then

@@ -354,6 +354,74 @@ case "$(vrun)" in
     printf '  ❌ spec 全文粘贴没被抓到 —— skip 扩大化了\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── Epic 正文也要体检（issue #3）─────────────────────────
+# 此前只查模块 issue 的正文，而**唯一一处流程明确指示粘贴全文的地方恰恰是
+# Epic**：操作一步骤 2 原来写的就是 `--body-file spec/CAPABILITY-MAP.md`，
+# 同一节末尾十几行后又写「不要把 spec 全文复制进 issue 正文」。
+# 规则和判据差了一个 issue 的距离，检查器盖不到发布方自己写的那条错。
+epicrepo() {  # 带 initiative.issue 的仓库；modrepo 那份没有，EPIC 为空整段跳过
+  modrepo feat/oauth2
+  echo '{"tracker":"github","activeModule":"oauth2","initiative":{"issue":1},"modules":{"oauth2":{"issue":5}}}' > .agent/state.json
+}
+
+epicrepo
+ghstub <<'STUBE1'
+#!/bin/bash
+case "$*" in
+  *"issue view 1"*) cat spec/CAPABILITY-MAP.md ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBE1
+case "$(vrun)" in
+  *"疑似灌了能力图全文"*)
+    printf '  ✅ Epic 正文是能力图全文时 warn\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ Epic 正文粘贴全文没被抓到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反向：摘要不能被报成粘贴（误报比漏报危害大）
+epicrepo
+ghstub <<'STUBE2'
+#!/bin/bash
+case "$*" in
+  *"issue view 1"*) echo '能力图: `spec/CAPABILITY-MAP.md`' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBE2
+case "$(vrun)" in
+  *"疑似灌了能力图全文"*)
+    printf '  ❌ Epic 摘要被误报成粘贴全文\n'; FAIL=$((FAIL+1)) ;;
+  *"Epic #1 正文是摘要而非能力图全文"*)
+    printf '  ✅ Epic 正文是摘要时放行\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ Epic 正文这一项没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反向：读不到 Epic 正文时必须 skip —— 模块那处发过一次没挣来的绿灯，
+# 新加的这处不能重蹈。gh 失败 → 0 字节 → 落进 else → 报 ✅。
+epicrepo
+ghstub <<'STUBE3'
+#!/bin/bash
+case "$*" in
+  *"issue view 1"*) echo "" ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBE3
+case "$(vrun)" in
+  *"Epic #1 正文是摘要而非能力图全文"*)
+    printf '  ❌ 读不到 Epic 正文却报了 ✅（没挣来的绿灯）\n'; FAIL=$((FAIL+1)) ;;
+  *"读不到 Epic #1 的正文"*)
+    printf '  ✅ 读不到 Epic 正文时 skip，不发绿灯\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ Epic 正文这一项整个没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # ── 归档识别不能被大文件搞挂（与 phase-guard 同一条判据）──
 # is_archived 两边是同一份实现，`head -10 | grep -q` 的 SIGPIPE 也是同一个。
 # 本仓的规矩：两个 hook 共用的判据要在两边都加用例。

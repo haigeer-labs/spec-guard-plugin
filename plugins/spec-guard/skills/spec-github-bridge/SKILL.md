@@ -64,16 +64,32 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
        gh issue create --type Feature \
          --title "Initiative: <名称>" \
-         --body-file spec/CAPABILITY-MAP.md
+         --body "能力图: \`spec/CAPABILITY-MAP.md\`
+
+       <能力图目标段落摘要，3-5 行>"
+
+   **不要 `--body-file spec/CAPABILITY-MAP.md`。** 那是把能力图全文灌进 Epic
+   正文，和本节末尾那条「不要把 spec 全文复制进 issue 正文」是同一件事 ——
+   能力图改了，Epic 正文不会跟着改，两份从此分叉。模块清单也不用抄：
+   sub-issue 列表就是 GitHub 原生的那份索引，而且它一直是准的。
 
 3. 按 build order 顺序，为每个模块创建 issue（同样，`issueTypes: false` 时去掉 `--type`）：
 
        gh issue create --type Feature \
          --parent <epic> \
          --title "<module-id>" \
-         --body "Spec: \`spec/<module-id>.md\`
+         --body "Spec: \`spec/<module-id>.md\`（尚未撰写时也照写，这是它将来的位置）
 
-       <spec 的 objective 段落摘要，3-5 行>"
+       <该模块在能力图里那一行的职责描述，3-5 行>"
+
+   摘要取自**能力图**，不是取自 `spec/<module-id>.md`。这一步跑的时候
+   绝大多数模块的 spec **还不存在** —— hook 在只有第一个模块有 spec 时就叫
+   `/sync-map`，而这一步要为全部 N 个模块建 issue。要是摘要必须来自各自的
+   spec，这条流程从第二个模块起就无从执行。
+
+   **整个操作一只依赖 `spec/CAPABILITY-MAP.md`，不依赖任何模块 spec。**
+   所以它在能力图评审通过后的任何时刻都能跑，和「先写第一个模块的 spec」
+   谁先谁后都不矛盾。
 
 4. 按依赖表建立阻塞关系：
 

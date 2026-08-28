@@ -91,15 +91,15 @@ scripts/
 ```
 
 它在 push 前跑上面那三条（约 50 秒），红了就中止。
-理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 114 条 hook 断言、
+理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 120 条 hook 断言、
 22 条校验器断言、shellcheck，全部依赖一个人记得敲命令。
 **这是止血带不是解药**，真正的解法是把账户级 Actions 恢复。
 急着推可以 `git push --no-verify`，但那就回到了靠自觉。
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 114 个断言：`test-phase-guard.sh` 74 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
-刻意空闲 / 模块级分支及其已落 task 的号 / 非常规默认分支 / 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
+当前 120 个断言：`test-phase-guard.sh` 80 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+刻意空闲 / 模块级分支及其已落 task 的号 / 非常规默认分支 / 能力图↔已落 issue 的分叉（1 正 5 反）/ 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
 `test-verify-artifacts.sh` 40 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
 「零足迹激活」「探测失败不发绿灯」「Epic 正文摘要不误报」等反向用例）。
@@ -131,7 +131,7 @@ scripts/
 ### 变异测试：这套断言到底约束了什么（不花 token，但慢）
 
 ```bash
-python3 scripts/mutation-check.py              # 全部 13 个变异体，约 6 分钟
+python3 scripts/mutation-check.py              # 全部 15 个变异体，约 7 分钟
 python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键词的
 ```
 

@@ -148,6 +148,57 @@ if ls -1 SPEC*.md >/dev/null 2>&1; then
   broken "根目录有 SPEC*.md —— /build 的路径规则只认 spec/ 通配，挪进 spec/"
 fi
 
+# 违规：能力图列了 N 个模块，只有 M 个落成了 issue
+#   能力图是本地文件，issue 是它在 GitHub 上的投影 —— 文件里加一行新模块，
+#   投影不会自己跟上。verify-artifacts 查得到（SUBN != MAPN），但它要打 gh
+#   且只在手动跑时动；每轮自动跑的这一层此前只做 `[ -f ]`，从不解析表格 ——
+#   能查的不自动跑，自动跑的查不了，于是这个分叉可以静默存在很久。
+#
+#   判据刻意收得很紧，只报一个方向。三道闸门各挡一种假断链：
+#     1. 仅 tracker=github —— modules.<id>.issue 只有 /sync-map 写，而它是
+#        GitHub 专属；本地模式下 modules 永远是 {}，不设这道闸就是每个
+#        本地项目每轮都挨一条假断链。
+#     2. 至少已落 1 个 —— 能力图刚写完、还没跑 /sync-map 是 Phase 0 的正常
+#        中间态（模板占位符 example-* 也落在这里），不是断链。
+#     3. 只报 MAPN > 已落数 —— 反方向（能力图删了行、issue 还在）可能是
+#        刻意的，报了就是假警报。
+if [ "$HAS_MAP" = true ] && [ "$TRACKER" = "github" ] && [ -f "$STATE" ] \
+   && command -v python3 >/dev/null 2>&1; then
+  MAP_SYNC=$(python3 - "spec/CAPABILITY-MAP.md" "$STATE" <<'PY' 2>/dev/null || true
+import json, sys
+ids = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    if not line.lstrip().startswith("|"):
+        continue
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if len(cells) < 2:
+        continue
+    first = cells[0]
+    # 跳过表头和 |---|---| 分隔行
+    if not first or first.lower() == "module id" or set(first) <= set("-: "):
+        continue
+    ids.append(first.strip(chr(96)))  # chr(96)=反引号；写字面量会截断外层 $( )
+try:
+    d = json.load(open(sys.argv[2]))
+    mods = d.get("modules") or {}
+    synced = [k for k, v in mods.items() if isinstance(v, dict) and v.get("issue")]
+except Exception:
+    synced = []
+print(len(ids), len(synced))
+PY
+)
+  # 解析不出来（python3 抛了、文件读不了）时 MAP_SYNC 为空 —— 静默跳过。
+  # 「探测失败就降级，不误报」。
+  MAPN="${MAP_SYNC%% *}"; SYNCEDN="${MAP_SYNC##* }"
+  # 非纯数字（含空串）一律归成 -1，直接落进「不报」——
+  # 不能拿空串去做 `[ -ge ]`，那是 "integer expression expected" + 非零退出。
+  case "${MAPN}"    in ''|*[!0-9]*) MAPN=-1 ;;    esac
+  case "${SYNCEDN}" in ''|*[!0-9]*) SYNCEDN=-1 ;; esac
+  if [ "${SYNCEDN}" -ge 1 ] && [ "${MAPN}" -gt "${SYNCEDN}" ]; then
+    broken "能力图有 ${MAPN} 个模块，只有 ${SYNCEDN} 个落成了 issue —— 能力图改过之后没重跑 /sync-map"
+  fi
+fi
+
 # ── 3. plan 层 ─────────────────────────────────────────────
 HAS_PLAN=false
 [ -n "$MODULE" ] && [ -f "tasks/$MODULE/plan.md" ] && HAS_PLAN=true

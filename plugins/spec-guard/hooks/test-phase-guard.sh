@@ -528,6 +528,84 @@ else
   printf '  ❌ 无编码器时输出了 [%s]\n' "$NB"; FAIL=$((FAIL+1))
 fi
 
+# ── 能力图 ↔ 已落 issue 的分叉（能力图加了模块但没重跑 /sync-map）──
+#   能力图是本地文件，issue 是它在 GitHub 上的投影，改文件不会改投影。
+#   verify-artifacts 早就查得到（SUBN != MAPN），但它要打 gh、只在手动跑时动；
+#   phase-guard 每轮自动跑却从不解析表格 —— 能查的不自动跑，自动跑的查不了。
+#   下面五条里**四条是反向的**：这条检测的全部风险在假断链，不在漏报。
+mapcase() {  # $1=模块 id（空格分隔）  $2=state.json 正文
+  base; mkdir -p spec tasks/identity .agent
+  {
+    echo "| module id | 说明 |"
+    echo "|---|---|"
+    for m in $1; do echo "| \`${m}\` | x |"; done
+  } > spec/CAPABILITY-MAP.md
+  touch spec/identity.md tasks/identity/plan.md
+  printf '%s\n' "$2" > .agent/state.json
+}
+# 直接比对正文里那句话，不比对断链总数 —— 总数会被同场景的其他断链干扰，
+# 而这条测的就是「有没有报出这一条」本身。
+#   ctx 为空时返回 EMPTY 而不是 0 —— 否则四条反向断言在「hook 根本没输出」
+#   时也全绿，那正是 0.7.20 撞见的空断言形状。
+mapdiv() {
+  local c; c="$(ctx)"
+  [ -n "$c" ] || { echo "EMPTY"; return; }
+  printf '%s\n' "$c" | grep -c "个落成了 issue" || true
+}
+
+SYNCED2='{"tracker":"github","activeModule":"identity","modules":{"identity":{"issue":101},"billing":{"issue":102}}}'
+
+mapcase "identity billing payments" "$SYNCED2"
+if [ "$(mapdiv)" = "1" ] && [ -n "$(ctx | grep '能力图有 3 个模块，只有 2 个落成了 issue' || true)" ]; then
+  printf '  ✅ 能力图 3 个模块 / 已落 2 个 → 报断链且数字对\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 能力图多出来的模块没被发现（或数字不对）\n'; FAIL=$((FAIL+1))
+fi
+
+mapcase "identity billing" "$SYNCED2"
+if [ "$(mapdiv)" = "0" ]; then
+  printf '  ✅ 能力图 2 个 / 已落 2 个 → 不报（反向）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 数目一致却报了假断链\n'; FAIL=$((FAIL+1))
+fi
+
+# 闸门 2：能力图刚写完、还没跑 /sync-map，是 Phase 0 的正常中间态。
+# 少了这道闸，每个刚跑完 /spec 的项目都会挨一条假断链。
+mapcase "identity billing payments" '{"tracker":"github","activeModule":"identity","modules":{}}'
+if [ "$(mapdiv)" = "0" ]; then
+  printf '  ✅ 一个都还没落（还没跑 /sync-map）→ 不报（反向）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 把「Phase 0 还没同步」当成了断链\n'; FAIL=$((FAIL+1))
+fi
+
+# 闸门 1：modules.<id>.issue 只有 /sync-map 写，而它是 GitHub 专属 ——
+# 本地模式下 modules 永远是 {}，不设这道闸就是每个本地项目每轮都挨一条。
+mapcase "identity billing payments" '{"tracker":"none","activeModule":"identity","modules":{}}'
+if [ "$(mapdiv)" = "0" ]; then
+  printf '  ✅ 本地模式（tracker=none）→ 不报（反向）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 本地模式挨了假断链\n'; FAIL=$((FAIL+1))
+fi
+
+# 闸门 1 的承重点在这里，不在上面那条。上面那条 modules 是 {}，被闸门 2 就挡住了，
+# 去掉 tracker=github 也照样绿（变异测试实测活下来）。真正只有闸门 1 拦得住的是
+# **非 GitHub tracker 且手写了条目号**：这时数目确实对不上，但 /sync-map 是
+# GitHub 专属命令，报出去给的是一条执行不了的建议。
+mapcase "identity billing payments" '{"tracker":"gitlab","activeModule":"identity","modules":{"identity":{"issue":11},"billing":{"issue":12}}}'
+if [ "$(mapdiv)" = "0" ]; then
+  printf '  ✅ 非 GitHub tracker（gitlab）+ 已手写条目号 → 不报（反向）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 给 gitlab 项目报了「重跑 /sync-map」—— 那个命令是 GitHub 专属\n'; FAIL=$((FAIL+1))
+fi
+
+# 闸门 3：反方向（能力图删了行、issue 还在）可能是刻意的，报了就是假警报。
+mapcase "identity" "$SYNCED2"
+if [ "$(mapdiv)" = "0" ]; then
+  printf '  ✅ 能力图比已落的少 → 不报（反向）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 反方向也报了 —— 只该报「能力图多出来」这一个方向\n'; FAIL=$((FAIL+1))
+fi
+
 # ── setup-convention.sh 的回归 ──
 echo ""
 echo "═══ setup-convention 回归 ═══"

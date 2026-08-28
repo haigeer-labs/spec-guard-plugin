@@ -60,6 +60,12 @@ echo "═══ 校验器自身的回归 ═══"
 bash scripts/test-checkers.sh || F=1
 echo ""
 
+# 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」
+# 不用花钱就能验 —— 喂已知坏输入必须非零退出。
+echo "═══ 评测判决器自身的回归（不调模型）═══"
+bash evals/next-redo.sh --selftest || F=1
+echo ""
+
 echo "═══ README 内嵌声明块 ↔ templates ═══"
 python3 scripts/check-readme-sync.py || F=1
 echo ""

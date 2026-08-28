@@ -123,10 +123,14 @@ scripts/
 /bin/bash evals/skill-deferral.sh                    # 真跑:判 skill 有没有被加载(github 模式两条通路)
 /bin/bash evals/module-namespace.sh --scaffold-only  # 免费
 /bin/bash evals/module-namespace.sh                  # 真跑:判产物有没有落进 tasks/<module>/(local 模式)
+/bin/bash evals/next-redo.sh --selftest               # 免费:喂坏输入验判决器自己(已接进 validate)
+/bin/bash evals/next-redo.sh --scaffold-only          # 免费
+/bin/bash evals/next-redo.sh                          # 真跑:判 /next 会不会重取刚做完的 task
 ```
 
-两个评测各管一个模式，加起来覆盖**我们发的四种配置**里有意义的三种
-（`local + --no-claude-md` 已被禁）。
+前两个各管一个模式，加起来覆盖**我们发的四种配置**里有意义的三种
+（`local + --no-claude-md` 已被禁）。第三个管的不是配置，是**操作三那条
+没有脚本入口的筛选规则**。
 
 **结局有三种，不是两种**：通过(0) / 不通过(1) / **没跑起来(2)**。
 第三种是 0.7.18 补的 —— 此前 `claude -p` 跑不起来会被判成
@@ -154,6 +158,17 @@ transcript：跑完看 `tasks/` 下的产物落在哪，比读模型说了什么
 2026-08-27：首跑（0.7.4）A 第 8 个工具调用加载、**B 全程没加载**；
 0.7.5 给零足迹补上触发指令后复跑，**B 变成第 1 个工具调用就加载**。
 判据据此从「A 加载 && B 不加载」改成「两组都加载」，并用旧数据做了反向回归。
+
+`next-redo` 验的是 0.7.19 修的那条：模块级 PR 下 `/next` 会不会把刚做完的
+task 重新取出来。做法是**差分** —— 两个脚手架只差一条 `Closes #110` 的 commit，
+对照组正确答案是 #110、处理组是 #111。判据是 `gh` 桩记下来的调用日志，
+不是 transcript。对照组同时充当脚手架自检：它没取到 #110 的话，处理组的结果
+无从归因，这时给的是**没跑起来**而不是结论。
+2026-08-28 首跑：对照 #110 / 处理 #111，两组都走到了 `--add-assignee`（强信号）。
+
+它比前两个多一层 `--selftest`：**真跑那次两组都过了，但一个永远返回 0 的
+判决器会打出一模一样的输出**。自检喂七组已知输入给判决器、三组给 `picked()`，
+免费，已接进 `validate.sh`。
 
 > `claude plugin eval` 才是第一方格式，但它 early access、本账号未开通。
 > 开通后应迁过去。

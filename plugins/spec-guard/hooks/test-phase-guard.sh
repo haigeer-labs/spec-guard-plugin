@@ -561,8 +561,8 @@ cur = json.loads(subprocess.run([sys.executable, sys.argv[1], "compute", sys.arg
                                 capture_output=True, text=True).stdout)
 print(json.dumps({
     "tracker": "github", "activeModule": "identity",
-    "initiative": {"issue": 100, "mapDigest": cur["goalDigest"]},
-    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["digest"]}
+    "initiative": {"issue": 100, "goalDigest": cur["goalDigest"]},
+    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["rowDigest"]}
                 for i, r in enumerate(cur["rows"])},
 }, ensure_ascii=False))
 PY
@@ -633,9 +633,9 @@ base; mkdir -p .agent; mkmap '改成给连锁店用。' 'identity|登录注册�
 echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
 sw "反：老 state.json 没存指纹 → 目标段和职责都改了也不报（向后兼容）" "无"
 
-# 能力图没有 `## 目标` 段（老能力图），但 state 里存着 mapDigest
+# 能力图没有 `## 目标` 段（老能力图），但 state 里存着 goalDigest
 base; mkdir -p .agent; mkmap "-" "$R2A" "$R2B"
-echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100,"mapDigest":"deadbeefcafe"},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
+echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100,"goalDigest":"deadbeefcafe"},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
 sw "反：能力图没有「## 目标」段 → 不拿存着的指纹硬比" "无"
 
 # 闸门 2：能力图刚写完，一个都还没落

@@ -18,6 +18,8 @@
 
 用法:
   spec-digest.py compute <map>            → 算出当前指纹（/sync-map 写回时用）
+                                            **输出的 key 名就是 state.json 的
+                                            key 名，不要做任何翻译**
   spec-digest.py check   <map> <state>    → 比对，输出分歧（两个 hook 读）
   spec-digest.py --selftest               → 自检（已接进 validate.sh）
 
@@ -98,7 +100,7 @@ def parse_map(path):
 def compute(path):
     rows, goal = parse_map(path)
     return {
-        "rows": [{"id": mid, "digest": _h(text)} for mid, text in rows],
+        "rows": [{"id": mid, "rowDigest": _h(text)} for mid, text in rows],
         "order": [mid for mid, _ in rows],
         "goalDigest": _h(goal) if goal is not None else None,
         "placeholder": any(mid.startswith("example-") for mid, _ in rows),
@@ -141,7 +143,8 @@ def check(map_path, state_path):
     missing = [i for i in ids if i not in synced]
     extra = [k for k in synced if k not in ids]
 
-    stored_goal = ((state.get("initiative") or {}) if isinstance(state.get("initiative"), dict) else {}).get("mapDigest")
+    ini = state.get("initiative")
+    stored_goal = (ini if isinstance(ini, dict) else {}).get("goalDigest")
     if cur["goalDigest"] is None or not stored_goal:
         goal_stale = None          # 判不了 → 不报
     else:
@@ -155,7 +158,7 @@ def check(map_path, state_path):
         stored = entry.get("rowDigest")
         if not stored:
             continue               # 没存指纹 → 判不了 → 不报
-        if stored != r["digest"]:
+        if stored != r["rowDigest"]:
             rows_stale.append(r["id"])
 
     return {
@@ -207,9 +210,9 @@ def _selftest():
     write_map(R2)
     cur = compute(m)
     write_state({
-        "initiative": {"issue": 100, "mapDigest": cur["goalDigest"]},
+        "initiative": {"issue": 100, "goalDigest": cur["goalDigest"]},
         "modules": {
-            r["id"]: {"issue": 100 + i + 1, "rowDigest": r["digest"]}
+            r["id"]: {"issue": 100 + i + 1, "rowDigest": r["rowDigest"]}
             for i, r in enumerate(cur["rows"])
         },
     })
@@ -254,7 +257,7 @@ def _selftest():
 
     # ── 能力图没有 `## 目标` 段（老能力图）──
     write_map(R2, goal=None)
-    write_state({"initiative": {"issue": 100, "mapDigest": "deadbeefcafe"},
+    write_state({"initiative": {"issue": 100, "goalDigest": "deadbeefcafe"},
                  "modules": {"identity": {"issue": 101}, "catalog": {"issue": 102}}})
     r = check(m, s)
     chk("能力图无「## 目标」段 → goalStale=None（不拿存着的指纹硬比）",

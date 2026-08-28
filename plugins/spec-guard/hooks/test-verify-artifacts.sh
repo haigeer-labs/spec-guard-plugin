@@ -545,8 +545,8 @@ cur = json.loads(subprocess.run([sys.executable, sys.argv[1], "compute", sys.arg
                                 capture_output=True, text=True).stdout)
 print(json.dumps({
     "tracker": "github", "activeModule": "identity",
-    "initiative": {"issue": 100, "mapDigest": cur["goalDigest"]},
-    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["digest"]}
+    "initiative": {"issue": 100, "goalDigest": cur["goalDigest"]},
+    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["rowDigest"]}
                 for i, r in enumerate(cur["rows"])},
 }, ensure_ascii=False))
 PY

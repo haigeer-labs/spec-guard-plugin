@@ -51,6 +51,54 @@
   最后那两项是这轮真正要证的：模型照着新写的 SKILL **确实会去调
   `spec-digest.py compute`**，而不是自己编一个 hash。
 
+## [0.7.24] - 2026-08-29
+
+一个字段命名的修复。看着琐碎，但它是 0.7.23 那套设计**自己踩的那个坑**。
+
+### 修复
+
+- **同一个值有两个名字，翻译只存在于散文里。**
+
+  0.7.23 的 `spec-digest.py compute` 输出 `goalDigest` 和 `rows[].digest`，
+  却要求存成 `initiative.mapDigest` 和 `modules.<id>.rowDigest`：
+
+      compute 吐的      →   要存成的
+      goalDigest        →   mapDigest      ← 名字不一样
+      rows[].digest     →   rowDigest      ← 名字不一样
+
+  这个翻译**只写在 `SKILL.md` 的散文里**，靠模型每次执行 `/sync-map` 时读对。
+  翻错一次 → 指纹永远对不上 → **一条关不掉的假警报**。而 0.7.23 引入
+  `spec-digest.py` 的全部理由，就是「算法只有一份，免得两边算出对不上的 hash」——
+  我在算法上守住了，却在**字段名**上原样又造了一遍同一个洞。
+
+  `mapDigest` 这个名字本身也是错的：它只 hash `## 目标` 那一节，不是整份能力图。
+  看到这个名字的人会合理地以为模块表也被它覆盖了 —— 没有（那是 `rowDigest`
+  加 key 集合的事）。
+
+  现在的规则：**`compute` 输出的 key 名就是 `state.json` 里的 key 名，照抄，
+  不做任何翻译。**
+
+      compute → {"goalDigest": "...", "rows": [{"id": "...", "rowDigest": "..."}]}
+      state   →  initiative.goalDigest      modules.<id>.rowDigest
+
+### 兼容性
+
+**直接改名，不留别名。** 改之前核过：本机四个真实项目（含 `sentinel-livelab`
+Epic #4 / 5 模块、`sentinel-video-scaffold` Epic #470 / 7 模块）**没有一条
+写了 `mapDigest`** —— 它们都是 0.7.23 之前的形态，一条指纹都没有。
+0.7.23 发出去到现在没有任何项目在它下面跑过 `/sync-map`。
+
+留别名等于把要修的错固化。老项目走的是已经测过的那条降级路径：
+**指纹字段缺失 → 不报**。它们现在能拿到 ① 的集合比对（不需要指纹），
+②③ 要等下次 `/sync-map` 才生效。
+
+### 顺带
+
+- 这次改名漏了 `evals/sync-map.sh` 里一处形式不同的引用
+  （`mod["rowDigest"] = cur["rows"][0]["digest"]`），crash 固件因此抛异常、
+  state 写不出来，把三个「应该通过」的用例一起拖红了。
+  **是 `--selftest` 抓到的** —— 那一层就是为这种事存在的。
+
 ## [0.7.23] - 2026-08-29
 
 上一版只做了三处复制里的一处，而且做的方式是**数个数**。这一版把三处一起

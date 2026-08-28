@@ -251,21 +251,21 @@ cur = json.loads(subprocess.run([sys.executable, dig, "compute", mp],
                                 capture_output=True, text=True).stdout)
 d = json.load(open(st))
 want_goal = cur["goalDigest"]
-got_goal = (d.get("initiative") or {}).get("mapDigest")
+got_goal = (d.get("initiative") or {}).get("goalDigest")
 bad = []
-if not got_goal: bad.append("initiative.mapDigest 没写")
-elif got_goal != want_goal: bad.append("initiative.mapDigest 对不上（写了个算错的 hash）")
+if not got_goal: bad.append("initiative.goalDigest 没写")
+elif got_goal != want_goal: bad.append("initiative.goalDigest 对不上（写了个算错的 hash）")
 mods = d.get("modules") or {}
 for r in cur["rows"]:
     e = mods.get(r["id"]) or {}
     if not e.get("issue"): continue          # 没建成的不苛求
     if not e.get("rowDigest"): bad.append(f"{r['id']}.rowDigest 没写")
-    elif e["rowDigest"] != r["digest"]: bad.append(f"{r['id']}.rowDigest 对不上")
+    elif e["rowDigest"] != r["rowDigest"]: bad.append(f"{r['id']}.rowDigest 对不上")
 print("; ".join(bad))
 PY
 )
   [ -z "${DMSG}" ] \
-    && echo "  ✅ 指纹（mapDigest / rowDigest）都写回了且算得对" \
+    && echo "  ✅ 指纹（goalDigest / rowDigest）都写回了且算得对" \
     || { echo "  ❌ 指纹有问题：${DMSG} —— 没指纹的 issue 从此不受过期检测保护"; rc=1; }
 
   # F. crash 组：中途失败后必须已经写回了前面那些
@@ -290,7 +290,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 n = sum(1 for m in (d.get('modules') or {}).values()
         if m.get('issue') and not m.get('rowDigest'))
-if (d.get('initiative') or {}).get('issue') and not (d.get('initiative') or {}).get('mapDigest'):
+if (d.get('initiative') or {}).get('issue') and not (d.get('initiative') or {}).get('goalDigest'):
     n += 1
 print(n)
 PY
@@ -354,12 +354,12 @@ if full:
         if dmode == "missing": return None
         return "0" * 12 if dmode == "wrong" else v
     ini = {"issue": 101}
-    if dg(cur["goalDigest"]): ini["mapDigest"] = dg(cur["goalDigest"])
+    if dg(cur["goalDigest"]): ini["goalDigest"] = dg(cur["goalDigest"])
     d["initiative"] = ini
     d["modules"] = {}
     for i, r in enumerate(cur["rows"][:n]):
         e = {"issue": 102 + i}
-        if dg(r["digest"]): e["rowDigest"] = dg(r["digest"])
+        if dg(r["rowDigest"]): e["rowDigest"] = dg(r["rowDigest"])
         d["modules"][r["id"]] = e
 json.dump(d, open(p, "w"))
 PY
@@ -385,8 +385,8 @@ if sys.argv[2] in ("yes", "nodigest"):
     ini = {"issue": 101}
     mod = {"issue": 102}
     if sys.argv[2] == "yes":
-        ini["mapDigest"] = cur["goalDigest"]
-        mod["rowDigest"] = cur["rows"][0]["digest"]
+        ini["goalDigest"] = cur["goalDigest"]
+        mod["rowDigest"] = cur["rows"][0]["rowDigest"]
     d["initiative"] = ini
     d["modules"] = {cur["rows"][0]["id"]: mod}
 json.dump(d, open(sys.argv[1],"w"))

@@ -206,7 +206,7 @@ if mis: print('BAD|能力图有 %d 个模块，其中 %d 个没落成 issue: %s'
 else:   print('OK|能力图的 %d 个模块都已落成 issue' % d['mapCount'])
 g=d.get('goalStale')
 if g is True:  print('BAD|能力图的「## 目标」段改过，Epic 正文摘要已过期 —— /sync-map 刷新')
-elif g is None: print('SKIP|目标段指纹判不了（能力图无「## 目标」段，或 state.json 没存 mapDigest）')
+elif g is None: print('SKIP|目标段指纹判不了（能力图无「## 目标」段，或 state.json 没存 goalDigest）')
 else: print('OK|Epic 正文摘要与能力图目标段一致')
 rs=d.get('rowsStale') or []
 if rs: print('BAD|%s 的职责描述改过，对应 issue 正文摘要已过期 —— /sync-map 刷新' % ', '.join(rs))

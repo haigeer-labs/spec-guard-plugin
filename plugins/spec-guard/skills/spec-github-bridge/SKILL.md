@@ -77,8 +77,14 @@ issue 正文没法看），而是**给复制留指纹**：写投影的同时把�
 拿不到就 `find ~/.claude/plugins -name spec-digest.py -type f | tail -1`。
 
     python3 <digest> compute spec/CAPABILITY-MAP.md
-    # → {"rows":[{"id":"identity","digest":"a1b2c3d4e5f6"},...],
-    #    "order":[...], "goalDigest":"...", "placeholder":false}
+    # → {"rows":[{"id":"identity","rowDigest":"a1b2c3d4e5f6"},...],
+    #    "order":[...], "goalDigest":"9abdfa58f9fa", "placeholder":false}
+
+**`compute` 输出的 key 名就是 `state.json` 里的 key 名 —— 照抄，不要翻译。**
+`goalDigest` 存进 `initiative.goalDigest`，每个 row 的 `rowDigest` 存进
+`modules.<id>.rowDigest`。两边名字不一样的话，翻译这一步就得靠人每次记对，
+而记错一次的表现是**指纹永远对不上 = 一条关不掉的假警报** —— 正是这整套
+设计要防的那个失败模式。
 
 ### 先判断这次是三件事里的哪一件
 
@@ -147,13 +153,13 @@ issue 正文没法看），而是**给复制留指纹**：写投影的同时把�
 
 ### 每建成一个就立刻写回，连指纹一起
 
-**不要攒到最后一起写。** Epic 建好写 `initiative.issue` **和 `initiative.mapDigest`**；
+**不要攒到最后一起写。** Epic 建好写 `initiative.issue` **和 `initiative.goalDigest`**；
 每个模块 issue 建好写 `modules.<id>.issue` **和 `modules.<id>.rowDigest`**：
 
     {
-      "initiative": { "issue": 100, "mapDigest": "<compute 的 goalDigest>" },
+      "initiative": { "issue": 100, "goalDigest": "<照抄 compute 的 goalDigest>" },
       "modules": {
-        "identity": { "issue": 101, "rowDigest": "<compute 里该 id 的 digest>" }
+        "identity": { "issue": 101, "rowDigest": "<照抄该 id 那一行的 rowDigest>" }
       }
     }
 

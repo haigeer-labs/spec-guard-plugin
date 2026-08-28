@@ -64,6 +64,7 @@ echo ""
 # 不用花钱就能验 —— 喂已知坏输入必须非零退出。
 echo "═══ 评测判决器自身的回归（不调模型）═══"
 bash evals/next-redo.sh --selftest || F=1
+bash evals/sync-map.sh  --selftest || F=1
 echo ""
 
 echo "═══ README 内嵌声明块 ↔ templates ═══"

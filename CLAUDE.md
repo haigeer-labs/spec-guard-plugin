@@ -84,6 +84,18 @@ scripts/
 **显式写 `/bin/bash`**，不要写 `bash` —— macOS 上后者可能是 Homebrew 的 5.x，
 而 3.2 才是这个项目踩过坑的那个版本（见 CHANGELOG 0.2.1）。
 
+**装一次 pre-push，别指望自己记得：**
+
+```bash
+/bin/bash scripts/install-git-hooks.sh          # 卸载加 --uninstall
+```
+
+它在 push 前跑上面那三条（约 50 秒），红了就中止。
+理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 114 条 hook 断言、
+22 条校验器断言、shellcheck，全部依赖一个人记得敲命令。
+**这是止血带不是解药**，真正的解法是把账户级 Actions 恢复。
+急着推可以 `git push --no-verify`，但那就回到了靠自觉。
+
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
 当前 114 个断言：`test-phase-guard.sh` 74 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
@@ -145,6 +157,9 @@ python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键�
 /bin/bash evals/next-redo.sh --selftest               # 免费:喂坏输入验判决器自己(已接进 validate)
 /bin/bash evals/next-redo.sh --scaffold-only          # 免费
 /bin/bash evals/next-redo.sh                          # 真跑:判 /next 会不会重取刚做完的 task
+/bin/bash evals/sync-map.sh --selftest                # 免费(已接进 validate)
+/bin/bash evals/sync-map.sh --scaffold-only           # 免费
+/bin/bash evals/sync-map.sh                           # 真跑:判操作一(能力图落库)
 ```
 
 前两个各管一个模式，加起来覆盖**我们发的四种配置**里有意义的三种
@@ -177,6 +192,24 @@ transcript：跑完看 `tasks/` 下的产物落在哪，比读模型说了什么
 2026-08-27：首跑（0.7.4）A 第 8 个工具调用加载、**B 全程没加载**；
 0.7.5 给零足迹补上触发指令后复跑，**B 变成第 1 个工具调用就加载**。
 判据据此从「A 加载 && B 不加载」改成「两组都加载」，并用旧数据做了反向回归。
+
+`sync-map` 验的是**操作一** —— 四个操作里唯一做不可逆外部写入的那个
+（建 Epic + N 个模块 issue + 依赖关系），也是所有人的第一步。
+它在 `docs/walkthrough.md` 里真跑过，但那是 0.5 时代；0.7.19（`dee3d81`）
+改了 Epic 正文和模块摘要的来源之后**再没跑过**。
+
+两组，判据全在 `gh` 桩的调用记录和文件系统上，不真建 issue：
+`happy` 组验结构（Epic 1 个 / 模块数对得上 / 正文是摘要不是全文 / 依赖边 /
+state.json 写全）；`crash` 组让桩在第 3 次建 issue 时失败，验
+**0.7.13 那条「每建成一个就立刻写回」** —— 那条至今只是 skill 里的一句话。
+crash 组的判据是**从日志算出的**「失败前建成了几个」，不写死数，
+模型重试几次都不影响。
+
+2026-08-28 首跑（跑了三次才拿到有效结论，前两次都是**评测自己的毛病**）：
+① 判据把模型查用法打的 `gh issue create --help` 数成了「第二个 Epic」；
+② 桩也把 `--help` 当成建 issue，消耗掉一个号还提前触发失败点，模型以为
+自己建了孤儿 issue 并停下来问 —— 那一轮 crash 组整个是脚手架污染。
+两处都补了反向自检用例。第三次全绿，增量写回坐实。
 
 `next-redo` 验的是 0.7.19 修的那条：模块级 PR 下 `/next` 会不会把刚做完的
 task 重新取出来。做法是**差分** —— 两个脚手架只差一条 `Closes #110` 的 commit，

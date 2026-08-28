@@ -354,6 +354,56 @@ case "$(vrun)" in
     printf '  ❌ spec 全文粘贴没被抓到 —— skip 扩大化了\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── 认不出默认分支时要说出来，不能静默 ───────────────────
+# 原先 BASE 取不到 → 整个 closing keyword 比对**消失**，连一行 ⏭ 都没有。
+# 同一个脚本对其余每一处探测失败都老实 skip；「没查」和「查过没问题」
+# 在输出里长得一模一样，正是这个脚本存在的意义要否掉的那种。
+modrepo feat/oauth2
+# 注意：modrepo 收尾时已经在 feat/oauth2 上，`git branch -m X` 改的是**当前**
+# 分支。要改的是基准分支，必须点名 —— 第一版就是这么写错的，两条断言全红。
+BB=$(git branch --format='%(refname:short)' | grep -v '^feat/oauth2$' | head -1)
+git branch -m "${BB}" trunk 2>/dev/null   # 无 remote + 非常规名 → base 无从得知
+ghstub <<'STUBB'
+#!/bin/bash
+case "$*" in
+  *"pr view"*)    echo "Closes #5" ;;
+  *"issue view"*) echo "摘要" ;;
+  *sub_issues*)   echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)              echo "" ;;
+esac
+STUBB
+case "$(vrun)" in
+  *"认不出默认分支"*)
+    printf '  ✅ 认不出默认分支时 skip 一行，不静默\n'; PASS=$((PASS+1)) ;;
+  *"本分支没有一条 commit 带 Closes"*)
+    printf '  ❌ 认不出 base 却报成「一条 closing commit 都没有」（假失败）\n'; FAIL=$((FAIL+1)) ;;
+  *) printf '  ❌ 认不出 base 时整段静默消失了\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 正向：默认分支叫 develop 且有 origin/HEAD 时要真的比对，不许 skip 扩大化
+modrepo feat/oauth2
+BB=$(git branch --format='%(refname:short)' | grep -v '^feat/oauth2$' | head -1)
+git branch -m "${BB}" develop 2>/dev/null
+# 裸仓库必须用 -b 建：不然它的 HEAD 指着不存在的 main，
+# `git remote set-head -a` 报 "Cannot determine remote HEAD" 并**静默失败**，
+# origin/HEAD 根本没设上，这条断言就测了个空气。
+rm -rf "${TMP}/o.git"; git init -q --bare -b develop "${TMP}/o.git" 2>/dev/null
+git remote add origin "${TMP}/o.git" 2>/dev/null
+git push -q origin develop 2>/dev/null; git remote set-head origin -a >/dev/null 2>&1
+git show-ref --verify --quiet refs/remotes/origin/HEAD \
+  || { printf '  ❌ 脚手架没设上 origin/HEAD，下面这条测的是空气\n'; FAIL=$((FAIL+1)); }
+git checkout -q feat/oauth2 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+case "$(vrun)" in
+  *"认不出默认分支"*)
+    printf '  ❌ 有 origin/HEAD 指着 develop 却说认不出 —— skip 扩大化了\n'; FAIL=$((FAIL+1)) ;;
+  *"条 commit 带 closing keyword"*)
+    printf '  ✅ 默认分支 develop 时照样比对得出来\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ develop 仓库上 closing keyword 比对没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # ── Epic 正文也要体检（issue #3）─────────────────────────
 # 此前只查模块 issue 的正文，而**唯一一处流程明确指示粘贴全文的地方恰恰是
 # Epic**：操作一步骤 2 原来写的就是 `--body-file spec/CAPABILITY-MAP.md`，

@@ -193,6 +193,31 @@ fi
 BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 DIRTY=$(git status --porcelain 2>/dev/null | grep -vE "^\?\? (spec/|tasks/|\.agent/)" | wc -l | tr -d " ")
 [ -z "$DIRTY" ] && DIRTY=0
+# 默认分支（模块 PR 的 base）。**不能只认 main/master 两个名字。**
+# 默认分支叫 develop / trunk 的仓库上，本分支已落的 task 号一个都算不出来 ——
+# 而 0.7.19 起「/next 跳过已做完的 task」这条筛选规则就靠这组号，
+# 拿不到号 = 那个「刚做完的 task 被重新取一遍」的 bug 在这些仓库上原样存在。
+#
+# 顺序刻意先本地后远端、先 origin/HEAD 的名字后 main/master：
+# 常见仓库（有本地 main）解析结果和 0.7.19 之前**逐字节相同**，只是把
+# 覆盖面往外扩了一圈，不改已有行为。
+# 全部落空就返回空 —— 调用方一律降级成「不排除任何东西」，
+# 绝不反过来当成「都做完了」。
+default_base() {
+  local h n b
+  h=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true)
+  n="${h#origin/}"
+  for b in "${n}" main master "$(git config --get init.defaultBranch 2>/dev/null || true)"; do
+    [ -n "${b}" ] || continue
+    git show-ref --verify --quiet "refs/heads/${b}" && { echo "${b}"; return; }
+  done
+  if [ -n "${h}" ] && git show-ref --verify --quiet "refs/remotes/${h}"; then echo "${h}"; return; fi
+  for b in origin/main origin/master; do
+    git show-ref --verify --quiet "refs/remotes/${b}" && { echo "${b}"; return; }
+  done
+  echo ""
+}
+
 # ── 模块级分支识别 ─────────────────────────────────────────
 #   模块级 PR 约定下分支名是 <type>/<module-id>，**不含 issue 号**。
 #   没有这一判定，下面「已认领但分支不含 issue 号」会把正常的模块分支报成
@@ -229,10 +254,7 @@ BRANCH_ISSUE=""
 TASKS_DONE_HERE=0
 DONE_NUMS=""
 if [ "${ON_MODULE_BRANCH}" = true ]; then
-  BASE=""
-  for b in main master; do
-    git show-ref --verify --quiet "refs/heads/${b}" && { BASE="$b"; break; }
-  done
+  BASE=$(default_base)
   if [ -n "${BASE}" ] && [ "${BASE}" != "${BRANCH}" ]; then
     DONE_NUMS=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
       | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \

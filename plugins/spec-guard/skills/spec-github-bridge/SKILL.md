@@ -191,8 +191,16 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
    号从 phase-guard 每轮注入的那行事实里直接读（「本分支已落 N 个 task 的
    commit（#11 #12）」）。拿不到时自己数：
 
-       BASE=main; git show-ref --verify --quiet refs/heads/main || BASE=master
-       git show-ref --verify --quiet "refs/heads/${BASE}" || BASE=""
+       # 默认分支：先问 origin/HEAD（**不能只认 main/master** —— 默认分支叫
+       # develop/trunk 的仓库上这条规则会一个号都拿不到），再退回本地 main/master，
+       # 最后退回远端跟踪 ref。与两个 hook 的 default_base() 同一套顺序。
+       N=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true); N="${N#origin/}"
+       BASE=""
+       for b in "${N}" main master; do
+         [ -n "${b}" ] && git show-ref --verify --quiet "refs/heads/${b}" && { BASE="${b}"; break; }
+       done
+       [ -z "${BASE}" ] && [ -n "${N}" ] \
+         && git show-ref --verify --quiet "refs/remotes/origin/${N}" && BASE="origin/${N}"
        [ -n "${BASE}" ] && git log -n 200 --format=%B "${BASE}..HEAD" \
          | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
          | grep -oE '[0-9]+' | sort -u

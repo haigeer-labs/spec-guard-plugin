@@ -43,6 +43,12 @@ chk() {
 
 # 取注入正文（不是只取「阶段|断链数」）—— 本套断言长期只比对那两项，
 # 正文里的畸形输出因此躺了很久（见上面双斜杠那条注释）。
+# 只取「模块分支:」那一行。**不能拿整段 ctx 去 grep 号** ——
+# gh 桩给 11 号挂了 assignee，事实行里那句「已认领 #11 T1」照样含 #11，
+# 于是断言即使在 DONE_LIST 为空时也会通过。第一版就是这么写的，
+# 三条 develop 断言全是空的、全绿。
+modline() { ctx | grep "模块分支:" || true; }
+
 ctx() {
   CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | python3 -c '
 import sys, json
@@ -206,7 +212,7 @@ mod_repo; git checkout -qb feat/x 2>/dev/null
 git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
 
 Closes #11" 2>/dev/null
-MB="$(ctx)"
+MB="$(modline)"
 if case "$MB" in *"#11"*) true ;; *) false ;; esac \
    && case "$MB" in *"#12"*) false ;; *) true ;; esac; then
   printf '  ✅ 模块分支：注入已做完的 task 号（#11），没有牵连未做的 #12\n'; PASS=$((PASS+1))
@@ -217,7 +223,7 @@ chk "落了 1/2 个 task → 仍在取任务，不报断链" "TASK_READY (模块
 
 # 反向：一条 closing commit 都没有时不能凭空冒出个号
 mod_repo; git checkout -qb feat/x 2>/dev/null
-if case "$(ctx)" in *"还没有带 closing keyword 的 commit"*) true ;; *) false ;; esac; then
+if case "$(modline)" in *"还没有带 closing keyword 的 commit"*) true ;; *) false ;; esac; then
   printf '  ✅ 模块分支无 closing commit：说「还没有」，不列号\n'; PASS=$((PASS+1))
 else
   printf '  ❌ 空集合时的措辞不对（列了个空号或者干脆没说）\n'; FAIL=$((FAIL+1))
@@ -234,6 +240,53 @@ git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T2
 
 Closes #12" 2>/dev/null
 chk "BASE 取不到时不排除任何 task（不能判成模块已完成）" "TASK_READY (模块分支)|断链0"
+
+# 默认分支不叫 main/master 时，号也必须算得出来。
+# 只认这两个名字的话，develop / trunk 仓库上 0.7.19 那条筛选规则拿不到任何
+# 数据 —— 「刚做完的 task 被重新取一遍」在这些仓库上原样存在。
+# 实测取证：develop 仓库上 hook 说「还没有带 closing keyword 的 commit」，
+# 而分支上确实有一条。
+setup_remote() {  # 在当前仓库上造一个 origin，并把 origin/HEAD 指到 $1
+  # 裸仓库必须用 -b 建：不然它的 HEAD 指着一个不存在的 main，
+  # `git remote set-head -a` 会报 "Cannot determine remote HEAD" 并且**静默失败**
+  # （加了 >/dev/null 2>&1），origin/HEAD 根本没设上。
+  rm -rf "$TMP/o.git"; git init -q --bare -b "$1" "$TMP/o.git" 2>/dev/null
+  git remote add origin "$TMP/o.git" 2>/dev/null
+  git push -q origin "$1" 2>/dev/null
+  git remote set-head origin -a >/dev/null 2>&1
+  git show-ref --verify --quiet refs/remotes/origin/HEAD \
+    || { printf '  ❌ 脚手架没设上 origin/HEAD，下面三条测的是空气\n'; FAIL=$((FAIL+1)); }
+}
+mod_repo; git branch -m develop 2>/dev/null; setup_remote develop
+git checkout -qb feat/x 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+if case "$(modline)" in *"#11"*) true ;; *) false ;; esac; then
+  printf '  ✅ 默认分支 develop：靠 origin/HEAD 认出 base，号照样算得出\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 默认分支不叫 main/master 时号算不出来 —— 筛选规则拿不到数据\n'; FAIL=$((FAIL+1))
+fi
+
+# 本地那条 develop 被删掉，只剩远端跟踪 ref —— 仍要算得出来
+git branch -D develop >/dev/null 2>&1
+if case "$(modline)" in *"#11"*) true ;; *) false ;; esac; then
+  printf '  ✅ 只剩 origin/develop（本地分支已删）也认得出 base\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 本地没有那条分支时 base 认不出来\n'; FAIL=$((FAIL+1))
+fi
+
+# 反向：常见仓库（有本地 main）的解析结果不能被这次扩展改掉。
+# 扩展只该往外扩覆盖面，不该动已有行为。
+mod_repo; git branch -m main 2>/dev/null; git checkout -qb feat/x 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+if case "$(modline)" in *"#11"*) true ;; *) false ;; esac; then
+  printf '  ✅ 本地 main 的常见情形不受影响\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 扩展 base 探测把常见情形弄坏了\n'; FAIL=$((FAIL+1))
+fi
 
 # ── 「任务从没建过」不能被当成「任务都做完了」──────────────
 # 两者在 OPEN_TASKS 上长得一模一样（都是 0）。此前 phase-guard 一律判

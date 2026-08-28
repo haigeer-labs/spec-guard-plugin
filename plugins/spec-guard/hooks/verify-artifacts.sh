@@ -66,6 +66,31 @@ fi
 
 STATE=".agent/state.json"
 
+# 默认分支（模块 PR 的 base）。**不能只认 main/master 两个名字。**
+# 默认分支叫 develop / trunk 的仓库上，本分支已落的 task 号一个都算不出来 ——
+# 而 0.7.19 起「/next 跳过已做完的 task」这条筛选规则就靠这组号，
+# 拿不到号 = 那个「刚做完的 task 被重新取一遍」的 bug 在这些仓库上原样存在。
+#
+# 顺序刻意先本地后远端、先 origin/HEAD 的名字后 main/master：
+# 常见仓库（有本地 main）解析结果和 0.7.19 之前**逐字节相同**，只是把
+# 覆盖面往外扩了一圈，不改已有行为。
+# 全部落空就返回空 —— 调用方一律降级成「不排除任何东西」，
+# 绝不反过来当成「都做完了」。
+default_base() {
+  local h n b
+  h=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true)
+  n="${h#origin/}"
+  for b in "${n}" main master "$(git config --get init.defaultBranch 2>/dev/null || true)"; do
+    [ -n "${b}" ] || continue
+    git show-ref --verify --quiet "refs/heads/${b}" && { echo "${b}"; return; }
+  done
+  if [ -n "${h}" ] && git show-ref --verify --quiet "refs/remotes/${h}"; then echo "${h}"; return; fi
+  for b in origin/main origin/master; do
+    git show-ref --verify --quiet "refs/remotes/${b}" && { echo "${b}"; return; }
+  done
+  echo ""
+}
+
 jread() {  # $1=file  $2=python 表达式(d 为根对象)
   [ -f "$1" ] || return 0
   python3 -c "
@@ -339,11 +364,14 @@ else
     else
       bad "模块 PR 正文没有 Closes #${MI} —— 模块 issue 不会自动关闭"
     fi
-    BASE=""
-    for b in main master; do
-      git show-ref --verify --quiet "refs/heads/${b}" && { BASE="$b"; break; }
-    done
-    if [ -n "${BASE}" ] && [ "${BASE}" != "${BR}" ]; then
+    BASE=$(default_base)
+    if [ -z "${BASE}" ] || [ "${BASE}" = "${BR}" ]; then
+      # 原先这里是**静默**跳过：BASE 取不到时整段消失，连一行 ⏭ 都没有。
+      # 同一个脚本对其余每一处探测失败都老实 skip —— 本段段头写的就是
+      # 「探测失败就整段跳过」，跳过也要说出来，否则「没查」和「查过没问题」
+      # 在输出里长得一模一样。
+      skip "认不出默认分支（试过 origin/HEAD、main、master、init.defaultBranch），跳过 closing keyword 比对"
+    else
       NC=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
         | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
         | grep -oE '[0-9]+' | sort -u | grep -c . || true)

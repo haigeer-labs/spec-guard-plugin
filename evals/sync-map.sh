@@ -52,7 +52,25 @@ mkgh() {
   mkdir -p "$1"
   cat > "$1/gh" <<'STUB'
 #!/bin/bash
-printf '%s\0' "$@" >> "${GHLOG}"; printf '\0\0' >> "${GHLOG}"
+# 记日志前把 `--body-file X` 的**内容**也塞进去（多加一对 __BODYTEXT__ <正文>）。
+# 0.7.23 起 SKILL 让操作一走 --body-file：正文是多行、含 HTML 注释标记，
+# 走 --body 的 shell 引号必炸。而旧判据只看得到路径，于是把
+# 「用了 --body-file」整个判成违规 —— 可 0.7.19 修的是「不要 --body-file
+# **能力图本身**」，不是「不许用这个 flag」。判据管得太宽，会对着正确行为
+# 报失败（lenses A3）。记下内容之后，判据就能改成看**正文是什么**。
+LOGARGS=(); li=1
+while [ ${li} -le $# ]; do
+  la="${!li}"
+  LOGARGS+=("${la}")
+  if [ "${la}" = "--body-file" ]; then
+    lj=$((li+1)); lf="${!lj}"
+    LOGARGS+=("${lf}")
+    [ -r "${lf}" ] && LOGARGS+=("__BODYTEXT__" "$(cat "${lf}")")
+    li=$((li+2)); continue
+  fi
+  li=$((li+1))
+done
+printf '%s\0' "${LOGARGS[@]}" >> "${GHLOG}"; printf '\0\0' >> "${GHLOG}"
 # **必须带 --title 才算一次建 issue。** 首跑时模型先打了
 # `gh issue create --help` 查用法，桩把它当成一次 create：消耗掉 101 号、
 # 还提前触发了失败点，模型于是以为自己建了个孤儿 issue 并停下来问。
@@ -141,14 +159,18 @@ for rec in raw.split(b'\0\0'):
     elif 'issue' in args and 'edit' in args: kind = 'edit'
     parent = ''
     body = ''
+    bodyfile = ''
     for i, a in enumerate(args):
         if a == '--parent' and i + 1 < len(args): parent = args[i+1]
         if a == '--body' and i + 1 < len(args): body = args[i+1]
-        if a == '--body-file' and i + 1 < len(args): body = 'FILE:' + args[i+1]
+        if a == '--body-file' and i + 1 < len(args): bodyfile = args[i+1]
+        # 桩塞进来的真实正文（--body-file 那条路径）
+        if a == '__BODYTEXT__' and i + 1 < len(args): body = args[i+1]
     # **字节数，不是字符数** —— 对比方 MAPLEN 用的是 wc -c。
     # 中文正文两者差 2~3 倍，混用会让「灌了全文」判不出来（自检抓到过）。
     nbytes = len(body.encode('utf-8'))
-    print(f"{kind}|{parent}|{nbytes}|{body[:40].replace(chr(10),' ')}|{joined[:200]}")
+    marked = 'MARK' if ('BEGIN:spec-guard-sync' in body and 'END:spec-guard-sync' in body) else 'NOMARK'
+    print(f"{kind}|{parent}|{nbytes}|{marked}|{bodyfile}|{joined[:120]}")
 PY
 }
 
@@ -164,9 +186,15 @@ verdict() {  # $1=happy 的 GHLOG $2=happy 目录 $3=crash 的 GHLOG $4=crash �
   E=$(calls "${hl}" | awk -F'|' '$1=="create" && $2==""' | wc -l | tr -d ' ')
   # B. 模块 issue：带 --parent 的 create
   P=$(calls "${hl}" | awk -F'|' '$1=="create" && $2!=""' | wc -l | tr -d ' ')
-  # C. Epic 正文体量
-  EBF=$(calls "${hl}" | awk -F'|' '$1=="create" && $2=="" {print $4}' | head -1)
+  # C. Epic 正文体量。**判的是正文内容，不是用了哪个 flag。**
+  #    0.7.19 那条规则是「不要 --body-file **能力图本身**」；旧判据实现成
+  #    「不许用 --body-file」，而 0.7.23 起 SKILL 正是用它写多行带标记的正文
+  #    —— 判据会对着正确行为报失败。现在只有指向能力图时才算违规，
+  #    其余一律看正文体量。
+  EBF=$(calls "${hl}" | awk -F'|' '$1=="create" && $2=="" {print $5}' | head -1)
+  EMARK=$(calls "${hl}" | awk -F'|' '$1=="create" && $2=="" {print $4}' | head -1)
   EBODY=$(calls "${hl}" | awk -F'|' '$1=="create" && $2=="" {print $3}' | head -1)
+  PNOMARK=$(calls "${hl}" | awk -F'|' '$1=="create" && $2!="" && $4=="NOMARK"' | wc -l | tr -d ' ')
   MAPLEN=$(wc -c < "${hd}/spec/CAPABILITY-MAP.md" | tr -d ' ')
   # D. 依赖边
   DEP=$(calls "${hl}" | grep -c 'blocked-by' || true)
@@ -181,11 +209,22 @@ verdict() {  # $1=happy 的 GHLOG $2=happy 目录 $3=crash 的 GHLOG $4=crash �
     && echo "  ✅ ${NMOD} 个模块 issue 都挂在 Epic 下" \
     || { echo "  ❌ 带 --parent 的 create 有 ${P} 个（应为 ${NMOD}）"; rc=1; }
   case "${EBF}" in
-    FILE:*) echo "  ❌ Epic 用了 --body-file（${EBF}）—— 正是 0.7.19 修掉的那条"; rc=1 ;;
-    *) if [ "${EBODY}" -gt $((MAPLEN * 2 / 3)) ]; then
-         echo "  ❌ Epic 正文 ${EBODY} 字节 > 能力图的 2/3 —— 疑似灌了全文"; rc=1
-       else echo "  ✅ Epic 正文是摘要而非能力图全文"; fi ;;
+    *CAPABILITY-MAP.md)
+      echo "  ❌ Epic 用了 --body-file ${EBF} —— 把能力图全文灌进正文，正是 0.7.19 修掉的那条"; rc=1 ;;
+    *)
+      if [ "${EBODY}" -gt $((MAPLEN * 2 / 3)) ]; then
+        echo "  ❌ Epic 正文 ${EBODY} 字节 > 能力图的 2/3 —— 疑似灌了全文"; rc=1
+      else echo "  ✅ Epic 正文是摘要而非能力图全文"; fi ;;
   esac
+
+  # G. 标记块 —— 0.7.23 的刷新分支只重写标记之间。没有标记，那个 issue 的
+  #    正文就永远刷不了，检测出过期也修不回来。
+  [ "${EMARK}" = MARK ] \
+    && echo "  ✅ Epic 正文有 spec-guard-sync 标记块（将来刷得了）" \
+    || { echo "  ❌ Epic 正文没有 <!-- BEGIN/END:spec-guard-sync --> —— 过期了也刷不回来"; rc=1; }
+  [ "${PNOMARK}" -eq 0 ] \
+    && echo "  ✅ ${P} 个模块 issue 正文都有标记块" \
+    || { echo "  ❌ ${PNOMARK} 个模块 issue 正文没有标记块"; rc=1; }
   [ "${DEP}" -ge 2 ] \
     && echo "  ✅ 依赖边建了 ${DEP} 条（能力图有 2 条）" \
     || { echo "  ❌ 依赖边只有 ${DEP} 条 —— build order 的阻塞关系没落库"; rc=1; }
@@ -200,6 +239,34 @@ sys.exit(0 if ok else 1)
 PY
   then echo "  ✅ state.json 里 Epic 号和 ${NMOD} 个模块号都写回了"
   else echo "  ❌ state.json 没写全 —— 跨会话续接会找不到 issue 在哪"; rc=1; fi
+
+  # H. 指纹：写全，**而且算得对**。
+  #    只查「字段在不在」是不够的 —— 随手写个假 hash 也算写了，而那比不写更糟：
+  #    它会让检测永远报「过期」（关不掉的警报），或者永远不报（谎报已同步）。
+  #    所以拿 spec-digest.py 重算一遍比对。
+  DMSG=$(python3 - "${PLUG}/hooks/spec-digest.py" "${hd}/spec/CAPABILITY-MAP.md" "${hd}/.agent/state.json" <<'PY'
+import json, subprocess, sys
+dig, mp, st = sys.argv[1], sys.argv[2], sys.argv[3]
+cur = json.loads(subprocess.run([sys.executable, dig, "compute", mp],
+                                capture_output=True, text=True).stdout)
+d = json.load(open(st))
+want_goal = cur["goalDigest"]
+got_goal = (d.get("initiative") or {}).get("mapDigest")
+bad = []
+if not got_goal: bad.append("initiative.mapDigest 没写")
+elif got_goal != want_goal: bad.append("initiative.mapDigest 对不上（写了个算错的 hash）")
+mods = d.get("modules") or {}
+for r in cur["rows"]:
+    e = mods.get(r["id"]) or {}
+    if not e.get("issue"): continue          # 没建成的不苛求
+    if not e.get("rowDigest"): bad.append(f"{r['id']}.rowDigest 没写")
+    elif e["rowDigest"] != r["digest"]: bad.append(f"{r['id']}.rowDigest 对不上")
+print("; ".join(bad))
+PY
+)
+  [ -z "${DMSG}" ] \
+    && echo "  ✅ 指纹（mapDigest / rowDigest）都写回了且算得对" \
+    || { echo "  ❌ 指纹有问题：${DMSG} —— 没指纹的 issue 从此不受过期检测保护"; rc=1; }
 
   # F. crash 组：中途失败后必须已经写回了前面那些
   # 成功建成的个数 = 带 --title 的 create 数 - 失败标记数。
@@ -216,11 +283,25 @@ n += sum(1 for m in d.get('modules', {}).values() if m.get('issue'))
 print(n)
 PY
 )
+  # 号和指纹必须**同一次写入**。只写号不写指纹，那个 issue 从此不受过期
+  # 检测保护，而中途失败恰恰是最容易只写一半的时刻。
+  CNOD=$(python3 - "${cd_}/.agent/state.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+n = sum(1 for m in (d.get('modules') or {}).values()
+        if m.get('issue') and not m.get('rowDigest'))
+if (d.get('initiative') or {}).get('issue') and not (d.get('initiative') or {}).get('mapDigest'):
+    n += 1
+print(n)
+PY
+)
   echo "  [crash] ${CC} 次建 issue，其中 ${CF} 次被桩打断 → 建成 ${COK} 个；state.json 里记了 ${CS} 个"
   if [ "${CF}" -eq 0 ]; then
     echo "  ⏭  crash 组没走到失败点 —— 这一项没有结论"
+  elif [ "${CS}" -ge "${COK}" ] && [ "${COK}" -gt 0 ] && [ "${CNOD}" -eq 0 ]; then
+    echo "  ✅ 中途失败后，已建成的号和指纹都在 state.json 里（可续跑）"
   elif [ "${CS}" -ge "${COK}" ] && [ "${COK}" -gt 0 ]; then
-    echo "  ✅ 中途失败后，已建成的号都在 state.json 里（可续跑）"
+    echo "  ❌ 号写回了但 ${CNOD} 条没带指纹 —— 号和指纹必须同一次写入"; rc=1
   else
     echo "  ❌ 建成 ${COK} 个但 state.json 只记了 ${CS} 个 —— 重跑会从头再建一套（0.7.13 那条没落实）"; rc=1
   fi
@@ -231,15 +312,28 @@ PY
 if [ "${MODE}" = selftest ]; then
   SP=0; SF=0
   T="${WORK}/st"; mkdir -p "${T}"
+  # $7=正文带标记块?(yes/no，默认 yes)  $8=指纹(ok/missing/wrong，默认 ok)
+  # $9=Epic 用 --body-file 指向谁（空=用 --body）
   mkfix() {  # $1=目录 $2=epic正文 $3=模块数 $4=依赖数 $5=state完整? $6=crash已写回?
     rm -rf "$1"; mk "$1"; mk "$1c"
     : > "$1/log"; : > "$1c/log"
-    python3 - "$1/log" "$2" "$3" "$4" <<'PY'
+    python3 - "$1/log" "$2" "$3" "$4" "${7:-yes}" "${9:-}" <<'PY'
 import sys
 p, body, nmod, ndep = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
-recs = [["gh","issue","create","--title","Initiative: x","--body",body]]
+mark, bodyfile = sys.argv[5] == "yes", sys.argv[6]
+B, E = "<!-- BEGIN:spec-guard-sync -->", "<!-- END:spec-guard-sync -->"
+def wrap(t):
+    return "指针\n\n%s\n%s\n%s" % (B, t, E) if mark else t
+epic = wrap(body)
+# --body-file 时桩会额外记一对 __BODYTEXT__ <正文>；固件照着这个形状造。
+if bodyfile:
+    head = ["gh","issue","create","--title","Initiative: x",
+            "--body-file", bodyfile, "__BODYTEXT__", epic]
+else:
+    head = ["gh","issue","create","--title","Initiative: x","--body", epic]
+recs = [head]
 for i in range(nmod):
-    recs.append(["gh","issue","create","--parent","101","--title",f"m{i}","--body","摘要"])
+    recs.append(["gh","issue","create","--parent","101","--title",f"m{i}","--body",wrap("摘要")])
 for i in range(ndep):
     recs.append(["gh","issue","edit",str(102+i),"--add-blocked-by",str(101+i)])
 out = b''
@@ -247,14 +341,27 @@ for r in recs:
     out += b'\0'.join(x.encode() for x in r) + b'\0' + b'\0\0'
 open(p,'wb').write(out)
 PY
-    python3 - "$1/.agent/state.json" "$3" "$5" <<'PY'
-import json, sys
+    python3 - "$1/.agent/state.json" "$3" "$5" "${PLUG}/hooks/spec-digest.py" \
+             "$1/spec/CAPABILITY-MAP.md" "${8:-ok}" <<'PY'
+import json, subprocess, sys
 p, n, full = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "yes"
+dig, mp, dmode = sys.argv[4], sys.argv[5], sys.argv[6]
 d = json.load(open(p))
 if full:
-    d["initiative"] = {"issue": 101}
-    d["modules"] = {m: {"issue": 102+i} for i, m in enumerate(["identity","billing","report"][:n])}
-json.dump(d, open(p,"w"))
+    cur = json.loads(subprocess.run([sys.executable, dig, "compute", mp],
+                                    capture_output=True, text=True).stdout)
+    def dg(v):
+        if dmode == "missing": return None
+        return "0" * 12 if dmode == "wrong" else v
+    ini = {"issue": 101}
+    if dg(cur["goalDigest"]): ini["mapDigest"] = dg(cur["goalDigest"])
+    d["initiative"] = ini
+    d["modules"] = {}
+    for i, r in enumerate(cur["rows"][:n]):
+        e = {"issue": 102 + i}
+        if dg(r["digest"]): e["rowDigest"] = dg(r["digest"])
+        d["modules"][r["id"]] = e
+json.dump(d, open(p, "w"))
 PY
     python3 - "$1c/log" <<'PY'
 import sys
@@ -268,11 +375,20 @@ out=b''
 for r in recs: out += b'\0'.join(x.encode() for x in r) + b'\0' + b'\0\0'
 open(sys.argv[1],'wb').write(out)
 PY
-    python3 - "$1c/.agent/state.json" "$6" <<'PY'
-import json, sys
+    python3 - "$1c/.agent/state.json" "$6" "${PLUG}/hooks/spec-digest.py" \
+             "$1c/spec/CAPABILITY-MAP.md" <<'PY'
+import json, subprocess, sys
 d = json.load(open(sys.argv[1]))
-if sys.argv[2] == "yes":
-    d["initiative"] = {"issue": 101}; d["modules"] = {"identity": {"issue": 102}}
+if sys.argv[2] in ("yes", "nodigest"):
+    cur = json.loads(subprocess.run([sys.executable, sys.argv[3], "compute", sys.argv[4]],
+                                    capture_output=True, text=True).stdout)
+    ini = {"issue": 101}
+    mod = {"issue": 102}
+    if sys.argv[2] == "yes":
+        ini["mapDigest"] = cur["goalDigest"]
+        mod["rowDigest"] = cur["rows"][0]["digest"]
+    d["initiative"] = ini
+    d["modules"] = {cur["rows"][0]["id"]: mod}
 json.dump(d, open(sys.argv[1],"w"))
 PY
   }
@@ -299,6 +415,25 @@ PY
 
   # 反向：模型查用法打的 `gh issue create --help` 不能被数成一次建 issue。
   # 首跑就是栽在这上面 —— 判据把它算成「第二个 Epic」，报了个假失败。
+  mkfix "${T}/i" "摘要" 3 2 yes yes no
+  st "Epic/模块正文没有 spec-guard-sync 标记块 → 不通过（刷不回来）" 1 "${T}/i"
+  mkfix "${T}/j" "摘要" 3 2 yes yes yes missing
+  st "指纹一个都没写 → 不通过" 1 "${T}/j"
+  # 「写了个假 hash」比不写更糟：要么永远报过期（关不掉的警报），
+  # 要么永远不报（谎报已同步）。只查字段在不在的判据抓不到它。
+  mkfix "${T}/k" "摘要" 3 2 yes yes yes wrong
+  st "指纹写了但算错 → 不通过" 1 "${T}/k"
+  mkfix "${T}/l" "摘要" 3 2 yes nodigest
+  st "crash 组写回了号但没带指纹 → 不通过" 1 "${T}/l"
+
+  # 这一对钉住 0.7.23 修掉的那个**判据自身的缺陷**：旧判据看的是
+  # 「用没用 --body-file」，而规则其实是「不要指向能力图本身」。
+  # 前者会对着正确行为报失败 —— 而 0.7.23 的 SKILL 正是用 --body-file。
+  mkfix "${T}/m" "摘要" 3 2 yes yes yes ok /tmp/epic-body.md
+  st "Epic 用 --body-file 指向临时文件 → 通过（不是违规）" 0 "${T}/m"
+  mkfix "${T}/n" "$(cat "${T}/a/spec/CAPABILITY-MAP.md")" 3 2 yes yes yes ok spec/CAPABILITY-MAP.md
+  st "Epic 用 --body-file 指向能力图本身 → 不通过" 1 "${T}/n"
+
   mkfix "${T}/h" "能力图: spec/CAPABILITY-MAP.md 摘要" 3 2 yes yes
   python3 - "${T}/h/log" <<'PY2'
 import sys

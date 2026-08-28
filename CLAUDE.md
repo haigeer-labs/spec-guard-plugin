@@ -167,7 +167,7 @@ python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键�
 /bin/bash evals/next-redo.sh --selftest               # 免费:喂坏输入验判决器自己(已接进 validate)
 /bin/bash evals/next-redo.sh --scaffold-only          # 免费
 /bin/bash evals/next-redo.sh                          # 真跑:判 /next 会不会重取刚做完的 task
-/bin/bash evals/sync-map.sh --selftest                # 免费(已接进 validate)
+/bin/bash evals/sync-map.sh --selftest                # 免费(已接进 validate,14 条)
 /bin/bash evals/sync-map.sh --scaffold-only           # 免费
 /bin/bash evals/sync-map.sh                           # 真跑:判操作一(能力图落库)
 ```

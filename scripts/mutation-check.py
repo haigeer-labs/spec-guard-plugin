@@ -143,6 +143,15 @@ M = [
   ("认不出基准分支时回到静默（0.7.20 修的那条）", VA, TVA,
    '''      skip "认不出默认分支（试过 origin/HEAD、main、master、init.defaultBranch），跳过 closing keyword 比对"''',
    '''      :''', "killed"),
+  ("重复 Epic：标题比较放宽成「Initiative: 开头就算」（不同名的两个 initiative 会挨假失败）", VA, TVA,
+   '''    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and norm(i.get('title'))==t]''',
+   '''    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and norm(i.get('title')).lower().startswith('initiative:')]''', "killed"),
+  ("重复 Epic：不排除记录在案的那个号（每个装了约定的项目都会被报重复）", VA, TVA,
+   '''    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and norm(i.get('title'))==t]''',
+   '''    dups=[str(i.get('number')) for i in items if norm(i.get('title'))==t]''', "killed"),
+  ("重复 Epic：读不到 open issue 列表时发绿灯而不是 skip", VA, TVA,
+   '''    skip "读不到 open issue 列表（网络或权限），跳过重复 Epic 比对（不代表通过）"''',
+   '''    ok "没有与 Epic #${EPIC} 同名的其他 open issue"''', "killed"),
 ]
 def green(suite):
     r = subprocess.run(["/bin/bash", suite], capture_output=True, text=True)

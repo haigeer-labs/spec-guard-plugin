@@ -101,18 +101,19 @@ scripts/
 ```
 
 它在 push 前跑上面那三条（约 50 秒），红了就中止。
-理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 141 条 hook 断言、
-22 条校验器断言、shellcheck，全部依赖一个人记得敲命令。
+理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 148 条 hook 断言、
+26 条校验器断言、shellcheck，全部依赖一个人记得敲命令。
 **这是止血带不是解药**，真正的解法是把账户级 Actions 恢复。
 急着推可以 `git push --no-verify`，但那就回到了靠自觉。
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 141 个断言：`test-phase-guard.sh` 89 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+当前 148 个断言：`test-phase-guard.sh` 89 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
 刻意空闲 / 模块级分支及其已落 task 的号 / 非常规默认分支 / 能力图↔投影的三处指纹（6 正 9 反）/ 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
-`test-verify-artifacts.sh` 52 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
-「零足迹激活」「探测失败不发绿灯」「Epic 正文摘要不误报」等反向用例）。
+`test-verify-artifacts.sh` 59 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
+「零足迹激活」「探测失败不发绿灯」「Epic 正文摘要不误报」「不同名的两个 initiative
+同时开着不算重复 Epic」等反向用例）。
 
 **两个 hook 共用的判据要在两边都加用例。** 0.7.0 同时改了 `phase-guard` 和
 `verify-artifacts` 的激活判据，但只给前者加了测试，后者漏了三个版本。
@@ -141,7 +142,7 @@ scripts/
 ### 变异测试：这套断言到底约束了什么（不花 token，但慢）
 
 ```bash
-python3 scripts/mutation-check.py              # 全部 19 个变异体，约 9 分钟
+python3 scripts/mutation-check.py              # 全部 22 个变异体，约 10 分钟
 python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键词的
 ```
 

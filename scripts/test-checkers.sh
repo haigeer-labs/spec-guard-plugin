@@ -206,8 +206,15 @@ want fail "mutation-check: 锁存在 → 拒跑" python3 "$MC" --only 不存在�
 rm -f "$LOCK"
 
 # 目标文件脏 → 拒跑。真去弄脏一个再还原，不靠模拟。
+#
+# 前置条件是**三个目标文件全都干净**，不只是被弄脏的那一个：下面那条正向用例
+# （干净 + 无锁 → 放行）在任意一个目标脏着的时候都会红，而「改完这三个脚本
+# 就跑 validate.sh」恰恰是本仓写在工作流里的动作 —— 那种红是假失败，
+# 而假失败会让人学会忽略整套校验（A1）。跳过就明说跳过。
 DIRTY="$ROOT/plugins/spec-guard/hooks/spec-digest.py"
-if git -C "$ROOT" diff --quiet HEAD -- "$DIRTY" 2>/dev/null; then
+MTARGETS=("$ROOT/plugins/spec-guard/hooks/phase-guard.sh" \
+          "$ROOT/plugins/spec-guard/hooks/verify-artifacts.sh" "$DIRTY")
+if git -C "$ROOT" diff --quiet HEAD -- "${MTARGETS[@]}" 2>/dev/null; then
   printf '\n# test-checkers 临时弄脏\n' >> "$DIRTY"
   want fail "mutation-check: 目标文件脏 → 拒跑" python3 "$MC" --only 不存在的关键词
   git -C "$ROOT" checkout -- "$DIRTY"
@@ -216,7 +223,8 @@ if git -C "$ROOT" diff --quiet HEAD -- "$DIRTY" 2>/dev/null; then
   [ -f "$LOCK" ] && { printf '  ❌ mutation-check: 跑完没清锁\n'; FAIL=$((FAIL+1)); } \
                  || { printf '  ✅ mutation-check: 跑完清掉了锁\n'; PASS=$((PASS+1)); }
 else
-  printf '  ⏭  mutation-check 脏工作区用例跳过（spec-digest.py 本来就不干净）\n'
+  printf '  ⏭  mutation-check 用例跳过（变异目标里有未提交改动: %s）—— 跳过不代表通过\n' \
+    "$(git -C "$ROOT" diff --name-only HEAD -- "${MTARGETS[@]}" | tr '\n' ' ')"
 fi
 
 echo ""

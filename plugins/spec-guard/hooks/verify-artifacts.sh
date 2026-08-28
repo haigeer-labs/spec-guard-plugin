@@ -313,6 +313,66 @@ elif ! command -v gh >/dev/null 2>&1; then
 elif ! gh auth status >/dev/null 2>&1; then
   skip "gh 未认证，跳过（不代表通过）"
 else
+  # 重复的 Epic —— 0.7.13 那条「操作一中途失败后重跑」的后果，至今没人查
+  #
+  #   操作一在外部系统上做不可逆写入，而它中途会失败（限流 / `--type` 被拒 /
+  #   用户按停）。0.7.13 之后 state.json 是**增量**写回的，重跑本该可续；
+  #   但那条只是 skill 里的一句话，0.7.13 之前建起来的项目、以及模型没照做的
+  #   那次，仍然会落到「GitHub 上已经有一个 Epic / state.json 里没有它」——
+  #   重跑的前置判据读的正是 `initiative.issue`，它是空的，于是再建一套。
+  #
+  #   已有的每一项都够不到那个多出来的 Epic：sub-issue 数、正文体量、指纹，
+  #   问的全是 state.json 记着的那一个。**没被记下的那个，没有任何东西看得见。**
+  #
+  #   判据刻意收得很紧（A1：假断链比不报断链危害大得多）：
+  #     · 只看 open —— 上一个 initiative 做完关掉的 Epic 不该算进来
+  #     · 比的是「与记录在案的那个 Epic **标题逐字相同**」，不是「像 Epic 的都算」。
+  #       重跑用的是同一份能力图，标题必然相同；而两个**不同名**的 initiative
+  #       同时开着是正常的（0.5.1「刻意空闲」的邻居）
+  #     · 记录在案的 Epic 不在 open 列表里（已关闭 / 超出 200 条）→ skip，不猜
+  #     · state.json 没有 initiative.issue、而 GitHub 上已有 `Initiative:` 开头的
+  #       open issue → 只 warn：这是「重跑会再建一套」的前夜，但那个 issue
+  #       也可能是人手建的、跟本插件无关
+  ELIST=$(gh issue list --state open --limit 200 --json number,title 2>/dev/null || echo "")
+  if [ -z "${ELIST}" ]; then
+    skip "读不到 open issue 列表（网络或权限），跳过重复 Epic 比对（不代表通过）"
+  else
+    EOUT=$(printf '%s' "${ELIST}" | python3 -c "
+import json,sys
+epic=sys.argv[1]
+try: items=json.load(sys.stdin)
+except Exception: raise SystemExit
+if not isinstance(items,list): raise SystemExit
+def norm(t): return ' '.join((t or '').split())
+if epic:
+    rec=[i for i in items if str(i.get('number'))==epic]
+    if not rec:
+        print('SKIP|state.json 记的 Epic #%s 不在 open issue 列表里（已关闭，或超出前 200 条），跳过重复 Epic 比对' % epic); raise SystemExit
+    t=norm(rec[0].get('title'))
+    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and norm(i.get('title'))==t]
+    if dups:
+        print('BAD|除了 state.json 记的 Epic #%s，还有同名的 open issue: %s —— 操作一中途失败后重跑的残留。先人工分辨留哪一套，依赖关系和 sub-issue 层级都要重连' % (epic, ', '.join('#'+d for d in dups)))
+    else:
+        print('OK|没有与 Epic #%s 同名的其他 open issue' % epic)
+else:
+    cands=[str(i.get('number')) for i in items if norm(i.get('title')).lower().startswith('initiative:')]
+    if cands:
+        print('WARN|state.json 没有 initiative.issue，但 GitHub 上已有标题像 Epic 的 open issue %s —— 若它是上次 /sync-map 建到一半留下的，重跑会再建一套；把号补进 state.json 就能续上' % ', '.join('#'+c for c in cands))
+    else:
+        print('OK|GitHub 上没有孤儿 Epic')
+" "${EPIC}" 2>/dev/null || true)
+    if [ -z "${EOUT}" ]; then
+      skip "重复 Epic 比对没给出结论，跳过（不代表通过）"
+    else
+      case "${EOUT}" in
+        OK\|*)   ok   "${EOUT#OK|}" ;;
+        BAD\|*)  bad  "${EOUT#BAD|}" ;;
+        WARN\|*) warn "${EOUT#WARN|}" ;;
+        SKIP\|*) skip "${EOUT#SKIP|}" ;;
+      esac
+    fi
+  fi
+
   # Epic 的 sub-issue 数 == 能力图模块数
   if [ -n "${EPIC}" ] && [ -n "${MAP_IDS}" ]; then
     # REST sub_issues —— `gh issue list` 没有 --parent flag

@@ -472,6 +472,146 @@ case "$(vrun)" in
   *) printf '  ❌ Epic 正文这一项整个没跑到\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── 重复的 Epic（0.7.18 起挂在已知限制里）────────────────
+# 操作一中途失败后重跑会在 GitHub 上留下第二个 Epic，而**已有的每一项检查
+# 问的都是 state.json 记着的那一个** —— 没被记下的那个谁都看不见。
+# 判据只认「与记录在案的那个 Epic 标题逐字相同的 open issue」：
+# 重跑用的是同一份能力图，标题必然相同；不同名的两个 initiative 同时开着
+# 是正常的，报了就是假断链（A1）。
+epicrepo
+ghstub <<'STUBD1'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":1,"title":"Initiative: 支付平台"},{"number":40,"title":"Initiative: 支付平台"},{"number":5,"title":"oauth2"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD1
+case "$(vrun)" in
+  *"还有同名的 open issue: #40"*)
+    printf '  ✅ 重跑留下的第二个 Epic 被抓到\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 重复的 Epic 没被抓到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反：同名的只有它自己 → 放行
+epicrepo
+ghstub <<'STUBD2'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":1,"title":"Initiative: 支付平台"},{"number":5,"title":"oauth2"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD2
+case "$(vrun)" in
+  *"还有同名的 open issue"*)
+    printf '  ❌ 只有自己一个却报了重复（假失败）\n'; FAIL=$((FAIL+1)) ;;
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ✅ 无重复时放行\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 重复 Epic 这一项没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反：另一个**不同名**的 initiative 同时开着 —— 这是正常的，不许报
+epicrepo
+ghstub <<'STUBD3'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":1,"title":"Initiative: 支付平台"},{"number":60,"title":"Initiative: 风控"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD3
+case "$(vrun)" in
+  *"还有同名的 open issue"*)
+    printf '  ❌ 不同名的两个 initiative 被报成重复（假失败）\n'; FAIL=$((FAIL+1)) ;;
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ✅ 不同名的 initiative 同时开着不报\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 重复 Epic 这一项没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反：记着的 Epic 已关闭（不在 open 列表里）→ skip，不猜
+epicrepo
+ghstub <<'STUBD4'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":60,"title":"Initiative: 风控"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD4
+case "$(vrun)" in
+  *"不在 open issue 列表里"*)
+    printf '  ✅ 记着的 Epic 已关闭时 skip，不猜\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 记着的 Epic 不在 open 列表时没 skip\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反：读不到 open issue 列表时必须 skip，不发绿灯（同段其余每一处都是这么做的）
+epicrepo
+ghstub <<'STUBD5'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   exit 1 ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD5
+case "$(vrun)" in
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ❌ 读不到 issue 列表却报了 ✅（没挣来的绿灯）\n'; FAIL=$((FAIL+1)) ;;
+  *"读不到 open issue 列表"*)
+    printf '  ✅ 读不到 issue 列表时 skip，不发绿灯\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 重复 Epic 这一项整个没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# state.json 没有 initiative.issue，而 GitHub 上已经有像 Epic 的 open issue ——
+# 这是「重跑会再建一套」的前夜。只 warn：那个 issue 也可能跟本插件无关。
+modrepo feat/oauth2          # 这份 state.json 没有 initiative
+ghstub <<'STUBD6'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":40,"title":"Initiative: 支付平台"},{"number":5,"title":"oauth2"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD6
+case "$(vrun)" in
+  *"但 GitHub 上已有标题像 Epic 的 open issue #40"*)
+    printf '  ✅ state.json 空着而 GitHub 上已有 Epic → warn\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 「建到一半」的残留没被提示\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反：没有 initiative.issue、GitHub 上也没有像 Epic 的 issue → 不许报
+modrepo feat/oauth2
+ghstub <<'STUBD7'
+#!/bin/bash
+case "$*" in
+  *"issue list"*)   echo '[{"number":5,"title":"oauth2"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)     echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                echo "" ;;
+esac
+STUBD7
+case "$(vrun)" in
+  *"标题像 Epic 的 open issue"*)
+    printf '  ❌ 没有 Epic 时也报了（假断链）\n'; FAIL=$((FAIL+1)) ;;
+  *"GitHub 上没有孤儿 Epic"*)
+    printf '  ✅ 没有孤儿 Epic 时放行\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 重复 Epic 这一项没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # ── 归档识别不能被大文件搞挂（与 phase-guard 同一条判据）──
 # is_archived 两边是同一份实现，`head -10 | grep -q` 的 SIGPIPE 也是同一个。
 # 本仓的规矩：两个 hook 共用的判据要在两边都加用例。

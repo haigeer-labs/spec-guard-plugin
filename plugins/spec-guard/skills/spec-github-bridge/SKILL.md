@@ -52,37 +52,85 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 ---
 
-## 操作一：能力图落库（bootstrap）
+## 操作一：能力图落库（新建 / 补充 / 刷新）
 
 **输入**：`spec/CAPABILITY-MAP.md` 已经过人工评审
-**输出**：Epic issue + N 个模块 issue + 依赖关系 + `.agent/state.json`
+**输出**：Epic issue + N 个模块 issue + 依赖关系 + `.agent/state.json`（含指纹）
 
-步骤：
+### 一致性模型（这一节决定了下面每一步为什么这么写）
+
+    spec/CAPABILITY-MAP.md   唯一事实源
+    GitHub issue             它的投影
+    .agent/state.json        「上次投影时，能力图长什么样」
+
+issue 正文里的摘要是**复制品**，复制必然分叉。这里不消灭复制（纯指针的
+issue 正文没法看），而是**给复制留指纹**：写投影的同时把当时的能力图 hash
+记进 `state.json`，于是「本地改了、投影没跟上」变成纯本地的 hash 比对 ——
+不打 `gh`，也不需要语义比对，`phase-guard` 每轮都查得起。
+
+指纹算法**只有一份**：`hooks/spec-digest.py`。**不要自己实现 sha256**，
+空白怎么归一、反引号剥不剥只要有一处不同，算出来的 digest 就永远对不上，
+表现是一条**关不掉的假警报**。脚本的绝对路径由 hook 每轮注入的事实给出：
+
+    spec-digest: /path/to/spec-guard/<ver>/hooks/spec-digest.py
+
+拿不到就 `find ~/.claude/plugins -name spec-digest.py -type f | tail -1`。
+
+    python3 <digest> compute spec/CAPABILITY-MAP.md
+    # → {"rows":[{"id":"identity","digest":"a1b2c3d4e5f6"},...],
+    #    "order":[...], "goalDigest":"...", "placeholder":false}
+
+### 先判断这次是三件事里的哪一件
+
+读 `.agent/state.json` 的 `initiative.issue`：
+
+| 状态 | 这次做什么 |
+|---|---|
+| 空 | **新建** —— 步骤 1-5 |
+| 有值，且能力图里有模块不在 `modules` 里 | **补充** —— 只为缺的那几个走步骤 3-5 |
+| 有值，且 `spec-digest.py check` 报 `goalStale` / `rowsStale` | **刷新** —— 一个 issue 都不建，只重写正文 |
+
+**`initiative.issue` 有值时必须停下来问用户**是补充、刷新还是新建，
+不要自己决定，更不要覆盖。三件事可以同时需要（加了模块又改了目标段），
+那就问清楚之后依次做。
+
+### 步骤
 
 1. 解析能力图的模块表和 build order
-2. 创建 Epic（`issueTypes: false` 时去掉 `--type Feature` 这一行）：
+2. 创建 Epic（`issueTypes: false` 时去掉 `--type Feature` 这一行）。
+   正文分两段：**指针**（永不过期）+ **标记块内的摘要**（会过期，靠指纹兜住）：
 
-       gh issue create --type Feature \
-         --title "Initiative: <名称>" \
-         --body "能力图: \`spec/CAPABILITY-MAP.md\`
+       cat > /tmp/epic-body.md <<'EOF'
+       能力图: `spec/CAPABILITY-MAP.md`
 
-       <能力图目标段落摘要，3-5 行>"
+       <!-- BEGIN:spec-guard-sync -->
+       <能力图「## 目标」段的摘要，3-5 行>
+       <!-- END:spec-guard-sync -->
+       EOF
+       gh issue create --type Feature --title "Initiative: <名称>" --body-file /tmp/epic-body.md
 
-   **不要 `--body-file spec/CAPABILITY-MAP.md`。** 那是把能力图全文灌进 Epic
-   正文，和本节末尾那条「不要把 spec 全文复制进 issue 正文」是同一件事 ——
-   能力图改了，Epic 正文不会跟着改，两份从此分叉。模块清单也不用抄：
-   sub-issue 列表就是 GitHub 原生的那份索引，而且它一直是准的。
+   **摘要只能取自能力图的 `## 目标` 段**，那是它的指纹底本；取自别处则
+   digest 记的东西和正文里写的东西对不上，指纹立刻失去意义。
+
+   **绝不要 `--body-file spec/CAPABILITY-MAP.md`** —— 那是把能力图全文灌进
+   正文。模块清单也不用抄：sub-issue 列表就是 GitHub 原生的那份索引，
+   而且它一直是准的（0.7.19 已经消掉了那一处复制）。
+
+   那对 `<!-- -->` 标记是**刷新的作用域边界**：以后重写正文只动标记之间，
+   标记外面人手写的补充一字不动。删掉标记 = 放弃将来被自动刷新的能力。
 
 3. 按 build order 顺序，为每个模块创建 issue（同样，`issueTypes: false` 时去掉 `--type`）：
 
-       gh issue create --type Feature \
-         --parent <epic> \
-         --title "<module-id>" \
-         --body "Spec: \`spec/<module-id>.md\`（尚未撰写时也照写，这是它将来的位置）
+       cat > /tmp/mod-body.md <<'EOF'
+       Spec: `spec/<module-id>.md`（尚未撰写时也照写，这是它将来的位置）
 
-       <该模块在能力图里那一行的职责描述，3-5 行>"
+       <!-- BEGIN:spec-guard-sync -->
+       <该模块在能力图里那一行的职责描述，3-5 行>
+       <!-- END:spec-guard-sync -->
+       EOF
+       gh issue create --type Feature --parent <epic> --title "<module-id>" --body-file /tmp/mod-body.md
 
-   摘要取自**能力图**，不是取自 `spec/<module-id>.md`。这一步跑的时候
+   摘要取自**能力图那一行**，不是取自 `spec/<module-id>.md`。这一步跑的时候
    绝大多数模块的 spec **还不存在** —— hook 在只有第一个模块有 spec 时就叫
    `/sync-map`，而这一步要为全部 N 个模块建 issue。要是摘要必须来自各自的
    spec，这条流程从第二个模块起就无从执行。
@@ -97,8 +145,20 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 5. 全部建完后把 `activeModule` 设为 build order 的第一个，写回 `.agent/state.json`
 
-**每建成一个 issue 就立刻写回 `.agent/state.json`，不要攒到最后一起写。**
-Epic 建好写 `initiative.issue`，每个模块 issue 建好写 `modules.<id>.issue`。
+### 每建成一个就立刻写回，连指纹一起
+
+**不要攒到最后一起写。** Epic 建好写 `initiative.issue` **和 `initiative.mapDigest`**；
+每个模块 issue 建好写 `modules.<id>.issue` **和 `modules.<id>.rowDigest`**：
+
+    {
+      "initiative": { "issue": 100, "mapDigest": "<compute 的 goalDigest>" },
+      "modules": {
+        "identity": { "issue": 101, "rowDigest": "<compute 里该 id 的 digest>" }
+      }
+    }
+
+`issue` 和 digest 必须**同一次写入**。只写号不写指纹，那个 issue 从此不受
+指纹保护；只写指纹不写号，`missing` 会把它算成没建成而重复建。
 
 理由是这一步**在外部系统上做不可逆的写入**，而它中途会失败：网络、限流、
 `--type` 在个人仓库上被拒（本页陷阱表最后一行说的「孤儿 issue」就是它）、
@@ -112,6 +172,28 @@ Epic 建好写 `initiative.issue`，每个模块 issue 建好写 `modules.<id>.i
 
 > 重复建出来的 issue 可以 `gh issue delete` 删掉，但要先人工分辨哪套是哪套，
 > 而且依赖关系和 sub-issue 层级都得重连。别把它当成兜底。
+
+### 刷新：把过期的正文摘要重写回去
+
+`phase-guard` 报出「`## 目标` 段改过，Epic 正文还是旧的」或「X 的职责描述
+改过」时走这条。**它一个 issue 都不建**，只重写正文。
+
+对每个要刷新的 issue：
+
+1. 取现有正文：`gh issue view <n> --json body -q '.body' > /tmp/cur.md`
+2. **只替换 `<!-- BEGIN:spec-guard-sync -->` 和 `<!-- END:spec-guard-sync -->`
+   之间的内容**，标记外的一字不动 —— 人会往 issue 正文里加东西（讨论结论、
+   临时决定、@ 谁负责），覆盖掉一次就再没人信这个工具了。
+3. `gh issue edit <n> --body-file /tmp/new.md`
+4. **成功之后**才把新 digest 写回 `state.json`。顺序反了的话，`gh` 失败
+   而指纹已经更新 —— 分歧被抹掉，检测再也不会报，正文永远是旧的。
+
+**正文里没有那对标记**（0.7.22 之前建的 issue，或被人删了）：不要猜边界，
+不要把新摘要往末尾追加。停下来告诉用户「这个 issue 是旧格式，刷新会覆盖
+整个正文」，得到确认后再整体重写；用户不确认就跳过它，并且**不要**写指纹
+（写了等于谎报已同步）。
+
+刷新不改 issue 标题、不动 sub-issue 层级、不动依赖关系。
 
 **不要**把 spec 全文复制进 issue 正文——spec 会改，复制会分叉。
 

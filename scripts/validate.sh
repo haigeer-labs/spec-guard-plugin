@@ -60,6 +60,12 @@ echo "═══ 校验器自身的回归 ═══"
 bash scripts/test-checkers.sh || F=1
 echo ""
 
+# 指纹算法是两个 hook 和 /sync-map 共用的那一份 —— 它自己算错，
+# 表现就是一条关不掉的假警报。免费，所以进这一层。
+echo "═══ 指纹算法自检 ═══"
+python3 plugins/spec-guard/hooks/spec-digest.py --selftest || F=1
+echo ""
+
 # 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」
 # 不用花钱就能验 —— 喂已知坏输入必须非零退出。
 echo "═══ 评测判决器自身的回归（不调模型）═══"

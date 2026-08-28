@@ -513,6 +513,92 @@ else
   printf '  ❌ 无信号时不该生效 —— 会污染无关项目\n'; FAIL=$((FAIL+1))
 fi
 
+# ── A2. 能力图 ↔ 投影的指纹 ────────────────────────────────
+#   **两个 hook 共用的判据必须在两边都有用例。** 0.7.0 同时改了两边的激活
+#   判据却只给 phase-guard 加了测试，verify-artifacts 漏了三个版本。
+#   这一组和 test-phase-guard.sh 里那组是同一份判据的两个宿主。
+hasnt() {  # $1=用例名 $2=不该出现的文字
+  local out; out="$(CLAUDE_PROJECT_DIR="${TMP}/r" bash "${V}" 2>/dev/null)"
+  case "${out}" in
+    *"$2"*) printf '  ❌ %s（输出里不该有 "%s"）\n' "$1" "$2"; FAIL=$((FAIL+1)) ;;
+    *)      printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)) ;;
+  esac
+}
+
+DIGEST="${HOOKDIR}/spec-digest.py"
+
+dmap() {  # $1=目标段（- 表示没有这一节） 余下=「id|职责」
+  local goal="$1"; shift
+  { echo "# Capability Map"; echo ""
+    if [ "${goal}" != "-" ]; then echo "## 目标"; echo ""; echo "${goal}"; echo ""; fi
+    echo "## 模块"; echo ""
+    echo "| Module id | Responsibility | Depends on |"; echo "|---|---|---|"
+    local r
+    for r in "$@"; do printf '| %s | %s | — |\n' "${r%%|*}" "${r#*|}"; done
+    echo ""; echo "- [x] 已评审"; } > spec/CAPABILITY-MAP.md
+}
+
+dsynced() {  # 用 spec-digest.py 自己算出「完全同步」的 state.json
+  python3 - "${DIGEST}" spec/CAPABILITY-MAP.md > .agent/state.json <<'PY'
+import json, subprocess, sys
+cur = json.loads(subprocess.run([sys.executable, sys.argv[1], "compute", sys.argv[2]],
+                                capture_output=True, text=True).stdout)
+print(json.dumps({
+    "tracker": "github", "activeModule": "identity",
+    "initiative": {"issue": 100, "mapDigest": cur["goalDigest"]},
+    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["digest"]}
+                for i, r in enumerate(cur["rows"])},
+}, ensure_ascii=False))
+PY
+}
+
+G='给小店主一个能自己上架、自己收款的后台。'
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'; dsynced
+has  "指纹：同步态报「都已落成 issue」" "能力图的 2 个模块都已落成 issue"
+has  "指纹：同步态报「目标段一致」"     "Epic 正文摘要与能力图目标段一致"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'; dsynced
+dmap "${G}" 'identity|登录注册' 'catalog|商品上架' 'payments|收款'
+has  "指纹：加了模块 → 报出是哪个" "其中 1 个没落成 issue: payments"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'; dsynced
+dmap '改成给连锁店用。' 'identity|登录注册' 'catalog|商品上架'
+has  "指纹：改目标段 → 报 Epic 正文摘要过期" "「## 目标」段改过"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'; dsynced
+dmap "${G}" 'identity|登录注册、会话、找回密码' 'catalog|商品上架'
+has  "指纹：改职责 → 报对应 issue 正文摘要过期" "identity 的职责描述改过"
+
+# 反方向在这一层只 warn 不 bad —— 手动跑时人在旁边，能自己判断弃用还是手滑；
+# phase-guard 每轮自动跑时问不了人，所以那边整个不报。
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'; dsynced
+dmap "${G}" 'identity|登录注册'
+has  "指纹：能力图删了行 → warn 而不是 bad（手动跑时人能判断）" "但能力图里已经没有这一行"
+
+# ── 反向用例 ──
+base; dmap '改成给连锁店用。' 'identity|登录注册、会话、找回密码' 'catalog|商品上架'
+echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
+hasnt "反：老 state.json 没存指纹 → 不报目标段过期" "「## 目标」段改过"
+hasnt "反：老 state.json 没存指纹 → 不报职责过期"   "的职责描述改过"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架' 'payments|收款'
+echo '{"tracker":"none","activeModule":"identity","modules":{}}' > .agent/state.json
+has   "反：tracker=none → 整段 skip，不发绿灯也不报" "指纹只由 /sync-map 写"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架' 'payments|收款'
+echo '{"tracker":"github","activeModule":"identity","modules":{}}' > .agent/state.json
+has   "反：一个都还没落 → skip（Phase 0 中间态）" "Phase 0 尚未同步"
+
+base; dmap "${G}" 'example-a|...' 'example-b|...'
+echo '{"tracker":"github","activeModule":"identity","modules":{"example-a":{"issue":101}}}' > .agent/state.json
+has   "反：还是 example-* 占位符 → skip" "example-* 占位符"
+
+base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架'
+printf '{{{ not json' > .agent/state.json
+hasnt "反：state.json 坏掉 → 不报任何指纹分歧" "没落成 issue"
+
+
 # ── 目录不存在不崩 ──
 CLAUDE_PROJECT_DIR="${TMP}/nope" bash "${V}" >/dev/null 2>&1
 if [ $? -eq 1 ]; then

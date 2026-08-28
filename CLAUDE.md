@@ -35,6 +35,7 @@ plugins/spec-guard/
 ├── hooks/
 │   ├── hooks.json                      ← hook 注册
 │   ├── phase-guard.sh                  ← 核心：状态探测（每轮跑，<1s）
+│   ├── spec-digest.py                  ← 能力图↔投影的指纹：**算法只有这一份**
 │   ├── verify-artifacts.sh             ← 产物落地校验（按需跑，可打 gh）
 │   ├── teardown-convention.sh          ← 移除约定（唯一的破坏性操作，确定性执行）
 │   └── test-*.sh                       ← 回归测试
@@ -64,6 +65,15 @@ scripts/
 
 改动时如果动摇了任何一条，先想清楚为什么。
 
+### 指纹算法只能有一份实现
+
+`hooks/spec-digest.py` 被三方调用：`/sync-map` 写、`phase-guard` 读、
+`verify-artifacts` 读。**不要在任何一方内联重写 sha256** —— 空白怎么归一、
+反引号剥不剥，只要有一处不同，算出来的 digest 就永远对不上，表现是
+**一条关不掉的假警报**。而关不掉的警报比不报还糟（三条不可违反的性质第 2 条）。
+
+改它必须同时跑 `--selftest`（已接进 `validate.sh`）和那两套 hook 断言。
+
 ### 无外部依赖
 
 `phase-guard.sh` 只能依赖 `bash` / `git` / `python3`。
@@ -91,17 +101,17 @@ scripts/
 ```
 
 它在 push 前跑上面那三条（约 50 秒），红了就中止。
-理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 120 条 hook 断言、
+理由是本仓的 GitHub Actions **从 v0.1.0 至今跑过 0 次** —— 141 条 hook 断言、
 22 条校验器断言、shellcheck，全部依赖一个人记得敲命令。
 **这是止血带不是解药**，真正的解法是把账户级 Actions 恢复。
 急着推可以 `git push --no-verify`，但那就回到了靠自觉。
 
 
 改了 `phase-guard.sh` 的状态机逻辑，**必须同步加测试用例**。
-当前 120 个断言：`test-phase-guard.sh` 80 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
-刻意空闲 / 模块级分支及其已落 task 的号 / 非常规默认分支 / 能力图↔已落 issue 的分叉（1 正 5 反）/ 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
+当前 141 个断言：`test-phase-guard.sh` 89 个（各阶段 / 三种 tracker 模式 / 归档豁免 /
+刻意空闲 / 模块级分支及其已落 task 的号 / 非常规默认分支 / 能力图↔投影的三处指纹（6 正 9 反）/ 静默退出 / 不崩溃 + setup-convention 11 个，含声明块行数上限、
 零足迹激活、`--replace` 只动标记内、自报版本）、
-`test-verify-artifacts.sh` 40 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
+`test-verify-artifacts.sh` 52 个（含「合规项目零误报」「归档不误报」「无标记仍报违规」
 「零足迹激活」「探测失败不发绿灯」「Epic 正文摘要不误报」等反向用例）。
 
 **两个 hook 共用的判据要在两边都加用例。** 0.7.0 同时改了 `phase-guard` 和
@@ -131,7 +141,7 @@ scripts/
 ### 变异测试：这套断言到底约束了什么（不花 token，但慢）
 
 ```bash
-python3 scripts/mutation-check.py              # 全部 15 个变异体，约 7 分钟
+python3 scripts/mutation-check.py              # 全部 19 个变异体，约 9 分钟
 python3 scripts/mutation-check.py --only 归档   # 只跑说明里含该关键词的
 ```
 

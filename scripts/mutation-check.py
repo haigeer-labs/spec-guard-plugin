@@ -15,6 +15,7 @@ import subprocess, sys, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 H = os.path.join(ROOT, "plugins/spec-guard/hooks")
 PG, VA = os.path.join(H, "phase-guard.sh"), os.path.join(H, "verify-artifacts.sh")
+DG = os.path.join(H, "spec-digest.py")   # 指纹算法：两个 hook 和 /sync-map 共用的那一份
 TPG, TVA = os.path.join(H, "test-phase-guard.sh"), os.path.join(H, "test-verify-artifacts.sh")
 
 # 每条: (说明, 被改的文件, 跑哪套, old, new, 预期)
@@ -51,12 +52,28 @@ M = [
   ("归档豁免看前 200 行而不是前 10 行", PG, TPG,
    """  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)\"""",
    """  grep -qiE '已归档|ARCHIVED' <<<"$(head -200 "$1" 2>/dev/null)\"""", "killed"),
-  ("能力图↔已落 issue：去掉「至少已落 1 个」这道闸（Phase 0 中间态会挨假断链）", PG, TPG,
-   '''  if [ "${SYNCEDN}" -ge 1 ] && [ "${MAPN}" -gt "${SYNCEDN}" ]; then''',
-   '''  if [ "${MAPN}" -gt "${SYNCEDN}" ]; then''', "killed"),
-  ("能力图↔已落 issue：去掉 tracker=github 这道闸（本地模式会挨假断链）", PG, TPG,
+  ("指纹：去掉「至少已落 1 个」这道闸（Phase 0 中间态会挨假断链）", PG, TPG,
+   '''if not d.get('ok') or d.get('syncedCount',0) < 1: raise SystemExit''',
+   '''if not d.get('ok'): raise SystemExit''', "killed"),
+  ("指纹：去掉 tracker=github 这道闸（gitlab 项目会收到执行不了的建议）", PG, TPG,
    '''if [ "$HAS_MAP" = true ] && [ "$TRACKER" = "github" ] && [ -f "$STATE" ] \\''',
    '''if [ "$HAS_MAP" = true ] && [ -f "$STATE" ] \\''', "killed"),
+  ("指纹：把「判不了」也当成「过期了」（老项目会挨假断链）", PG, TPG,
+   '''if d.get('goalStale') is True:''',
+   '''if d.get('goalStale') is not False:''', "killed"),
+  ("指纹：模块行只 hash id，不 hash 整行（改职责就查不出来了）", DG, TPG,
+   '''        rows.append((mid, "|".join([mid] + cells[1:])))''',
+   '''        rows.append((mid, mid))''', "killed"),
+  ("指纹：没存 rowDigest 时也判成过期（老项目会挨假断链）", DG, TPG,
+   '''        if not stored:
+            continue               # 没存指纹 → 判不了 → 不报''',
+   '''        if not stored:
+            stored = "always-stale"''', "killed"),
+  ("指纹：verify 这边不再跳过 example-* 占位符", VA, TVA,
+   '''if not d.get('ok'):
+    print('SKIP|能力图没解析出真实模块（空表或 example-* 占位符）'); raise SystemExit''',
+   '''if False:
+    print('SKIP|能力图没解析出真实模块（空表或 example-* 占位符）'); raise SystemExit''', "killed"),
   ("零足迹激活信号（state.json）被去掉", PG, TPG,
    '''[ -f ".agent/state.json" ] && ACTIVE=true''',
    '''true''', "killed"),

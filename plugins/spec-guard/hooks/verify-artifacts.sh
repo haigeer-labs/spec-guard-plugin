@@ -46,6 +46,14 @@ live_todos() {
   done
 }
 
+# ── 自身位置（用来找 hooks/spec-digest.py）────────────────
+#   和 phase-guard 同样的解析方式：装出来时靠 CLAUDE_PLUGIN_ROOT，
+#   直接跑脚本时从 BASH_SOURCE 往上退一层到插件根。
+SELF_DIR="${CLAUDE_PLUGIN_ROOT:-}"
+if [ -z "${SELF_DIR}" ]; then
+  SELF_DIR="${BASH_SOURCE[0]%/*}"; SELF_DIR="${SELF_DIR%/*}"
+fi
+
 P=0; W=0; F=0
 ok()   { printf '  ✅ %s\n' "$1"; P=$((P+1)); }
 warn() { printf '  ⚠️  %s\n' "$1"; W=$((W+1)); }
@@ -165,6 +173,62 @@ PY
 fi
 echo ""
 
+# ── A2. 能力图 ↔ 投影的指纹（纯本地，不打 gh）──────────────
+#   和 phase-guard 那三条是同一份判据、同一个脚本。
+#   **两个 hook 共用的判据必须在两边都有用例** —— 0.7.0 同时改了两边的激活
+#   判据却只给 phase-guard 加了测试，verify-artifacts 漏了三个版本。
+#   这里比 phase-guard 多说一件事：反方向（extra）在这儿只 warn 不 bad ——
+#   手动跑的时候人在旁边，能自己判断是弃用还是手滑；每轮自动跑时不能问，
+#   所以 phase-guard 那边整个不报。
+echo "── A2. 能力图 ↔ 投影的指纹 ──"
+DIGEST_PY="${SELF_DIR}/hooks/spec-digest.py"
+if [ ! -f "${MAP}" ] || [ ! -f "${STATE}" ]; then
+  skip "缺能力图或 state.json，跳过"
+elif [ "${TRACKER}" != "github" ]; then
+  skip "tracker=${TRACKER}，指纹只由 /sync-map 写（GitHub 专属）"
+elif [ ! -f "${DIGEST_PY}" ]; then
+  skip "找不到 spec-digest.py，跳过（不代表通过）"
+else
+  DJ=$(python3 "${DIGEST_PY}" check "${MAP}" "${STATE}" 2>/dev/null || true)
+  if [ -z "${DJ}" ]; then
+    skip "指纹比对没跑起来，跳过（不代表通过）"
+  else
+    DOUT=$(printf '%s' "${DJ}" | python3 -c "
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit
+if not d.get('ok'):
+    print('SKIP|能力图没解析出真实模块（空表或 example-* 占位符）'); raise SystemExit
+if d.get('syncedCount',0) < 1:
+    print('SKIP|一个模块 issue 都还没落，Phase 0 尚未同步'); raise SystemExit
+mis=d.get('missing') or []
+if mis: print('BAD|能力图有 %d 个模块，其中 %d 个没落成 issue: %s' % (d['mapCount'], len(mis), ', '.join(mis)))
+else:   print('OK|能力图的 %d 个模块都已落成 issue' % d['mapCount'])
+g=d.get('goalStale')
+if g is True:  print('BAD|能力图的「## 目标」段改过，Epic 正文摘要已过期 —— /sync-map 刷新')
+elif g is None: print('SKIP|目标段指纹判不了（能力图无「## 目标」段，或 state.json 没存 mapDigest）')
+else: print('OK|Epic 正文摘要与能力图目标段一致')
+rs=d.get('rowsStale') or []
+if rs: print('BAD|%s 的职责描述改过，对应 issue 正文摘要已过期 —— /sync-map 刷新' % ', '.join(rs))
+ex=d.get('extra') or []
+if ex: print('WARN|%s 在 state.json 里有 issue 号，但能力图里已经没有这一行 —— 弃用了就在 /sync-map 里确认，手滑删的就改回来' % ', '.join(ex))
+" 2>/dev/null || true)
+    if [ -z "${DOUT}" ]; then
+      skip "指纹比对没给出结论，跳过（不代表通过）"
+    else
+      while IFS= read -r ln; do
+        [ -n "${ln}" ] || continue
+        case "${ln}" in
+          OK\|*)   ok   "${ln#OK|}" ;;
+          BAD\|*)  bad  "${ln#BAD|}" ;;
+          WARN\|*) warn "${ln#WARN|}" ;;
+          SKIP\|*) skip "${ln#SKIP|}" ;;
+        esac
+      done <<<"${DOUT}"
+    fi
+  fi
+fi
+echo ""
 # ── B. spec 文件名 ↔ module id ─────────────────────────────
 #   最阴险的一类漂移：能力图写 identity，模型建了 spec/user-identity.md。
 #   phase-guard 只数 spec/*.md 的数量，从不比对，所以下游会静默错位。

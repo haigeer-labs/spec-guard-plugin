@@ -148,54 +148,51 @@ if ls -1 SPEC*.md >/dev/null 2>&1; then
   broken "根目录有 SPEC*.md —— /build 的路径规则只认 spec/ 通配，挪进 spec/"
 fi
 
-# 违规：能力图列了 N 个模块，只有 M 个落成了 issue
-#   能力图是本地文件，issue 是它在 GitHub 上的投影 —— 文件里加一行新模块，
-#   投影不会自己跟上。verify-artifacts 查得到（SUBN != MAPN），但它要打 gh
-#   且只在手动跑时动；每轮自动跑的这一层此前只做 `[ -f ]`，从不解析表格 ——
-#   能查的不自动跑，自动跑的查不了，于是这个分叉可以静默存在很久。
+# 违规：能力图改了，GitHub 上那份投影没跟上
+#   能力图是唯一事实源，issue 是它的投影，state.json 记「上次投影时能力图
+#   长什么样」。有了这份指纹，「本地改了、投影没跟上」就是纯本地的 hash
+#   比对 —— 不打 gh，也不需要语义比对。算法在 hooks/spec-digest.py，
+#   **只有那一份**：写指纹的是 /sync-map（模型执行），读的是这里和
+#   verify-artifacts；各写各的实现就会算出对不上的 hash，表现是一条
+#   关不掉的假警报。
 #
-#   判据刻意收得很紧，只报一个方向。三道闸门各挡一种假断链：
-#     1. 仅 tracker=github —— modules.<id>.issue 只有 /sync-map 写，而它是
-#        GitHub 专属；本地模式下 modules 永远是 {}，不设这道闸就是每个
-#        本地项目每轮都挨一条假断链。
-#     2. 至少已落 1 个 —— 能力图刚写完、还没跑 /sync-map 是 Phase 0 的正常
-#        中间态（模板占位符 example-* 也落在这里），不是断链。
-#     3. 只报 MAPN > 已落数 —— 反方向（能力图删了行、issue 还在）可能是
-#        刻意的，报了就是假警报。
+#   三道闸各挡一种假断链（三条判据共用）：
+#     1. 仅 tracker=github —— 指纹和 modules.<id>.issue 都只有 /sync-map 写，
+#        而它是 GitHub 专属；给 gitlab/jira 项目报出去等于给一条执行不了的建议。
+#     2. 已落 ≥ 1 个 —— 能力图刚写完还没同步是 Phase 0 的正常中间态，不是断链。
+#     3. 指纹字段缺失一律不报 —— 老项目的 state.json 没有 goalDigest/rowDigest，
+#        不能因此挨断链（这条在 spec-digest.py 里，输出 null / 空数组）。
 if [ "$HAS_MAP" = true ] && [ "$TRACKER" = "github" ] && [ -f "$STATE" ] \
-   && command -v python3 >/dev/null 2>&1; then
-  MAP_SYNC=$(python3 - "spec/CAPABILITY-MAP.md" "$STATE" <<'PY' 2>/dev/null || true
-import json, sys
-ids = []
-for line in open(sys.argv[1], encoding="utf-8"):
-    if not line.lstrip().startswith("|"):
-        continue
-    cells = [c.strip() for c in line.strip().strip("|").split("|")]
-    if len(cells) < 2:
-        continue
-    first = cells[0]
-    # 跳过表头和 |---|---| 分隔行
-    if not first or first.lower() == "module id" or set(first) <= set("-: "):
-        continue
-    ids.append(first.strip(chr(96)))  # chr(96)=反引号；写字面量会截断外层 $( )
-try:
-    d = json.load(open(sys.argv[2]))
-    mods = d.get("modules") or {}
-    synced = [k for k, v in mods.items() if isinstance(v, dict) and v.get("issue")]
-except Exception:
-    synced = []
-print(len(ids), len(synced))
-PY
-)
-  # 解析不出来（python3 抛了、文件读不了）时 MAP_SYNC 为空 —— 静默跳过。
-  # 「探测失败就降级，不误报」。
-  MAPN="${MAP_SYNC%% *}"; SYNCEDN="${MAP_SYNC##* }"
-  # 非纯数字（含空串）一律归成 -1，直接落进「不报」——
-  # 不能拿空串去做 `[ -ge ]`，那是 "integer expression expected" + 非零退出。
-  case "${MAPN}"    in ''|*[!0-9]*) MAPN=-1 ;;    esac
-  case "${SYNCEDN}" in ''|*[!0-9]*) SYNCEDN=-1 ;; esac
-  if [ "${SYNCEDN}" -ge 1 ] && [ "${MAPN}" -gt "${SYNCEDN}" ]; then
-    broken "能力图有 ${MAPN} 个模块，只有 ${SYNCEDN} 个落成了 issue —— 能力图改过之后没重跑 /sync-map"
+   && command -v python3 >/dev/null 2>&1 && [ -f "${SELF_DIR}/hooks/spec-digest.py" ]; then
+  SYNC_JSON=$(python3 "${SELF_DIR}/hooks/spec-digest.py" check \
+    "spec/CAPABILITY-MAP.md" "$STATE" 2>/dev/null || true)
+  if [ -n "${SYNC_JSON}" ]; then
+    # 一次 python3 把三条判据的措辞都拼好；拼不出来就是空串 → 什么都不报。
+    SYNC_MSG=$(printf '%s' "${SYNC_JSON}" | python3 -c "
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit
+if not d.get('ok') or d.get('syncedCount',0) < 1: raise SystemExit
+out=[]
+mis=d.get('missing') or []
+if mis:
+    out.append('能力图有 %d 个模块，其中 %d 个没落成 issue（%s）—— 能力图改过之后没重跑 /sync-map'
+               % (d['mapCount'], len(mis), ', '.join(mis)))
+if d.get('goalStale') is True:
+    out.append('能力图的「## 目标」段改过，Epic 正文里那份摘要还是旧的 —— /sync-map 刷新')
+rs=d.get('rowsStale') or []
+if rs:
+    out.append('%s 的职责描述改过，对应 issue 正文里那份摘要还是旧的 —— /sync-map 刷新'
+               % ('、'.join(rs)))
+print('\n'.join(out))
+" 2>/dev/null || true)
+    # 反方向（能力图删了行、issue 还在，即 extra）**不报**：没有「弃用」这个
+    # 状态，「刻意不做了」和「手滑删了一行」在文件上长得一模一样，机器分不出来。
+    if [ -n "${SYNC_MSG}" ]; then
+      while IFS= read -r ln; do
+        [ -n "${ln}" ] && broken "${ln}"
+      done <<<"${SYNC_MSG}"
+    fi
   fi
 fi
 
@@ -490,6 +487,12 @@ fi
 [ -n "$MODULE" ] && add "活跃模块: $MODULE${MODULE_ISSUE:+ (issue #$MODULE_ISSUE)}"
 add "tracker: $TRACKER"
 add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
+# 指纹脚本的绝对路径。/sync-map 要调它算 digest，而模型的 Bash 里
+# **没有 CLAUDE_PLUGIN_ROOT** —— 不注入的话它只能去 find，找错版本就
+# 算出对不上的 hash，那正是这套设计最怕的「关不掉的假警报」。
+# 纯参数展开，不 fork。
+[ -f "${SELF_DIR}/hooks/spec-digest.py" ] \
+  && add "spec-digest: ${SELF_DIR}/hooks/spec-digest.py"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"

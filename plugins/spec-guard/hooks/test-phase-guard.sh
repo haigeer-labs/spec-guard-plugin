@@ -528,83 +528,157 @@ else
   printf '  ❌ 无编码器时输出了 [%s]\n' "$NB"; FAIL=$((FAIL+1))
 fi
 
-# ── 能力图 ↔ 已落 issue 的分叉（能力图加了模块但没重跑 /sync-map）──
-#   能力图是本地文件，issue 是它在 GitHub 上的投影，改文件不会改投影。
-#   verify-artifacts 早就查得到（SUBN != MAPN），但它要打 gh、只在手动跑时动；
-#   phase-guard 每轮自动跑却从不解析表格 —— 能查的不自动跑，自动跑的查不了。
-#   下面五条里**四条是反向的**：这条检测的全部风险在假断链，不在漏报。
-mapcase() {  # $1=模块 id（空格分隔）  $2=state.json 正文
-  base; mkdir -p spec tasks/identity .agent
+# ── 能力图 ↔ 投影的三处分叉（指纹比对）────────────────────
+#   能力图是唯一事实源，issue 是投影，state.json 记「上次投影时能力图长什么样」。
+#   十二条里**八条是反向的**：这组检测的全部风险在假断链，不在漏报。
+DIGEST="$HOOKDIR/spec-digest.py"
+
+mkmap() {  # $1=目标段（写 - 表示不要这一节）  余下=「id|职责|依赖」
+  local goal="$1"; shift
+  mkdir -p spec tasks/identity
   {
-    echo "| module id | 说明 |"
-    echo "|---|---|"
-    for m in $1; do echo "| \`${m}\` | x |"; done
+    echo "# Capability Map: sim"
+    echo ""
+    if [ "$goal" != "-" ]; then echo "## 目标"; echo ""; echo "$goal"; echo ""; fi
+    echo "## 模块"
+    echo ""
+    echo "| Module id | Responsibility | Depends on |"
+    echo "|---|---|---|"
+    local r
+    for r in "$@"; do
+      printf '| `%s` | %s | %s |\n' "${r%%|*}" "$(echo "$r" | cut -d'|' -f2)" "$(echo "$r" | cut -d'|' -f3)"
+    done
   } > spec/CAPABILITY-MAP.md
   touch spec/identity.md tasks/identity/plan.md
-  printf '%s\n' "$2" > .agent/state.json
 }
-# 直接比对正文里那句话，不比对断链总数 —— 总数会被同场景的其他断链干扰，
-# 而这条测的就是「有没有报出这一条」本身。
-#   ctx 为空时返回 EMPTY 而不是 0 —— 否则四条反向断言在「hook 根本没输出」
-#   时也全绿，那正是 0.7.20 撞见的空断言形状。
-mapdiv() {
+
+# 拿 spec-digest.py 自己算出「完全同步」的 state.json ——
+# 写指纹和读指纹走同一份实现，这正是这套设计的前提。
+mksynced() {
+  python3 - "$DIGEST" spec/CAPABILITY-MAP.md > .agent/state.json <<'PY'
+import json, subprocess, sys
+cur = json.loads(subprocess.run([sys.executable, sys.argv[1], "compute", sys.argv[2]],
+                                capture_output=True, text=True).stdout)
+print(json.dumps({
+    "tracker": "github", "activeModule": "identity",
+    "initiative": {"issue": 100, "mapDigest": cur["goalDigest"]},
+    "modules": {r["id"]: {"issue": 101 + i, "rowDigest": r["digest"]}
+                for i, r in enumerate(cur["rows"])},
+}, ensure_ascii=False))
+PY
+}
+
+# 只取这组检测报出来的断链，压成一个紧凑标签。
+# ctx 为空时给 EMPTY 而不是「无」—— 否则八条反向断言在「hook 根本没输出」时
+# 也全绿，那正是 0.7.20 撞见的空断言形状。
+syncwarn() {
   local c; c="$(ctx)"
   [ -n "$c" ] || { echo "EMPTY"; return; }
-  printf '%s\n' "$c" | grep -c "个落成了 issue" || true
+  printf '%s\n' "$c" | python3 -c "
+import sys, re
+tags=[]
+for l in sys.stdin:
+    if '没落成 issue' in l:
+        tags.append('missing:' + (re.search(r'（(.+?)）', l).group(1) if re.search(r'（(.+?)）', l) else '?'))
+    elif '「## 目标」段改过' in l: tags.append('goal')
+    elif '职责描述改过' in l:
+        tags.append('rows:' + re.sub(r'^\s*⚠\s*', '', l).split(' 的职责')[0])
+print(','.join(tags) if tags else '无')"
 }
 
-SYNCED2='{"tracker":"github","activeModule":"identity","modules":{"identity":{"issue":101},"billing":{"issue":102}}}'
+sw() {  # $1=说明  $2=期望标签
+  local got; got="$(syncwarn)"
+  if [ "$got" = "$2" ]; then
+    printf '  ✅ %s\n' "$1"; PASS=$((PASS+1))
+  else
+    printf '  ❌ %s\n     得到 [%s]\n     期望 [%s]\n' "$1" "$got" "$2"; FAIL=$((FAIL+1))
+  fi
+}
 
-mapcase "identity billing payments" "$SYNCED2"
-if [ "$(mapdiv)" = "1" ] && [ -n "$(ctx | grep '能力图有 3 个模块，只有 2 个落成了 issue' || true)" ]; then
-  printf '  ✅ 能力图 3 个模块 / 已落 2 个 → 报断链且数字对\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 能力图多出来的模块没被发现（或数字不对）\n'; FAIL=$((FAIL+1))
-fi
+R2A='identity|登录注册|—'
+R2B='catalog|商品上架|identity'
+G='给小店主一个能自己上架、自己收款的后台。'
 
-mapcase "identity billing" "$SYNCED2"
-if [ "$(mapdiv)" = "0" ]; then
-  printf '  ✅ 能力图 2 个 / 已落 2 个 → 不报（反向）\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 数目一致却报了假断链\n'; FAIL=$((FAIL+1))
-fi
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+sw "同步态：什么都不报" "无"
 
-# 闸门 2：能力图刚写完、还没跑 /sync-map，是 Phase 0 的正常中间态。
-# 少了这道闸，每个刚跑完 /spec 的项目都会挨一条假断链。
-mapcase "identity billing payments" '{"tracker":"github","activeModule":"identity","modules":{}}'
-if [ "$(mapdiv)" = "0" ]; then
-  printf '  ✅ 一个都还没落（还没跑 /sync-map）→ 不报（反向）\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 把「Phase 0 还没同步」当成了断链\n'; FAIL=$((FAIL+1))
-fi
+# ① 加了模块（0.7.22 就能查的那条）
+mkmap "$G" "$R2A" "$R2B" 'payments|下单与收款|catalog'
+sw "① 能力图加了 payments → 报出是哪个，不只是数量" "missing:payments"
 
-# 闸门 1：modules.<id>.issue 只有 /sync-map 写，而它是 GitHub 专属 ——
-# 本地模式下 modules 永远是 {}，不设这道闸就是每个本地项目每轮都挨一条。
-mapcase "identity billing payments" '{"tracker":"none","activeModule":"identity","modules":{}}'
-if [ "$(mapdiv)" = "0" ]; then
-  printf '  ✅ 本地模式（tracker=none）→ 不报（反向）\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 本地模式挨了假断链\n'; FAIL=$((FAIL+1))
-fi
+# ① 的新能力：数量相等的改名 / 等量增删。旧版按数量比，这里完全查不出来。
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+mkmap "$G" "$R2A" 'katalog|商品上架|identity'
+sw "① 改名（数量不变）→ 仍报出来（旧版按数量比查不到）" "missing:katalog"
 
-# 闸门 1 的承重点在这里，不在上面那条。上面那条 modules 是 {}，被闸门 2 就挡住了，
-# 去掉 tracker=github 也照样绿（变异测试实测活下来）。真正只有闸门 1 拦得住的是
-# **非 GitHub tracker 且手写了条目号**：这时数目确实对不上，但 /sync-map 是
-# GitHub 专属命令，报出去给的是一条执行不了的建议。
-mapcase "identity billing payments" '{"tracker":"gitlab","activeModule":"identity","modules":{"identity":{"issue":11},"billing":{"issue":12}}}'
-if [ "$(mapdiv)" = "0" ]; then
-  printf '  ✅ 非 GitHub tracker（gitlab）+ 已手写条目号 → 不报（反向）\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 给 gitlab 项目报了「重跑 /sync-map」—— 那个命令是 GitHub 专属\n'; FAIL=$((FAIL+1))
-fi
+# ③ 只改职责描述：id 集合没变
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+mkmap "$G" 'identity|登录注册、会话、找回密码|—' "$R2B"
+sw "③ 改职责描述 → 报对应 issue 正文过期" "rows:identity"
 
-# 闸门 3：反方向（能力图删了行、issue 还在）可能是刻意的，报了就是假警报。
-mapcase "identity" "$SYNCED2"
-if [ "$(mapdiv)" = "0" ]; then
-  printf '  ✅ 能力图比已落的少 → 不报（反向）\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ 反方向也报了 —— 只该报「能力图多出来」这一个方向\n'; FAIL=$((FAIL+1))
-fi
+# ② 只改目标段
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+mkmap '改成给连锁店用。' "$R2A" "$R2B"
+sw "② 改「## 目标」段 → 报 Epic 正文过期" "goal"
+
+# 三处一起改
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+mkmap '改成给连锁店用。' 'identity|登录注册、会话、找回密码|—' "$R2B" 'payments|收款|catalog'
+sw "三处同时改 → 三条都报，各说各的" "missing:payments,goal,rows:identity"
+
+# ── 以下全部是反向 ────────────────────────────────────────
+
+# 闸门 3：老项目的 state.json 没有指纹字段，不能因此挨断链
+base; mkdir -p .agent; mkmap '改成给连锁店用。' 'identity|登录注册、会话、找回密码|—' "$R2B"
+echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
+sw "反：老 state.json 没存指纹 → 目标段和职责都改了也不报（向后兼容）" "无"
+
+# 能力图没有 `## 目标` 段（老能力图），但 state 里存着 mapDigest
+base; mkdir -p .agent; mkmap "-" "$R2A" "$R2B"
+echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":100,"mapDigest":"deadbeefcafe"},"modules":{"identity":{"issue":101},"catalog":{"issue":102}}}' > .agent/state.json
+sw "反：能力图没有「## 目标」段 → 不拿存着的指纹硬比" "无"
+
+# 闸门 2：能力图刚写完，一个都还没落
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B" 'payments|收款|catalog'
+echo '{"tracker":"github","activeModule":"identity","modules":{}}' > .agent/state.json
+sw "反：一个都还没落（Phase 0 中间态）→ 不报" "无"
+
+# 闸门 1：本地模式
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B" 'payments|收款|catalog'
+echo '{"tracker":"none","activeModule":"identity","modules":{}}' > .agent/state.json
+sw "反：本地模式 tracker=none → 不报" "无"
+
+# 闸门 1 的承重点：非 GitHub tracker 且手写了条目号。
+# 上面那条 modules 是 {}，被闸门 2 就挡住了，去掉 tracker=github 也照样绿
+# （0.7.22 变异测试实测活下来过）。真正只有闸门 1 拦得住的是这一条：
+# 数目确实对不上，但 /sync-map 是 GitHub 专属，报出去是一条执行不了的建议。
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B" 'payments|收款|catalog'
+echo '{"tracker":"gitlab","activeModule":"identity","modules":{"identity":{"issue":11},"catalog":{"issue":12}}}' > .agent/state.json
+sw "反：gitlab + 已手写条目号 → 不报（/sync-map 是 GitHub 专属）" "无"
+
+# 反方向：能力图删了行、issue 还在（extra）。没有「弃用」状态，
+# 「刻意不做了」和「手滑删了一行」在文件上长得一模一样。
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+mkmap "$G" "$R2A"
+sw "反：能力图删了一行、issue 还在 → 不报（分不出刻意还是手滑）" "无"
+
+# 半写入：有 key 没 issue 号，算没落成
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"; mksynced
+python3 -c "
+import json; p='.agent/state.json'; d=json.load(open(p))
+d['modules']['catalog']={}   # 建到一半挂了
+json.dump(d, open(p,'w'))"
+sw "有 key 没 issue 号 → 算没落成，报出来" "missing:catalog"
+
+# 探测失败：state.json 不是 JSON
+base; mkdir -p .agent; mkmap "$G" "$R2A" "$R2B"
+printf '{{{ not json' > .agent/state.json
+sw "反：state.json 坏掉 → 不报（探测失败就降级）" "无"
+
+# 还是模板占位符
+base; mkdir -p .agent; mkmap "$G" 'example-a|...|—' 'example-b|...|example-a'
+echo '{"tracker":"github","activeModule":"identity","modules":{"example-a":{"issue":101}}}' > .agent/state.json
+sw "反：能力图还是 example-* 占位符 → 不报" "无"
 
 # ── setup-convention.sh 的回归 ──
 echo ""

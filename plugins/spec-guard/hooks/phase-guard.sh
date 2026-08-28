@@ -218,22 +218,33 @@ BRANCH_ISSUE=""
 [ "${ON_MODULE_BRANCH}" = false ] \
   && BRANCH_ISSUE=$(printf '%s' "$BRANCH" | grep -oE '[0-9]+' | head -1 || true)
 
-# 本分支已经落了几个 task。模块级 PR 下 task issue 要到 PR 合并才关，
+# 本分支已经落了哪几个 task。模块级 PR 下 task issue 要到 PR 合并才关，
 # OPEN_TASKS 全程不减 —— 「这个模块做完没有」只能从 commit message 的
 # closing keyword 数。这只喂 NEXT 建议，**不进 broken()**：数偏了顶多建议早了。
+#
+# 要的是**号的集合**，不只是个数（0.7.19）。个数只够回答「做完没有」，
+# 而 /next 要回答的是「下一个取哪条」—— 已经做完的那些在整个模块周期里
+# 一直是 open，操作三的四条筛选规则一条都挡不住它们，于是刚做完的 task
+# 被原样重新取出来做第二遍。号一直在手里，只是从来没往外露过。
 TASKS_DONE_HERE=0
+DONE_NUMS=""
 if [ "${ON_MODULE_BRANCH}" = true ]; then
   BASE=""
   for b in main master; do
     git show-ref --verify --quiet "refs/heads/${b}" && { BASE="$b"; break; }
   done
   if [ -n "${BASE}" ] && [ "${BASE}" != "${BRANCH}" ]; then
-    TASKS_DONE_HERE=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
+    DONE_NUMS=$(git log -n 200 --format=%B "${BASE}..HEAD" 2>/dev/null \
       | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
-      | grep -oE '[0-9]+' | sort -u | grep -c . || true)
+      | grep -oE '[0-9]+' | sort -u || true)
+    TASKS_DONE_HERE=$(printf '%s' "${DONE_NUMS}" | grep -c . || true)
     [ -z "${TASKS_DONE_HERE}" ] && TASKS_DONE_HERE=0
   fi
 fi
+# 取不到 BASE（既没有 main 也没有 master）时集合为空，表现为「这条规则不排除
+# 任何东西」—— 不能反过来当成「全都做完了」，那会在非常规默认分支名的仓库上
+# 一个 task 都取不出来，且看起来像模块已完成。
+DONE_LIST=$(printf '%s' "${DONE_NUMS}" | sed 's/^/#/' | tr '\n' ' ')
 
 # ── 状态机判定 ─────────────────────────────────────────────
 if [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -eq 0 ]; then
@@ -409,7 +420,13 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"
-[ "${ON_MODULE_BRANCH}" = true ] && add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（issue 要到 PR 合入默认分支才关）"
+if [ "${ON_MODULE_BRANCH}" = true ]; then
+  if [ "${TASKS_DONE_HERE}" -gt 0 ]; then
+    add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（${DONE_LIST}）—— 这些 issue 要到 PR 合入默认分支才关，取下一个任务时必须跳过它们"
+  else
+    add "模块分支: 本分支还没有带 closing keyword 的 commit"
+  fi
+fi
 add "spec-guard: ${PLUGIN_VER}"
 
 OUT="## agent-skills 链路状态（自动探测，非用户输入）

@@ -161,15 +161,35 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
     #    （--parent 只在 gh issue create 上），用了会 unknown flag 直接失败。
     gh api "repos/{owner}/{repo}/issues/$MODULE_ISSUE/sub_issues"
 
-筛选规则（按顺序），**四条全部只用上面这一次响应，不必逐个 task 再打 API**：
+筛选规则（按顺序）。**除第 3 条外全部只用上面这一次响应，不必逐个 task 再打 API**：
 
 1. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
 2. 排除 `issue_dependencies_summary.blocked_by > 0` —— 这个字段数的就是
    **未关闭**的阻塞者，已关闭的不计（实测：某 task `total_blocked_by=1` 而
    `blocked_by=0`，因为那个前置 issue 已经关了）。答案已经在手里，
    不要为此逐个 task 打 `dependencies/blocked_by`
-3. 排除已有 assignee 且不是自己的（多人协作）
-4. 取第一个
+3. **排除本分支已经做完的** —— 模块级 PR 下 task issue 要到 PR 合入默认分支
+   才关，做完的 task 在**整个模块周期里一直是 open**，前两条一条都挡不住它。
+   少了这一条，`/next` 会把上一轮刚做完的那个原样再取出来做第二遍。
+
+   号从 phase-guard 每轮注入的那行事实里直接读（「本分支已落 N 个 task 的
+   commit（#11 #12）」）。拿不到时自己数：
+
+       BASE=main; git show-ref --verify --quiet refs/heads/main || BASE=master
+       git show-ref --verify --quiet "refs/heads/${BASE}" || BASE=""
+       [ -n "${BASE}" ] && git log -n 200 --format=%B "${BASE}..HEAD" \
+         | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
+         | grep -oE '[0-9]+' | sort -u
+
+   要的是**号的集合**，不是个数 —— 个数只够回答「模块做完没有」。
+   拿这组号和 sub_issues **求交集**后排除；分支上出现的、不属于本模块的号
+   （顺手修的别的 bug）本来就不在 sub_issues 里，交集会自动丢掉。
+
+   **`<base>` 取不到（既没有 main 也没有 master）时这条规则不排除任何东西。**
+   不能反过来全排 —— 那会在非常规默认分支名的仓库上一个 task 都取不到，
+   而表现出来像「模块已经做完了」。
+4. 排除已有 assignee 且不是自己的（多人协作）
+5. 取第一个
 
 需要知道**是谁**在挡（报给用户时）才单独查，只查那一个：
 
@@ -266,7 +286,8 @@ commit message 拼进压缩后的正文，closing keyword 通常还在。真正�
 
 1. 那个拼接依赖一个**可改的仓库设置**，合并对话框里的正文也能手改 ——
    task issue 关不关取决于一个没人盯着的开关，而漏关的表现是 `/next`
-   把已完成的 task 重新取出来做第二遍
+   把已完成的 task 重新取出来做第二遍。**注意这是合并之后的那一份重取**；
+   合并之前的同名症状是另一回事，由操作三的筛选规则 3 挡
 2. `/build auto` 刻意做到一个 task 一条 commit，为的是**任意一点都能干净回滚**；
    squash 压成一条后只能整个模块一起 revert
 

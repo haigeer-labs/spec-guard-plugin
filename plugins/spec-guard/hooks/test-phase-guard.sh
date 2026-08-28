@@ -41,6 +41,15 @@ chk() {
   fi
 }
 
+# 取注入正文（不是只取「阶段|断链数」）—— 本套断言长期只比对那两项，
+# 正文里的畸形输出因此躺了很久（见上面双斜杠那条注释）。
+ctx() {
+  CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | python3 -c '
+import sys, json
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")'
+}
+
 echo "═══ phase-guard 回归测试 ═══"
 
 base
@@ -188,6 +197,44 @@ git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T2
 Closes #12" 2>/dev/null
 chk "模块内 task 全部落 commit → 该开模块 PR 了" "MODULE_READY|断链0"
 
+# ── /next 不能把刚做完的 task 再取一遍（issue #4）────────────
+# 模块级 PR 下 task issue 要到 PR 合入才关：做完的 task 在整个模块周期里
+# 一直是 open，操作三那几条筛选规则一条都挡不住它。号一直在 hook 手里
+# （TASKS_DONE_HERE 就是数它数出来的），只是从来没往外露过 ——
+# **数据在手里、判据没用它**，和 0.7.15 那个 MODULE_DONE 是同一个形状。
+mod_repo; git checkout -qb feat/x 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+MB="$(ctx)"
+if case "$MB" in *"#11"*) true ;; *) false ;; esac \
+   && case "$MB" in *"#12"*) false ;; *) true ;; esac; then
+  printf '  ✅ 模块分支：注入已做完的 task 号（#11），没有牵连未做的 #12\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 已做完的 task 号没注入 —— /next 会把它重新取出来做第二遍\n'; FAIL=$((FAIL+1))
+fi
+chk "落了 1/2 个 task → 仍在取任务，不报断链" "TASK_READY (模块分支)|断链0"
+
+# 反向：一条 closing commit 都没有时不能凭空冒出个号
+mod_repo; git checkout -qb feat/x 2>/dev/null
+if case "$(ctx)" in *"还没有带 closing keyword 的 commit"*) true ;; *) false ;; esac; then
+  printf '  ✅ 模块分支无 closing commit：说「还没有」，不列号\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 空集合时的措辞不对（列了个空号或者干脆没说）\n'; FAIL=$((FAIL+1))
+fi
+
+# 反向：默认分支不叫 main/master 时 BASE 取不到 —— 集合为空要表现为
+# 「这条规则不排除任何东西」，**不能**反过来被当成「全做完了」。
+# 后者会在这类仓库上一个 task 都取不出来，而且看起来像模块已完成。
+mod_repo; git branch -m trunk 2>/dev/null; git checkout -qb feat/x 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T1
+
+Closes #11" 2>/dev/null
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "feat: T2
+
+Closes #12" 2>/dev/null
+chk "BASE 取不到时不排除任何 task（不能判成模块已完成）" "TASK_READY (模块分支)|断链0"
+
 # ── 「任务从没建过」不能被当成「任务都做完了」──────────────
 # 两者在 OPEN_TASKS 上长得一模一样（都是 0）。此前 phase-guard 一律判
 # MODULE_DONE，反过来劝人「推进到下一个模块」——**一个 task 都没做的模块
@@ -299,12 +346,6 @@ esac
 # ── 零足迹模式要把触发指令补回来 ──
 # 实测依据：evals 的 B 组(= 这个模式)hook 正常激活但模型全程没加载 skill。
 # hook 注入的是状态，而让 skill 被加载的是那句指令 —— 少了它这个模式就是陷阱。
-ctx() {
-  CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null | python3 -c '
-import sys, json
-try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
-except Exception: print("")'
-}
 
 rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r" || exit 1; git init -q 2>/dev/null
 echo "# 普通项目（没有约定标题）" > CLAUDE.md

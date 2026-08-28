@@ -298,14 +298,23 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 1. 编辑 spec/CAPABILITY-MAP.md 填模块划分
 2. 人工评审模块边界和 build order          ← 不能跳
 3. /sync-map      能力图落成 Epic + 模块 issue
-4. /plan      为第一个模块拆解任务 → sub-issue
-5. git checkout -b <type>/<module-id>       ← 一个模块一条分支
-6. /build auto    跑完整个模块（每个 task 一条带 Closes #n 的 commit）
-7. /deliver       开模块级 PR（Closes #module-issue）
-8. 合并用 --merge 或 --rebase，**不要 squash**，然后 /next 推进到下一模块
+4. /spec          为第一个模块写 spec/<module-id>.md     ← 每个模块一次
+5. /plan          为该模块拆解任务 → sub-issue
+6. git checkout -b <type>/<module-id>       ← 一个模块一条分支
+7. /build auto    跑完整个模块（每个 task 一条带 Closes #n 的 commit）
+8. /deliver       开模块级 PR（Closes #module-issue）
+9. 合并用 --merge 或 --rebase，**不要 squash**
+   然后 /next 推进到下一模块 —— 回到第 4 步，不是回到第 1 步
 ```
 
-**第 4 步是关键验证点**：看 `/plan` 到底建 issue 还是写 `todo.md`。
+**第 4 步以前漏写了。** 少了它，照着 README 一路做到第 3 步会得到一个
+`MAP_ONLY` 断链（「能力图已存在但一份模块 spec 都没有」）—— 文档把用户
+送进了自己的检查器要报警的状态。
+
+**3 和 4 可以互换。** `/sync-map` 只依赖能力图，不依赖任何模块 spec
+（0.7.19 起明确写进 skill）；先写第一个模块的 spec 再落库也行。
+
+**第 5 步是关键验证点**：看 `/plan` 到底建 issue 还是写 `todo.md`。
 建了 issue 说明上游的 External Tracker 分支被正确激活，后面才有意义。
 
 ---

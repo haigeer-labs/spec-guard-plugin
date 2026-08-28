@@ -288,6 +288,22 @@ else
   printf '  ❌ 扩展 base 探测把常见情形弄坏了\n'; FAIL=$((FAIL+1))
 fi
 
+# 同一个 issue 号被两条 commit 认领（amend 后重提、revert 再来一遍）
+# 只能算**一个** task。不去重的话 DONE=2 ≥ OPEN_TASKS=2 → 提前判 MODULE_READY，
+# 劝人在模块只做完一半时就开 PR。变异测试（去掉 sort -u）活下来暴露的。
+mod_repo; git checkout -qb feat/x 2>/dev/null
+for m in "feat: T1 第一版" "feat: T1 返工"; do
+  git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "${m}
+
+Closes #11" 2>/dev/null
+done
+chk "同一个号出现两次只算一个 task（不能提前判 MODULE_READY）" "TASK_READY (模块分支)|断链0"
+if case "$(modline)" in *"已落 1 个"*) true ;; *) false ;; esac; then
+  printf '  ✅ 重复的 Closes #11 只数一次\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 重复的 Closes 被数了两次 —— 会提前劝人开 PR\n'; FAIL=$((FAIL+1))
+fi
+
 # ── 「任务从没建过」不能被当成「任务都做完了」──────────────
 # 两者在 OPEN_TASKS 上长得一模一样（都是 0）。此前 phase-guard 一律判
 # MODULE_DONE，反过来劝人「推进到下一个模块」——**一个 task 都没做的模块
@@ -394,6 +410,18 @@ mk_todo '活的清单 '
 case "$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)" in
   *"二者不能并存"*) printf '  ✅ 同样大但没归档声明的 todo.md 照报并存\n'; PASS=$((PASS+1)) ;;
   *)                printf '  ❌ 大文件把并存检测整个吞掉了\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反向：第 10 行之后的「已归档」不算数。
+# 只认前 10 行是刻意的 —— 正文里偶然提到「已归档」不能让整个清单被豁免。
+# verify-artifacts 那边早有这条用例，**这边一直没有**：变异测试把
+# `head -10` 改成 `head -200`，整套 68 条断言一条都没红。
+base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
+{ printf '# Todo\n'; for i in $(seq 15); do echo "- [ ] t$i"; done; echo "备注：本模块稍后已归档"; } > tasks/x/todo.md
+echo '{"tracker":"github","activeModule":"x","modules":{"x":{"issue":9}}}' > .agent/state.json
+case "$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)" in
+  *"二者不能并存"*) printf '  ✅ 第 10 行之后的「已归档」不算数\n'; PASS=$((PASS+1)) ;;
+  *)                printf '  ❌ 正文里提一句「已归档」就把整个清单豁免了\n'; FAIL=$((FAIL+1)) ;;
 esac
 
 # ── 零足迹模式要把触发指令补回来 ──

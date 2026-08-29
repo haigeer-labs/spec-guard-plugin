@@ -329,11 +329,11 @@ else
   #     · 比的是「与记录在案的那个 Epic **标题逐字相同**」，不是「像 Epic 的都算」。
   #       重跑用的是同一份能力图，标题必然相同；而两个**不同名**的 initiative
   #       同时开着是正常的（0.5.1「刻意空闲」的邻居）
-  #     · 记录在案的 Epic 不在 open 列表里（已关闭 / 超出 200 条）→ skip，不猜
+  #     · 记录在案的 Epic 不在 open 列表里（已关闭 / 超出 201 条）→ skip，不猜
   #     · state.json 没有 initiative.issue、而 GitHub 上已有 `Initiative:` 开头的
   #       open issue → 只 warn：这是「重跑会再建一套」的前夜，但那个 issue
   #       也可能是人手建的、跟本插件无关
-  ELIST=$(gh issue list --state open --limit 200 --json number,title 2>/dev/null || echo "")
+  ELIST=$(gh issue list --state open --limit 201 --json number,title 2>/dev/null || echo "")
   if [ -z "${ELIST}" ]; then
     skip "读不到 open issue 列表（网络或权限），跳过重复 Epic 比对（不代表通过）"
   else
@@ -347,11 +347,13 @@ def norm(t): return ' '.join((t or '').split())
 if epic:
     rec=[i for i in items if str(i.get('number'))==epic]
     if not rec:
-        print('SKIP|state.json 记的 Epic #%s 不在 open issue 列表里（已关闭，或超出前 200 条），跳过重复 Epic 比对' % epic); raise SystemExit
-    t=norm(rec[0].get('title'))
-    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and norm(i.get('title'))==t]
+        print('SKIP|state.json 记的 Epic #%s 不在 open issue 列表里（已关闭，或超出前 201 条），跳过重复 Epic 比对（不代表通过）' % epic); raise SystemExit
+    t=rec[0].get('title') or ''
+    dups=[str(i.get('number')) for i in items if str(i.get('number'))!=epic and (i.get('title') or '')==t]
     if dups:
         print('BAD|除了 state.json 记的 Epic #%s，还有同名的 open issue: %s —— 操作一中途失败后重跑的残留。先人工分辨留哪一套，依赖关系和 sub-issue 层级都要重连' % (epic, ', '.join('#'+d for d in dups)))
+    elif len(items)>=201:
+        print('SKIP|open issue 列表返回至少 201 条，可能已截断；窗口内未找到与 Epic #%s 同名的其他 open issue，不代表通过，跳过重复 Epic 比对' % epic)
     else:
         print('OK|没有与 Epic #%s 同名的其他 open issue' % epic)
 else:

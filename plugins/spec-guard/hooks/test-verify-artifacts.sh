@@ -573,6 +573,83 @@ case "$(vrun)" in
   *) printf '  ❌ 重复 Epic 这一项整个没跑到\n'; FAIL=$((FAIL+1)) ;;
 esac
 
+# issue list 的 201 条窗口意味着列表被截断。即便记录在案的 Epic 在窗口内，
+# 也不能把窗口内未命中同名项说成全局没有。
+epicrepo
+ghstub <<'STUBD8'
+#!/bin/bash
+case "${*}" in
+  *"issue list"*)   python3 -c 'import json; print(json.dumps([{"number":1,"title":"Initiative: 支付平台"}] + [{"number":n,"title":"别的 issue"} for n in range(2, 202)]))' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)      echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                 echo "" ;;
+esac
+STUBD8
+case "$(vrun)" in
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ❌ 201 条截断列表里没找到同名项却报了 ✅\n'; FAIL=$((FAIL+1)) ;;
+  *"不代表通过"*)
+    printf '  ✅ 201 条截断列表里没找到同名项 → skip，不报 ✅\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 201 条截断列表没有明确 skip\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 未截断的 200 条以内列表仍可给出「没有同名项」的正常结论。
+epicrepo
+ghstub <<'STUBD9'
+#!/bin/bash
+case "${*}" in
+  *"issue list"*)   python3 -c 'import json; print(json.dumps([{"number":1,"title":"Initiative: 支付平台"}] + [{"number":n,"title":"别的 issue"} for n in range(2, 201)]))' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)      echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                 echo "" ;;
+esac
+STUBD9
+case "$(vrun)" in
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ✅ 200 条以内无同名项仍报 ✅\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 200 条以内无同名项被错误 skip\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 判据写的是标题逐字相同；空白数量不同不是重复。
+epicrepo
+ghstub <<'STUBD10'
+#!/bin/bash
+case "${*}" in
+  *"issue list"*)   echo '[{"number":1,"title":"Initiative: 支付 平台"},{"number":40,"title":"Initiative: 支付  平台"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)      echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                 echo "" ;;
+esac
+STUBD10
+case "$(vrun)" in
+  *"还有同名的 open issue"*)
+    printf '  ❌ 标题只差空白数量仍被报成重复\n'; FAIL=$((FAIL+1)) ;;
+  *"没有与 Epic #1 同名的其他 open issue"*)
+    printf '  ✅ 标题只差空白数量不报重复\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 空白差异的重复 Epic 判据没跑到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+# 反向：逐字相同仍必须判为重复，防止把判据收窄过头。
+epicrepo
+ghstub <<'STUBD11'
+#!/bin/bash
+case "${*}" in
+  *"issue list"*)   echo '[{"number":1,"title":"Initiative: 支付平台"},{"number":40,"title":"Initiative: 支付平台"}]' ;;
+  *"issue view"*)   echo "摘要" ;;
+  *"pr view"*)      echo "Closes #5" ;;
+  *sub_issues*)      echo '[{"number":11,"state":"open","title":"T1","assignees":[]}]' ;;
+  *)                 echo "" ;;
+esac
+STUBD11
+case "$(vrun)" in
+  *"还有同名的 open issue: #40"*)
+    printf '  ✅ 标题逐字相同仍报重复\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 标题逐字相同的重复 Epic 没被抓到\n'; FAIL=$((FAIL+1)) ;;
+esac
+
 # state.json 没有 initiative.issue，而 GitHub 上已经有像 Epic 的 open issue ——
 # 这是「重跑会再建一套」的前夜。只 warn：那个 issue 也可能跟本插件无关。
 modrepo feat/oauth2          # 这份 state.json 没有 initiative

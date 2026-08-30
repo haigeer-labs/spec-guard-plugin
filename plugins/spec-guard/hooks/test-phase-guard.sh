@@ -15,7 +15,8 @@ PASS=0; FAIL=0
 base() {
   rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
   git init -q 2>/dev/null
-  echo "## Agent Skills 集成约定" > CLAUDE.md
+  printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+    '<!-- END:agent-skills-convention -->' > CLAUDE.md
   git add -A >/dev/null 2>&1
   git -c user.email=t@t -c user.name=t commit -qm init 2>/dev/null
 }
@@ -446,6 +447,30 @@ else
   printf '  ❌ Claude 声明块适配器没有保留原有契约\n'; FAIL=$((FAIL+1))
 fi
 
+# Codex 只写 AGENTS.md；它是完整的启用信号，不该误落到 Claude 的零足迹分支。
+rm -rf "$TMP/codex-phase"; mkdir -p "$TMP/codex-phase"; cd "$TMP/codex-phase" || exit 1
+git init -q 2>/dev/null
+printf '%s\n' '<!-- BEGIN:spec-guard-codex-convention -->' \
+  '<!-- END:spec-guard-codex-convention -->' > AGENTS.md
+CODEX_CTX="$(CLAUDE_PROJECT_DIR="$TMP/codex-phase" bash "$H" 2>/dev/null | python3 -c '
+import json, sys
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")')"
+if case "$CODEX_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$CODEX_CTX" in *"零足迹模式"*) false ;; *) true ;; esac; then
+  printf '  ✅ Codex AGENTS.md 声明块：照常注入当前阶段且不报 Claude 零足迹\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex AGENTS.md 声明块没有成为独立启用信号\n'; FAIL=$((FAIL+1))
+fi
+
+# 普通 AGENTS.md 不能因为提到 agent 而误激活。
+printf '# Agent notes\n' > AGENTS.md
+if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/codex-phase" bash "$H" 2>/dev/null)" ]; then
+  printf '  ✅ 普通 AGENTS.md 无完整 Codex 标记仍静默\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 普通 AGENTS.md 被误激活\n'; FAIL=$((FAIL+1))
+fi
+
 # 本地模式零足迹：不能指向 spec-github-bridge —— 那个 skill 全篇是 gh issue,
 # 对 tracker=none 的项目毫无意义,指过去只会让它去建根本不存在的 issue
 rm -rf "$TMP/r"; mkdir -p "$TMP/r/.agent"; cd "$TMP/r" || exit 1; git init -q 2>/dev/null
@@ -735,7 +760,8 @@ nudge_base; echo '# ch' > SPEC-channel.md; touch .spec-guard-ignore
 nz "反：有 .spec-guard-ignore → 静音" no
 
 nudge_base; echo '# ch' > SPEC-channel.md
-echo "## Agent Skills 集成约定" > CLAUDE.md
+printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+  '<!-- END:agent-skills-convention -->' > CLAUDE.md
 nz "反：约定已激活（声明块）→ 走正常状态机，不出这条提示" no
 
 nudge_base; echo '# ch' > SPEC-channel.md
@@ -780,7 +806,8 @@ fi
 # 激活之后必须还是那台状态机 —— 上面两条只验了「没出提示」，
 # 空断言在这个仓库出过（0.7.20 三条），补一条正面的。
 nudge_base; echo '# ch' > SPEC-channel.md
-echo "## Agent Skills 集成约定" > CLAUDE.md
+printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+  '<!-- END:agent-skills-convention -->' > CLAUDE.md
 if grep -q "当前阶段" <<<"$(ctx)"; then   # 不用管道：grep -q 命中即关，ctx 吃 SIGPIPE
   printf '  ✅ 反向断言不是空的：激活后照常注入「当前阶段」\n'; PASS=$((PASS+1))
 else

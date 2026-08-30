@@ -62,14 +62,29 @@ detect_tracker() {
 }
 
 # ── 只在启用了本约定的仓库生效 ──────────────────────────────
-#   两种激活信号，满足其一即可：
-#     1. CLAUDE.md 里的约定标题（常规模式）
-#     2. .agent/state.json 存在（**零 CLAUDE.md 足迹模式**）
-#   加第 2 条是为了让不想动 CLAUDE.md 的项目也能用：那个文件官方建议
+#   三种激活信号，满足其一即可：
+#     1. CLAUDE.md 里的 Claude 完整约定标记（常规模式）
+#     2. AGENTS.md 里的 Codex 完整约定标记（常规模式）
+#     3. .agent/state.json 存在（零说明文件足迹模式）
+#   加第 3 条是为了让不想动项目说明文件的项目也能用：那个文件官方建议
 #   控制在 200 行内，而声明块曾经一口气占掉 100 多行。
 #   .agent/ 是本插件自己的目录，拿它当信号不会污染无关项目。
+has_claude_block() {
+  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null
+}
+
+has_codex_block() {
+  grep -q "<!-- BEGIN:spec-guard-codex-convention -->" AGENTS.md 2>/dev/null
+}
+
+HAS_CLAUDE=false
+has_claude_block && HAS_CLAUDE=true
+HAS_CODEX=false
+has_codex_block && HAS_CODEX=true
 HAS_BLOCK=false
-[ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && HAS_BLOCK=true
+if [ "$HAS_CLAUDE" = true ] || [ "$HAS_CODEX" = true ]; then
+  HAS_BLOCK=true
+fi
 ACTIVE="$HAS_BLOCK"
 [ -f ".agent/state.json" ] && ACTIVE=true
 
@@ -175,7 +190,7 @@ live_todos() {
 #   纯参数展开，**不 fork** —— 这个 hook 每轮都跑，预算 <1s。
 #   加它的原因：更新插件要重启才生效，而「重启了没有 / 跑的是哪版」
 #   之前只能靠翻 ~/.claude/plugins/cache 的 .in_use 标记猜。
-SELF_DIR="${CLAUDE_PLUGIN_ROOT:-}"
+SELF_DIR="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 if [ -z "${SELF_DIR}" ]; then
   SELF_DIR="${BASH_SOURCE[0]%/*}"; SELF_DIR="${SELF_DIR%/*}"
 fi

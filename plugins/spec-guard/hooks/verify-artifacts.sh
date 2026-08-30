@@ -47,9 +47,10 @@ live_todos() {
 }
 
 # ── 自身位置（用来找 hooks/spec-digest.py）────────────────
-#   和 phase-guard 同样的解析方式：装出来时靠 CLAUDE_PLUGIN_ROOT，
+#   和 phase-guard 同样的解析方式：装出来时优先 PLUGIN_ROOT、再兼容
+#   CLAUDE_PLUGIN_ROOT，
 #   直接跑脚本时从 BASH_SOURCE 往上退一层到插件根。
-SELF_DIR="${CLAUDE_PLUGIN_ROOT:-}"
+SELF_DIR="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 if [ -z "${SELF_DIR}" ]; then
   SELF_DIR="${BASH_SOURCE[0]%/*}"; SELF_DIR="${SELF_DIR%/*}"
 fi
@@ -61,13 +62,28 @@ bad()  { printf '  ❌ %s\n' "$1"; F=$((F+1)); }
 skip() { printf '  ⏭  %s\n' "$1"; }
 
 # ── 约定未启用就别装懂 ──────────────────────────────────────
-# 激活信号两种，满足其一即可：CLAUDE.md 的约定标题，或 .agent/state.json 存在
-# （后者是零 CLAUDE.md 足迹模式，见 phase-guard.sh 同处注释）
-ACTIVE=false
-[ -f CLAUDE.md ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && ACTIVE=true
+# 激活信号三种，满足其一即可：Claude/Codex 的完整说明块，或 .agent/state.json 存在
+# （后者是零说明文件足迹模式，见 phase-guard.sh 同处注释）。
+has_claude_block() {
+  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null
+}
+
+has_codex_block() {
+  grep -q "<!-- BEGIN:spec-guard-codex-convention -->" AGENTS.md 2>/dev/null
+}
+
+HAS_CLAUDE=false
+has_claude_block && HAS_CLAUDE=true
+HAS_CODEX=false
+has_codex_block && HAS_CODEX=true
+HAS_BLOCK=false
+if [ "$HAS_CLAUDE" = true ] || [ "$HAS_CODEX" = true ]; then
+  HAS_BLOCK=true
+fi
+ACTIVE="$HAS_BLOCK"
 [ -f .agent/state.json ] && ACTIVE=true
 if [ "$ACTIVE" != true ]; then
-  echo "本项目没有启用 spec-guard 约定（CLAUDE.md 缺约定标题，且无 .agent/state.json）。"
+  echo "本项目没有启用 spec-guard 约定（缺少项目说明块，且无 .agent/state.json）。"
   echo "先跑 /setup-convention。"
   exit 2
 fi

@@ -20,7 +20,7 @@ while IFS= read -r j; do
 done < <(find . -name "*.json" -not -path "./.git/*")
 
 echo ""
-echo "═══ marketplace ↔ plugin 一致性 ═══"
+echo "═══ marketplace ↔ Claude / Codex plugin 一致性 ═══"
 python3 scripts/check-manifests.py || F=1
 
 echo ""
@@ -64,6 +64,14 @@ echo ""
 # 表现就是一条关不掉的假警报。免费，所以进这一层。
 echo "═══ 指纹算法自检 ═══"
 python3 plugins/spec-guard/hooks/spec-digest.py --selftest || F=1
+echo ""
+
+echo "═══ Codex 适配器回归 ═══"
+/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
+echo ""
+
+echo "═══ Codex 真实宿主 smoke 判决器自检（不调用 Codex）═══"
+/bin/bash evals/codex-plugin-smoke.sh --selftest || F=1
 echo ""
 
 # 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」

@@ -15,7 +15,8 @@ PASS=0; FAIL=0
 base() {
   rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
   git init -q 2>/dev/null
-  echo "## Agent Skills 集成约定" > CLAUDE.md
+  printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+    '<!-- END:agent-skills-convention -->' > CLAUDE.md
   git add -A >/dev/null 2>&1
   git -c user.email=t@t -c user.name=t commit -qm init 2>/dev/null
 }
@@ -437,11 +438,66 @@ else
   printf '  ❌ 零足迹下没注入触发指令 —— --no-claude-md 会退化成没有约定\n'; FAIL=$((FAIL+1))
 fi
 
-base   # 有声明块
-if case "$(ctx)" in *"零足迹模式"*) false ;; *) true ;; esac; then
-  printf '  ✅ 有声明块时一个字都不多\n'; PASS=$((PASS+1))
+base   # 有当前 Claude 约定声明块
+CLAUDE_CTX="$(ctx)"
+if case "$CLAUDE_CTX" in *"没有 CLAUDE.md 声明块（零足迹模式）"*) false ;; *) true ;; esac \
+   && case "$CLAUDE_CTX" in *"当前阶段"*) true ;; *) false ;; esac; then
+  printf '  ✅ Claude 声明块适配器：不报零足迹且照常注入当前阶段\n'; PASS=$((PASS+1))
 else
-  printf '  ❌ 有声明块的项目也被塞了零足迹提示（白花 context）\n'; FAIL=$((FAIL+1))
+  printf '  ❌ Claude 声明块适配器没有保留原有契约\n'; FAIL=$((FAIL+1))
+fi
+
+# 旧版项目只留下约定标题，没有新声明标记；这仍是 Claude 的有效激活信号。
+rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
+printf '# Agent Skills 集成约定\n' > CLAUDE.md
+LEGACY_CLAUDE_CTX="$(ctx)"
+if case "$LEGACY_CLAUDE_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$LEGACY_CLAUDE_CTX" in *"零足迹模式"*) false ;; *) true ;; esac; then
+  printf '  ✅ 旧版 Claude 约定标题仍独立激活\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 旧版 Claude 约定标题被误判为未启用\n'; FAIL=$((FAIL+1))
+fi
+
+# Codex 只写 AGENTS.md；它是完整的启用信号，不该误落到 Claude 的零足迹分支。
+rm -rf "$TMP/codex-phase"; mkdir -p "$TMP/codex-phase"; cd "$TMP/codex-phase" || exit 1
+git init -q 2>/dev/null
+printf '%s\n' '<!-- BEGIN:spec-guard-codex-convention -->' \
+  '<!-- END:spec-guard-codex-convention -->' > AGENTS.md
+CODEX_CTX="$(CLAUDE_PROJECT_DIR="$TMP/codex-phase" bash "$H" 2>/dev/null | python3 -c '
+import json, sys
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")')"
+if case "$CODEX_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$CODEX_CTX" in *"零足迹模式"*) false ;; *) true ;; esac; then
+  printf '  ✅ Codex AGENTS.md 声明块：照常注入当前阶段且不报 Claude 零足迹\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex AGENTS.md 声明块没有成为独立启用信号\n'; FAIL=$((FAIL+1))
+fi
+
+# Codex 的 --no-instructions 不写 AGENTS.md，仍由 state.json 激活；它不能
+# 落进 Claude 零足迹文案或推荐 Claude slash command。
+rm -rf "$TMP/codex-state"; mkdir -p "$TMP/codex-state/.agent"; cd "$TMP/codex-state" || exit 1
+git init -q 2>/dev/null
+echo '{"tracker":"github","activeModule":"","modules":{}}' > .agent/state.json
+CODEX_STATE_CTX="$(PLUGIN_ROOT="$PLUGDIR" CLAUDE_PROJECT_DIR="$TMP/codex-state" bash "$H" 2>/dev/null | python3 -c '
+import json, sys
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")')"
+if case "$CODEX_STATE_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$CODEX_STATE_CTX" in *"CLAUDE.md"*|*"/setup-convention"*) false ;; *) true ;; esac \
+   && case "$CODEX_STATE_CTX" in *"Codex"*"--no-instructions"*) true ;; *) false ;; esac; then
+  printf '  ✅ Codex state-only：照常注入阶段，不泄露 Claude 指引\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex state-only 文案混入 Claude 指引或未给 Codex 指令\n'; FAIL=$((FAIL+1))
+fi
+
+# 普通 AGENTS.md 不能因为提到 agent 而误激活。
+cd "$TMP/codex-phase" || exit 1
+printf '# Agent notes\n' > AGENTS.md
+if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/codex-phase" bash "$H" 2>/dev/null)" ]; then
+  printf '  ✅ 普通 AGENTS.md 无完整 Codex 标记仍静默\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 普通 AGENTS.md 被误激活\n'; FAIL=$((FAIL+1))
 fi
 
 # 本地模式零足迹：不能指向 spec-github-bridge —— 那个 skill 全篇是 gh issue,
@@ -733,7 +789,8 @@ nudge_base; echo '# ch' > SPEC-channel.md; touch .spec-guard-ignore
 nz "反：有 .spec-guard-ignore → 静音" no
 
 nudge_base; echo '# ch' > SPEC-channel.md
-echo "## Agent Skills 集成约定" > CLAUDE.md
+printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+  '<!-- END:agent-skills-convention -->' > CLAUDE.md
 nz "反：约定已激活（声明块）→ 走正常状态机，不出这条提示" no
 
 nudge_base; echo '# ch' > SPEC-channel.md
@@ -778,7 +835,8 @@ fi
 # 激活之后必须还是那台状态机 —— 上面两条只验了「没出提示」，
 # 空断言在这个仓库出过（0.7.20 三条），补一条正面的。
 nudge_base; echo '# ch' > SPEC-channel.md
-echo "## Agent Skills 集成约定" > CLAUDE.md
+printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+  '<!-- END:agent-skills-convention -->' > CLAUDE.md
 if grep -q "当前阶段" <<<"$(ctx)"; then   # 不用管道：grep -q 命中即关，ctx 吃 SIGPIPE
   printf '  ✅ 反向断言不是空的：激活后照常注入「当前阶段」\n'; PASS=$((PASS+1))
 else
@@ -811,6 +869,74 @@ if [ "$(entries_except_git)" -eq 1 ]; then
 else
   printf '  ❌ dry-run 不该写文件\n'; FAIL=$((FAIL+1))
 fi
+
+# Codex 把约定写进 AGENTS.md；不能借用 Claude 的文件或旧标记。
+rm -rf "$TMP/codex"; mkdir -p "$TMP/codex"; cd "$TMP/codex" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex >/dev/null 2>&1
+if [ -f AGENTS.md ] \
+   && [ "$(grep -c 'BEGIN:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ "$(grep -c 'END:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ ! -e CLAUDE.md ] \
+   && python3 -c 'import json; json.load(open(".agent/state.json"))' 2>/dev/null; then
+  printf '  ✅ Codex 写 AGENTS.md 专属块，不建 CLAUDE.md，state.json 合法\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex 安装没有使用 AGENTS.md 专属块\n'; FAIL=$((FAIL+1))
+fi
+
+# --replace 只能替换 Codex 标记内的内容。
+rm -rf "$TMP/codex-replace"; mkdir -p "$TMP/codex-replace"; cd "$TMP/codex-replace" || exit 1; git init -q 2>/dev/null
+printf '# 标记外开头\n' > AGENTS.md
+bash "$SETUP" local --host=codex >/dev/null 2>&1
+printf '\n# 标记外结尾\n' >> AGENTS.md
+python3 - <<'PYEOF'
+p='AGENTS.md'; s=open(p,encoding='utf-8').read()
+s=s.replace('<!-- END:spec-guard-codex-convention -->', '旧 Codex 内容\n<!-- END:spec-guard-codex-convention -->')
+open(p,'w',encoding='utf-8').write(s)
+PYEOF
+bash "$SETUP" local --host=codex --replace >/dev/null 2>&1
+if grep -q '# 标记外开头' AGENTS.md && grep -q '# 标记外结尾' AGENTS.md \
+   && [ "$(grep -c 'BEGIN:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ "$(grep -c 'END:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && ! grep -q '旧 Codex 内容' AGENTS.md; then
+  printf '  ✅ Codex --replace 不碰 AGENTS.md 标记外内容\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex --replace 动了标记外内容或没替换块内内容\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/codex-dry"; mkdir -p "$TMP/codex-dry"; cd "$TMP/codex-dry" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --dry-run >/dev/null 2>&1
+if [ "$(entries_except_git)" -eq 0 ]; then
+  printf '  ✅ Codex --dry-run 零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex --dry-run 不该写文件\n'; FAIL=$((FAIL+1))
+fi
+
+bash "$SETUP" local --host=codex --no-instructions >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then
+  printf '  ✅ Codex local + --no-instructions 被拒（退 2）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex local + --no-instructions 没被拒\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/codex-no-claude"; mkdir -p "$TMP/codex-no-claude"; cd "$TMP/codex-no-claude" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --no-claude-md >/dev/null 2>&1
+if [ "$?" -eq 2 ] && [ ! -d .agent ]; then
+  printf '  ✅ Codex + --no-claude-md 被拒（退 2 且零写入）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex + --no-claude-md 没被拒或留下写入\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/codex-no-instructions"; mkdir -p "$TMP/codex-no-instructions"; cd "$TMP/codex-no-instructions" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --no-instructions >/dev/null 2>&1
+if [ -f .agent/state.json ] \
+   && [ ! -e AGENTS.md ] \
+   && python3 -c 'import json; json.load(open(".agent/state.json"))' 2>/dev/null; then
+  printf '  ✅ Codex + --no-instructions 不写 AGENTS.md，仍建立合法 state.json\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex + --no-instructions 写了 AGENTS.md 或没建立 state.json\n'; FAIL=$((FAIL+1))
+fi
+
+cd "$TMP/s" || exit 1
 
 bash "$SETUP" local >/dev/null 2>&1
 if grep -q "原有内容" <<<"$(head -1 CLAUDE.md)"; then
@@ -961,6 +1087,20 @@ if [ -f .agent/state.json ] && [ -n "$(CLAUDE_PROJECT_DIR="$TMP/td" bash "$H" 2>
   printf '  ✅ --keep-state 保留 state.json,hook 仍激活（零足迹模式）\n'; PASS=$((PASS+1))
 else
   printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
+fi
+
+# 两个 host 共存时，只拆目标 host；另一个声明块仍是有效激活信号，不能停用 state。
+rm -rf "$TMP/td-host"; mkdir -p "$TMP/td-host"; cd "$TMP/td-host" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github >/dev/null 2>&1
+bash "$SETUP" github --host=codex >/dev/null 2>&1
+CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" --host=codex >/dev/null 2>&1
+if grep -q 'BEGIN:agent-skills-convention' CLAUDE.md \
+   && ! grep -q 'BEGIN:spec-guard-codex-convention' AGENTS.md 2>/dev/null \
+   && [ -f .agent/state.json ] \
+   && [ ! -f .agent/state.json.disabled ]; then
+  printf '  ✅ Codex teardown 只移除 Codex 块，保留 Claude 块和 state.json\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex teardown 错删其他 host 或停用了 state.json\n'; FAIL=$((FAIL+1))
 fi
 
 # ── 写操作必须钉死在项目根，不能跟着 cwd 跑 ────────────────

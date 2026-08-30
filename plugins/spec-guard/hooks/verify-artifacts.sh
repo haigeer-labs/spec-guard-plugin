@@ -36,7 +36,7 @@ is_archived() {
   # 吃到 SIGPIPE(141)，pipefail 把它传出来 —— 归档豁免失效，报出假违规。
   # 实测门槛是前 10 行约 256KB（真实 todo.md 到不了），但这是本仓明令禁止
   # 的写法，且同一条规则已经修过三次了。
-  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)"
+  awk 'NR > 10 { exit } tolower($0) ~ /已归档|archived/ { found=1 } END { exit !found }' "$1"
 }
 
 # 列出所有**非归档**的 todo.md
@@ -47,9 +47,10 @@ live_todos() {
 }
 
 # ── 自身位置（用来找 hooks/spec-digest.py）────────────────
-#   和 phase-guard 同样的解析方式：装出来时靠 CLAUDE_PLUGIN_ROOT，
+#   和 phase-guard 同样的解析方式：装出来时优先 PLUGIN_ROOT、再兼容
+#   CLAUDE_PLUGIN_ROOT，
 #   直接跑脚本时从 BASH_SOURCE 往上退一层到插件根。
-SELF_DIR="${CLAUDE_PLUGIN_ROOT:-}"
+SELF_DIR="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 if [ -z "${SELF_DIR}" ]; then
   SELF_DIR="${BASH_SOURCE[0]%/*}"; SELF_DIR="${SELF_DIR%/*}"
 fi
@@ -61,13 +62,32 @@ bad()  { printf '  ❌ %s\n' "$1"; F=$((F+1)); }
 skip() { printf '  ⏭  %s\n' "$1"; }
 
 # ── 约定未启用就别装懂 ──────────────────────────────────────
-# 激活信号两种，满足其一即可：CLAUDE.md 的约定标题，或 .agent/state.json 存在
-# （后者是零 CLAUDE.md 足迹模式，见 phase-guard.sh 同处注释）
-ACTIVE=false
-[ -f CLAUDE.md ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && ACTIVE=true
+# 激活信号三种，满足其一即可：Claude 的说明块或旧版标题、Codex 的完整说明块，
+# 或 .agent/state.json 存在
+# （后者是零说明文件足迹模式，见 phase-guard.sh 同处注释）。
+has_claude_block() {
+  if grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null; then
+    return 0
+  fi
+  grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
+}
+
+has_codex_block() {
+  grep -q "<!-- BEGIN:spec-guard-codex-convention -->" AGENTS.md 2>/dev/null
+}
+
+HAS_CLAUDE=false
+has_claude_block && HAS_CLAUDE=true
+HAS_CODEX=false
+has_codex_block && HAS_CODEX=true
+HAS_BLOCK=false
+if [ "$HAS_CLAUDE" = true ] || [ "$HAS_CODEX" = true ]; then
+  HAS_BLOCK=true
+fi
+ACTIVE="$HAS_BLOCK"
 [ -f .agent/state.json ] && ACTIVE=true
 if [ "$ACTIVE" != true ]; then
-  echo "本项目没有启用 spec-guard 约定（CLAUDE.md 缺约定标题，且无 .agent/state.json）。"
+  echo "本项目没有启用 spec-guard 约定（缺少项目说明块，且无 .agent/state.json）。"
   echo "先跑 /setup-convention。"
   exit 2
 fi
@@ -145,8 +165,8 @@ MAP_IDS=""
 if [ ! -f "${MAP}" ]; then
   warn "${MAP} 不存在 —— 单模块项目可忽略；多模块的话 Phase 0 没落地"
 else
-  MAP_IDS=$(python3 - "${MAP}" <<'PY'
-import re, sys
+  MAP_IDS=$(python3 -c '
+import sys
 ids = []
 for line in open(sys.argv[1], encoding="utf-8"):
     if not line.lstrip().startswith("|"):
@@ -155,17 +175,15 @@ for line in open(sys.argv[1], encoding="utf-8"):
     if len(cells) < 2:
         continue
     first = cells[0]
-    # 跳过表头和 |---|---| 分隔行
     if not first or first.lower() == "module id" or set(first) <= set("-: "):
         continue
-    ids.append(first.strip(chr(96)))  # chr(96)=反引号；写字面量会截断外层 $( )
+    ids.append(first.strip(chr(96)))
 print("\n".join(ids))
-PY
-)
+' "${MAP}")
   N=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
   if [ "${N}" -eq 0 ]; then
     warn "${MAP} 里没解析出任何 module id —— 表格格式可能不对"
-  elif grep -q "^example-" <<<"${MAP_IDS}"; then   # herestring：管道 + grep -q 会 SIGPIPE
+  elif [[ "${MAP_IDS}" == example-* ]]; then
     warn "${MAP} 还是模板占位符（example-a/example-b），没填真实模块"
   else
     ok "能力图解析出 ${N} 个 module id"
@@ -233,7 +251,7 @@ if ex: print('WARN|%s 在 state.json 里有 issue 号，但能力图里已经没
           WARN\|*) warn "${ln#WARN|}" ;;
           SKIP\|*) skip "${ln#SKIP|}" ;;
         esac
-      done <<<"${DOUT}"
+      done < <(printf '%s\n' "${DOUT}")
     fi
   fi
 fi
@@ -494,7 +512,7 @@ else:
     PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
     if [ -z "${PRB}" ]; then
       skip "模块分支 ${BR} 还没有 PR（模块跑完再开）"
-    elif grep -qiE "closes #${MI}\b" <<<"${PRB}"; then
+    elif [[ "$(printf '%s' "${PRB}" | tr '[:upper:]' '[:lower:]')" =~ closes[[:space:]]+#${MI} ]]; then
       ok "模块 PR 正文含 Closes #${MI}"
     else
       bad "模块 PR 正文没有 Closes #${MI} —— 模块 issue 不会自动关闭"
@@ -522,7 +540,7 @@ else:
     PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
     if [ -z "${PRB}" ]; then
       skip "分支 ${BR} 还没有 PR"
-    elif grep -qiE "closes #${BRI}\b" <<<"${PRB}"; then
+    elif [[ "$(printf '%s' "${PRB}" | tr '[:upper:]' '[:lower:]')" =~ closes[[:space:]]+#${BRI} ]]; then
       ok "PR 正文含 Closes #${BRI}"
     else
       bad "PR 正文没有 Closes #${BRI} —— issue 不会自动关闭，Project 看板不流转"

@@ -7,6 +7,11 @@ HOOKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V="${HOOKDIR}/verify-artifacts.sh"
 [ -f "${V}" ] || { echo "找不到 ${V}"; exit 1; }
 
+if grep -q 'python3 - "${MAP}" <<' "${V}"; then
+  echo "verify 的能力图解析不得使用 here-doc（Codex read-only sandbox 不支持）"
+  exit 1
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 PASS=0; FAIL=0
@@ -15,7 +20,8 @@ PASS=0; FAIL=0
 base() {
   rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/.agent"; cd "${TMP}/r" || exit 1
   git init -q 2>/dev/null
-  echo "## Agent Skills 集成约定" > CLAUDE.md
+  printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+    '<!-- END:agent-skills-convention -->' > CLAUDE.md
 }
 
 map() {  # $@ = module ids
@@ -177,6 +183,36 @@ else
   printf '  ❌ 未启用约定应退出 2\n'; FAIL=$((FAIL+1))
 fi
 
+# 兼容旧版 Claude 项目：只保留约定标题时仍应启用校验。
+rm -rf "${TMP}/legacy-claude"; mkdir -p "${TMP}/legacy-claude"
+printf '# Agent Skills 集成约定\n' > "${TMP}/legacy-claude/CLAUDE.md"
+CLAUDE_PROJECT_DIR="${TMP}/legacy-claude" bash "${V}" >/dev/null 2>&1
+if [ $? -ne 2 ]; then
+  printf '  ✅ 旧版 Claude 约定标题仍独立启用校验\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 旧版 Claude 约定标题被误判为未启用\n'; FAIL=$((FAIL+1))
+fi
+
+# Codex 只写 AGENTS.md；完整标记必须独立启用校验，不依赖 CLAUDE.md 或 state.json。
+rm -rf "${TMP}/codex"; mkdir -p "${TMP}/codex"
+printf '%s\n' '<!-- BEGIN:spec-guard-codex-convention -->' \
+  '<!-- END:spec-guard-codex-convention -->' > "${TMP}/codex/AGENTS.md"
+CLAUDE_PROJECT_DIR="${TMP}/codex" bash "${V}" >/dev/null 2>&1
+if [ $? -ne 2 ]; then
+  printf '  ✅ Codex AGENTS.md 声明块独立启用校验\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex AGENTS.md 声明块仍被判未启用\n'; FAIL=$((FAIL+1))
+fi
+
+# 普通 AGENTS.md 不能扩大激活范围。
+printf '# Agent notes\n' > "${TMP}/codex/AGENTS.md"
+CLAUDE_PROJECT_DIR="${TMP}/codex" bash "${V}" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  printf '  ✅ 普通 AGENTS.md 无完整 Codex 标记仍退 2\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 普通 AGENTS.md 被误判为已启用\n'; FAIL=$((FAIL+1))
+fi
+
 # ── 模块分支：分支判定必须与 phase-guard 一致 ───────────────
 # 0.6.0 改了模块分支约定,只改了 phase-guard;这里留在 task 分支时代。
 # 后果:模块名自带数字时(feat/oauth2)那个 2 被当成 issue 号,
@@ -200,7 +236,8 @@ chmod +x "${TMP}/vbin/gh"
 modrepo() {  # $1=分支名
   rm -rf "${TMP}/r"; mkdir -p "${TMP}/r/spec" "${TMP}/r/tasks/oauth2" "${TMP}/r/.agent"; cd "${TMP}/r" || exit 1
   git init -q 2>/dev/null
-  echo "## Agent Skills 集成约定" > CLAUDE.md
+  printf '%s\n' '<!-- BEGIN:agent-skills-convention -->' \
+    '<!-- END:agent-skills-convention -->' > CLAUDE.md
   map oauth2; touch spec/oauth2.md
   printf '# Plan\n\n> Tasks tracked in GitHub Issues #5\n\n- #11 建表\n' > tasks/oauth2/plan.md
   echo '{"tracker":"github","activeModule":"oauth2","modules":{"oauth2":{"issue":5}}}' > .agent/state.json

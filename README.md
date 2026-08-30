@@ -1,11 +1,23 @@
 # spec-guard
 
-给 [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) 补三样东西的 Claude Code 插件：
+给 [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) 补三样东西的 Claude Code / Codex 插件：
 **多模块 Spec 支持**、**GitHub Issue 打通**、**链路断裂检测**。
 
 > **给 AI agent 的提示**：本 README 包含完整的手动安装步骤和需要写入 `CLAUDE.md`
 > 的原文。你可以直接照做，不必依赖 `/setup-convention` 命令。见
 > [手动安装](#手动安装给-agent-或不想跑命令的人)。
+
+---
+
+## 宿主支持矩阵
+
+| 宿主 | 支持范围 | 约定与注意事项 |
+|---|---|---|
+| Claude Code | 完整支持：slash 命令、hook 与 bridge skill | `/setup-convention` 写入 `CLAUDE.md`。|
+| Codex | 共享 hook、检查器与 `spec-guard-ops` 显式操作 skill | 先启用插件、在 `/hooks` 审核并信任 hook，再由 skill 写入 `AGENTS.md`。Claude slash 命令不适用于 Codex。|
+
+Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件 hook。真实宿主 smoke
+会把未安装、未登录、未信任或 hook 未执行报告为“环境未就绪”，不误报为产品失败。
 
 ---
 
@@ -447,7 +459,17 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 /bin/bash scripts/validate.sh                              # 仓库完整性
 /bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
 /bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
+/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh
+/bin/bash evals/codex-plugin-smoke.sh --selftest            # 不调用 Codex
 ```
+
+真实 Codex smoke 不接入 `validate.sh`，因为它需要用户安装插件、登录并信任 hook：
+
+```bash
+/bin/bash evals/codex-plugin-smoke.sh
+```
+
+退出码 `0` 为通过，`1` 为已执行 hook 的行为失败，`2` 为环境未就绪。
 
 > ⚠️ **macOS 上显式用 `/bin/bash`（那是 3.2）。** 装了 Homebrew 的话 `bash` 会指向
 > 5.x —— 那就绕过了本机唯一能暴露 bash 3.2 兼容问题的环境，而 CI 的 macOS matrix

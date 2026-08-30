@@ -23,11 +23,14 @@
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
-DRY=false; KEEP=false
+DRY=false; KEEP=false; HOST=claude
 for a in "$@"; do
   case "$a" in
     --dry-run)    DRY=true ;;
     --keep-state) KEEP=true ;;
+    --host=claude) HOST=claude ;;
+    --host=codex)  HOST=codex ;;
+    --host=*)      echo "host 必须是 claude 或 codex"; exit 2 ;;
   esac
 done
 
@@ -38,8 +41,24 @@ done
 ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
 
-MARK_B="<!-- BEGIN:agent-skills-convention -->"
-MARK_E="<!-- END:agent-skills-convention -->"
+case "$HOST" in
+  claude)
+    INSTRUCTIONS=CLAUDE.md
+    MARK_B="<!-- BEGIN:agent-skills-convention -->"
+    MARK_E="<!-- END:agent-skills-convention -->"
+    OTHER_HOST=Codex
+    OTHER_INSTRUCTIONS=AGENTS.md
+    OTHER_MARK_B="<!-- BEGIN:spec-guard-codex-convention -->"
+    ;;
+  codex)
+    INSTRUCTIONS=AGENTS.md
+    MARK_B="<!-- BEGIN:spec-guard-codex-convention -->"
+    MARK_E="<!-- END:spec-guard-codex-convention -->"
+    OTHER_HOST=Claude
+    OTHER_INSTRUCTIONS=CLAUDE.md
+    OTHER_MARK_B="<!-- BEGIN:agent-skills-convention -->"
+    ;;
+esac
 STATE=".agent/state.json"
 
 act()  { [ "$DRY" = true ] && printf '  [dry-run] %s\n' "$1" || printf '  ✅ %s\n' "$1"; }
@@ -50,13 +69,17 @@ echo "═══ 移除 spec-guard 约定 ═══"
 echo "  作用目录: ${ROOT}"
 
 DID=0
+OTHER_ACTIVE=false
+if [ -f "$OTHER_INSTRUCTIONS" ] && grep -q "$OTHER_MARK_B" "$OTHER_INSTRUCTIONS" 2>/dev/null; then
+  OTHER_ACTIVE=true
+fi
 
-# ── 1. CLAUDE.md 的声明块 ──
-if [ -f CLAUDE.md ] && grep -q "${MARK_B}" CLAUDE.md 2>/dev/null; then
-  N=$(python3 - "${MARK_B}" "${MARK_E}" "${DRY}" <<'PYEOF'
+# ── 1. 指令文件的声明块 ──
+if [ -f "$INSTRUCTIONS" ] && grep -q "${MARK_B}" "$INSTRUCTIONS" 2>/dev/null; then
+  N=$(python3 - "${MARK_B}" "${MARK_E}" "${DRY}" "$INSTRUCTIONS" <<'PYEOF'
 import sys
-mb, me, dry = sys.argv[1], sys.argv[2], sys.argv[3] == "true"
-lines = open('CLAUDE.md', encoding='utf-8').read().split('\n')
+mb, me, dry, instructions = sys.argv[1], sys.argv[2], sys.argv[3] == "true", sys.argv[4]
+lines = open(instructions, encoding='utf-8').read().split('\n')
 b = next(i for i, l in enumerate(lines) if l.strip() == mb)
 # 取**最后**一个结束标记：正文里可能提到标记本身
 e = len(lines) - 1 - next(i for i, l in enumerate(reversed(lines)) if l.strip() == me)
@@ -65,14 +88,14 @@ out = lines[:b] + lines[e + 1:]
 while len(out) > b > 0 and out[b - 1].strip() == '' and b < len(out) and out[b].strip() == '':
     del out[b]
 if not dry:
-    open('CLAUDE.md', 'w', encoding='utf-8').write('\n'.join(out))
+    open(instructions, 'w', encoding='utf-8').write('\n'.join(out))
 print(e - b + 1)
 PYEOF
 ) || N="?"
-  act "CLAUDE.md 声明块已移除（${N} 行，标记外一个字节不动）"
+  act "${INSTRUCTIONS} 声明块已移除（${N} 行，标记外一个字节不动）"
   DID=1
 else
-  skip "CLAUDE.md 里没有声明块"
+  skip "${INSTRUCTIONS} 里没有声明块"
 fi
 
 # ── 2. 激活信号：state.json ──
@@ -81,6 +104,8 @@ fi
 if [ -f "${STATE}" ]; then
   if [ "${KEEP}" = true ]; then
     note "保留 ${STATE}（--keep-state）—— **hook 仍会激活**，项目变成零足迹模式"
+  elif [ "$OTHER_ACTIVE" = true ]; then
+    note "保留 ${STATE}—— ${OTHER_HOST} 声明块仍在，host 继续激活"
   else
     [ "${DRY}" = false ] && mv "${STATE}" "${STATE}.disabled"
     act "${STATE} → ${STATE}.disabled（hook 就此停用，issue 编号映射保留）"
@@ -99,7 +124,7 @@ fi
 # ── 3. 验证：hook 真的停了吗 ──
 #   命令文里原来写「无输出即为成功」,但那句话在 0.7.0 之后就不成立了。
 #   这里实际跑一遍,而不是让人相信一句话。
-if [ "${DRY}" = false ]; then
+if [ "${DRY}" = false ] && [ "$OTHER_ACTIVE" = false ]; then
   # 兜底到脚本自己旁边的那份 —— setup-convention.sh 一直是这么做的，
   # 这里没跟上：CLAUDE_PLUGIN_ROOT 没设时自检整段被跳过，而
   # 「实际跑一遍而不是让人相信一句话」正是 0.7.9 把 teardown 改成脚本的唯一理由。
@@ -114,6 +139,8 @@ if [ "${DRY}" = false ]; then
   else
     note "找不到 phase-guard.sh，跳过验证（CLAUDE_PLUGIN_ROOT 未设置？）"
   fi
+elif [ "${DRY}" = false ]; then
+  note "${OTHER_HOST} 声明块仍在，hook 继续激活"
 fi
 
 cat <<'EOF'

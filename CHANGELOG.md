@@ -2,6 +2,23 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased] - 2026-08-30
+
+### 新增
+
+- **Codex 支持模式。** 新增 Codex 清单、共享 `UserPromptSubmit` hook、
+  `spec-guard-ops` 操作 skill 与独立 `AGENTS.md` 约定块；状态机、迁移、digest 和
+  校验仍和 Claude Code 共用一份实现。
+- **Codex smoke 判决器。** `evals/codex-plugin-smoke.sh --selftest` 已接入
+  `validate.sh`，免费验证 `0=通过 / 1=行为失败 / 2=环境未就绪` 三态不会混淆。
+
+### 迁移与限制
+
+- 既有 Claude Code 项目无需迁移；其 `CLAUDE.md` 标记与 slash 命令不变。Codex 用
+  `spec-guard-ops` 的 `setup` 以 `--host=codex` 写入 `AGENTS.md`，不提供 Claude slash 命令。
+- 真实 Codex smoke 不进 `validate.sh`。运行前须安装并启用插件、登录 Codex，并在新会话
+  的 `/hooks` 审核和信任 hook；任一条件缺失均返回 2，不算产品失败。
+
 ## [0.7.28] - 2026-08-29
 
 **插件在最需要它的那一刻是哑的。**

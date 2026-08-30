@@ -110,7 +110,9 @@ issue 正文没法看），而是**给复制留指纹**：写投影的同时把�
 
     spec-digest: /path/to/spec-guard/<ver>/hooks/spec-digest.py
 
-拿不到就 `find ~/.claude/plugins -name spec-digest.py -type f | tail -1`。
+必须读取这条 `spec-digest:` 事实提供的路径。若当前上下文没有该事实，**停止**，
+明确告知用户「spec-guard 未加载，无法安全计算 digest」，并请其先运行 phase 或 verify
+以确认插件 hook 已加载；不要猜测用户目录中的插件版本，也不要自行实现 digest 算法。
 
     python3 <digest> compute spec/CAPABILITY-MAP.md
     # → {"rows":[{"id":"identity","rowDigest":"a1b2c3d4e5f6"},...],

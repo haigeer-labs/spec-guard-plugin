@@ -7,6 +7,8 @@ PLUGDIR="$(cd "$HOOKDIR/.." && pwd)"
 MANIFEST="$PLUGDIR/.codex-plugin/plugin.json"
 CLAUDE_MANIFEST="$PLUGDIR/.claude-plugin/plugin.json"
 HOOKS="$HOOKDIR/hooks.json"
+OPS_SKILL="$PLUGDIR/skills/spec-guard-ops/SKILL.md"
+BRIDGE_SKILL="$PLUGDIR/skills/spec-github-bridge/SKILL.md"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -125,6 +127,47 @@ if [ -n "$COMMAND" ] && run_hook CLAUDE_PLUGIN_ROOT "$TMP/claude-output" \
   ok "仅设 CLAUDE_PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON"
 else
   bad "仅设 CLAUDE_PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 未注入当前阶段 JSON"
+fi
+
+check_skills() {
+  python3 - "$OPS_SKILL" "$BRIDGE_SKILL" <<'PY'
+import sys
+
+ops = open(sys.argv[1], encoding="utf-8").read()
+bridge = open(sys.argv[2], encoding="utf-8").read()
+
+for operation in ("setup", "phase", "verify", "teardown", "sync-map", "next", "deliver"):
+    if ops.count(f"`{operation}`") != 1:
+        raise SystemExit(f"操作 {operation} 必须恰好声明一次")
+
+root = 'ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"'
+if root not in ops:
+    raise SystemExit("操作 skill 未以 PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT 定位根目录")
+if 'PROJECT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"' not in ops:
+    raise SystemExit("操作 skill 未安全定位项目根目录")
+if 'setup-convention.sh" github --host=codex' not in ops:
+    raise SystemExit("setup 未显式使用 --host=codex")
+if 'phase-guard.sh"' not in ops or 'verify-artifacts.sh"' not in ops:
+    raise SystemExit("phase/verify 未调用共享只读检查脚本")
+if '确认' not in ops:
+    raise SystemExit("teardown 未要求用户确认")
+for operation in ("sync-map", "next", "deliver"):
+    if f"`{operation}`" not in ops or "spec-github-bridge" not in ops:
+        raise SystemExit(f"{operation} 未委派给 spec-github-bridge")
+
+if "find ~/.claude/plugins" in bridge:
+    raise SystemExit("bridge 不得猜测 ~/.claude/plugins 中的 digest 路径")
+if "spec-digest:" not in bridge:
+    raise SystemExit("bridge 未要求 hook 注入 spec-digest 事实")
+if "停止" not in bridge or "spec-guard 未加载" not in bridge:
+    raise SystemExit("bridge 未在 digest 事实缺失时明确停止")
+PY
+}
+
+if [ -f "$OPS_SKILL" ] && [ -f "$BRIDGE_SKILL" ] && check_skills; then
+  ok "Codex 显式操作 skill 与 bridge digest 依赖约束正确"
+else
+  bad "Codex 显式操作 skill 或 bridge digest 依赖约束错误"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

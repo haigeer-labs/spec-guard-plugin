@@ -180,7 +180,7 @@ is_archived() {
   # 吃到 SIGPIPE(141)，pipefail 把它传出来 —— 归档豁免失效，报出假违规。
   # 实测门槛是前 10 行约 256KB（真实 todo.md 到不了），但这是本仓明令禁止
   # 的写法，且同一条规则已经修过三次了。
-  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)"
+  awk 'NR > 10 { exit } tolower($0) ~ /已归档|archived/ { found=1 } END { exit !found }' "$1"
 }
 
 # 列出所有**非归档**的 todo.md
@@ -279,7 +279,7 @@ print('\n'.join(out))
     if [ -n "${SYNC_MSG}" ]; then
       while IFS= read -r ln; do
         [ -n "${ln}" ] && broken "${ln}"
-      done <<<"${SYNC_MSG}"
+      done < <(printf '%s\n' "${SYNC_MSG}")
     fi
   fi
 fi

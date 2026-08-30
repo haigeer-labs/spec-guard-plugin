@@ -36,7 +36,7 @@ is_archived() {
   # 吃到 SIGPIPE(141)，pipefail 把它传出来 —— 归档豁免失效，报出假违规。
   # 实测门槛是前 10 行约 256KB（真实 todo.md 到不了），但这是本仓明令禁止
   # 的写法，且同一条规则已经修过三次了。
-  grep -qiE '已归档|ARCHIVED' <<<"$(head -10 "$1" 2>/dev/null)"
+  awk 'NR > 10 { exit } tolower($0) ~ /已归档|archived/ { found=1 } END { exit !found }' "$1"
 }
 
 # 列出所有**非归档**的 todo.md
@@ -183,7 +183,7 @@ print("\n".join(ids))
   N=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
   if [ "${N}" -eq 0 ]; then
     warn "${MAP} 里没解析出任何 module id —— 表格格式可能不对"
-  elif grep -q "^example-" <<<"${MAP_IDS}"; then   # herestring：管道 + grep -q 会 SIGPIPE
+  elif [[ "${MAP_IDS}" == example-* ]]; then
     warn "${MAP} 还是模板占位符（example-a/example-b），没填真实模块"
   else
     ok "能力图解析出 ${N} 个 module id"
@@ -251,7 +251,7 @@ if ex: print('WARN|%s 在 state.json 里有 issue 号，但能力图里已经没
           WARN\|*) warn "${ln#WARN|}" ;;
           SKIP\|*) skip "${ln#SKIP|}" ;;
         esac
-      done <<<"${DOUT}"
+      done < <(printf '%s\n' "${DOUT}")
     fi
   fi
 fi
@@ -512,7 +512,7 @@ else:
     PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
     if [ -z "${PRB}" ]; then
       skip "模块分支 ${BR} 还没有 PR（模块跑完再开）"
-    elif grep -qiE "closes #${MI}\b" <<<"${PRB}"; then
+    elif [[ "$(printf '%s' "${PRB}" | tr '[:upper:]' '[:lower:]')" =~ closes[[:space:]]+#${MI} ]]; then
       ok "模块 PR 正文含 Closes #${MI}"
     else
       bad "模块 PR 正文没有 Closes #${MI} —— 模块 issue 不会自动关闭"
@@ -540,7 +540,7 @@ else:
     PRB=$(gh pr view --json body -q '.body' 2>/dev/null || echo "")
     if [ -z "${PRB}" ]; then
       skip "分支 ${BR} 还没有 PR"
-    elif grep -qiE "closes #${BRI}\b" <<<"${PRB}"; then
+    elif [[ "$(printf '%s' "${PRB}" | tr '[:upper:]' '[:lower:]')" =~ closes[[:space:]]+#${BRI} ]]; then
       ok "PR 正文含 Closes #${BRI}"
     else
       bad "PR 正文没有 Closes #${BRI} —— issue 不会自动关闭，Project 看板不流转"

@@ -96,6 +96,40 @@ want fail "manifests: marketplace 与 plugin.json 名称不一致 → 报错" \
 want pass "manifests: 名称一致 → 放行" \
   bash -c "cd '$TMP/mfgood' && python3 '$ROOT/scripts/check-manifests.py'"
 
+# Codex 清单在过渡期仍是可选的；一旦存在，就必须是 Claude 清单的镜像。
+mkspecguard() {
+  rm -rf "$1"; mkdir -p "$1/.claude-plugin" "$1/plugins/spec-guard/.claude-plugin"
+  printf '{"name":"m","owner":{"name":"t"},"plugins":[{"name":"spec-guard","source":"./plugins/spec-guard"}]}\n' \
+    > "$1/.claude-plugin/marketplace.json"
+  printf '{"name":"spec-guard","version":"1.0.0","description":"d"}\n' \
+    > "$1/plugins/spec-guard/.claude-plugin/plugin.json"
+}
+mkcodex() {  # $1=目录 $2=name $3=version $4=skills $5=hooks
+  mkdir -p "$1/plugins/spec-guard/.codex-plugin"
+  printf '{"name":"%s","version":"%s","skills":"%s","hooks":"%s"}\n' "$2" "$3" "$4" "$5" \
+    > "$1/plugins/spec-guard/.codex-plugin/plugin.json"
+}
+mkspecguard "$TMP/codex-name-bad"
+mkcodex "$TMP/codex-name-bad" wrong-name 1.0.0 ./skills/ ./hooks/hooks.json
+want fail "codex manifest: 名称漂移 → 报错" \
+  bash -c "cd '$TMP/codex-name-bad' && python3 '$ROOT/scripts/check-manifests.py'"
+mkspecguard "$TMP/codex-version-bad"
+mkcodex "$TMP/codex-version-bad" spec-guard 0.0.0 ./skills/ ./hooks/hooks.json
+want fail "codex manifest: 版本漂移 → 报错" \
+  bash -c "cd '$TMP/codex-version-bad' && python3 '$ROOT/scripts/check-manifests.py'"
+mkspecguard "$TMP/codex-skills-bad"
+mkcodex "$TMP/codex-skills-bad" spec-guard 1.0.0 skills/ ./hooks/hooks.json
+want fail "codex manifest: skills 路径漂移 → 报错" \
+  bash -c "cd '$TMP/codex-skills-bad' && python3 '$ROOT/scripts/check-manifests.py'"
+mkspecguard "$TMP/codex-hooks-bad"
+mkcodex "$TMP/codex-hooks-bad" spec-guard 1.0.0 ./skills/ hooks/hooks.json
+want fail "codex manifest: hooks 路径漂移 → 报错" \
+  bash -c "cd '$TMP/codex-hooks-bad' && python3 '$ROOT/scripts/check-manifests.py'"
+mkspecguard "$TMP/codex-good"
+mkcodex "$TMP/codex-good" spec-guard 1.0.0 ./skills/ ./hooks/hooks.json
+want pass "codex manifest: 名称和版本一致 → 放行" \
+  bash -c "cd '$TMP/codex-good' && python3 '$ROOT/scripts/check-manifests.py'"
+
 # ── check-command-names.py ──
 mkc() {  # $1=目录 $2=模板里引用的命令名
   rm -rf "$1"; mkdir -p "$1/plugins/demo/commands" "$1/plugins/demo/templates" "$1/plugins/demo/skills"

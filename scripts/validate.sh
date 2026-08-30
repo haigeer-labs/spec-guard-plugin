@@ -20,7 +20,7 @@ while IFS= read -r j; do
 done < <(find . -name "*.json" -not -path "./.git/*")
 
 echo ""
-echo "═══ marketplace ↔ plugin 一致性 ═══"
+echo "═══ marketplace ↔ Claude / Codex plugin 一致性 ═══"
 python3 scripts/check-manifests.py || F=1
 
 echo ""

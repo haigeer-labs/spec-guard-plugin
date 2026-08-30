@@ -437,11 +437,13 @@ else
   printf '  ❌ 零足迹下没注入触发指令 —— --no-claude-md 会退化成没有约定\n'; FAIL=$((FAIL+1))
 fi
 
-base   # 有声明块
-if case "$(ctx)" in *"零足迹模式"*) false ;; *) true ;; esac; then
-  printf '  ✅ 有声明块时一个字都不多\n'; PASS=$((PASS+1))
+base   # 有当前 Claude 约定声明块
+CLAUDE_CTX="$(ctx)"
+if case "$CLAUDE_CTX" in *"没有 CLAUDE.md 声明块（零足迹模式）"*) false ;; *) true ;; esac \
+   && case "$CLAUDE_CTX" in *"当前阶段"*) true ;; *) false ;; esac; then
+  printf '  ✅ Claude 声明块适配器：不报零足迹且照常注入当前阶段\n'; PASS=$((PASS+1))
 else
-  printf '  ❌ 有声明块的项目也被塞了零足迹提示（白花 context）\n'; FAIL=$((FAIL+1))
+  printf '  ❌ Claude 声明块适配器没有保留原有契约\n'; FAIL=$((FAIL+1))
 fi
 
 # 本地模式零足迹：不能指向 spec-github-bridge —— 那个 skill 全篇是 gh issue,

@@ -87,6 +87,8 @@ if [ "$HAS_CLAUDE" = true ] || [ "$HAS_CODEX" = true ]; then
 fi
 ACTIVE="$HAS_BLOCK"
 [ -f ".agent/state.json" ] && ACTIVE=true
+IS_CODEX=false
+[ -n "${PLUGIN_ROOT:-}" ] && IS_CODEX=true
 
 # ── 休眠项目的唯一例外：已有多模块产物，却没落约定 ──────────
 #   性质 1 说的是「不许污染无关项目」，不是「装了也不许被发现」。
@@ -616,7 +618,19 @@ fi
 # 0.7.5 第一版没分，本地模式项目照样被指向那个 skill —— 又一次
 # 「在一个配置下验证、全局发货」。
 if [ "$HAS_BLOCK" = false ]; then
-  if [ "$TRACKER" = "github" ]; then
+  if [ "$IS_CODEX" = true ] && [ "$TRACKER" = "github" ]; then
+    OUT="${OUT}
+**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**
+动 spec、拆任务、取任务或交付之前，先加载 \`spec-github-bridge\` skill ——
+目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。
+"
+  elif [ "$IS_CODEX" = true ]; then
+    OUT="${OUT}
+**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**
+当前 tracker 是「${TRACKER}」；在动 spec 或任务前，先确认项目说明文件中的
+spec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。
+"
+  elif [ "$TRACKER" = "github" ]; then
     OUT="${OUT}
 **本项目没有 CLAUDE.md 声明块（零足迹模式）。**
 动 spec、拆任务、取任务、交付之前，先加载 \`spec-github-bridge\` skill ——

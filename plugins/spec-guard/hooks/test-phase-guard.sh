@@ -463,7 +463,25 @@ else
   printf '  ❌ Codex AGENTS.md 声明块没有成为独立启用信号\n'; FAIL=$((FAIL+1))
 fi
 
+# Codex 的 --no-instructions 不写 AGENTS.md，仍由 state.json 激活；它不能
+# 落进 Claude 零足迹文案或推荐 Claude slash command。
+rm -rf "$TMP/codex-state"; mkdir -p "$TMP/codex-state/.agent"; cd "$TMP/codex-state" || exit 1
+git init -q 2>/dev/null
+echo '{"tracker":"github","activeModule":"","modules":{}}' > .agent/state.json
+CODEX_STATE_CTX="$(PLUGIN_ROOT="$PLUGDIR" CLAUDE_PROJECT_DIR="$TMP/codex-state" bash "$H" 2>/dev/null | python3 -c '
+import json, sys
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")')"
+if case "$CODEX_STATE_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$CODEX_STATE_CTX" in *"CLAUDE.md"*|*"/setup-convention"*) false ;; *) true ;; esac \
+   && case "$CODEX_STATE_CTX" in *"Codex"*"--no-instructions"*) true ;; *) false ;; esac; then
+  printf '  ✅ Codex state-only：照常注入阶段，不泄露 Claude 指引\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex state-only 文案混入 Claude 指引或未给 Codex 指令\n'; FAIL=$((FAIL+1))
+fi
+
 # 普通 AGENTS.md 不能因为提到 agent 而误激活。
+cd "$TMP/codex-phase" || exit 1
 printf '# Agent notes\n' > AGENTS.md
 if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/codex-phase" bash "$H" 2>/dev/null)" ]; then
   printf '  ✅ 普通 AGENTS.md 无完整 Codex 标记仍静默\n'; PASS=$((PASS+1))

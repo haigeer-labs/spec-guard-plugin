@@ -814,6 +814,56 @@ else
   printf '  ❌ dry-run 不该写文件\n'; FAIL=$((FAIL+1))
 fi
 
+# Codex 把约定写进 AGENTS.md；不能借用 Claude 的文件或旧标记。
+rm -rf "$TMP/codex"; mkdir -p "$TMP/codex"; cd "$TMP/codex" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex >/dev/null 2>&1
+if [ -f AGENTS.md ] \
+   && [ "$(grep -c 'BEGIN:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ "$(grep -c 'END:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ ! -e CLAUDE.md ] \
+   && python3 -c 'import json; json.load(open(".agent/state.json"))' 2>/dev/null; then
+  printf '  ✅ Codex 写 AGENTS.md 专属块，不建 CLAUDE.md，state.json 合法\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex 安装没有使用 AGENTS.md 专属块\n'; FAIL=$((FAIL+1))
+fi
+
+# --replace 只能替换 Codex 标记内的内容。
+rm -rf "$TMP/codex-replace"; mkdir -p "$TMP/codex-replace"; cd "$TMP/codex-replace" || exit 1; git init -q 2>/dev/null
+printf '# 标记外开头\n' > AGENTS.md
+bash "$SETUP" local --host=codex >/dev/null 2>&1
+printf '\n# 标记外结尾\n' >> AGENTS.md
+python3 - <<'PYEOF'
+p='AGENTS.md'; s=open(p,encoding='utf-8').read()
+s=s.replace('<!-- END:spec-guard-codex-convention -->', '旧 Codex 内容\n<!-- END:spec-guard-codex-convention -->')
+open(p,'w',encoding='utf-8').write(s)
+PYEOF
+bash "$SETUP" local --host=codex --replace >/dev/null 2>&1
+if grep -q '# 标记外开头' AGENTS.md && grep -q '# 标记外结尾' AGENTS.md \
+   && [ "$(grep -c 'BEGIN:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && [ "$(grep -c 'END:spec-guard-codex-convention' AGENTS.md)" -eq 1 ] \
+   && ! grep -q '旧 Codex 内容' AGENTS.md; then
+  printf '  ✅ Codex --replace 不碰 AGENTS.md 标记外内容\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex --replace 动了标记外内容或没替换块内内容\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/codex-dry"; mkdir -p "$TMP/codex-dry"; cd "$TMP/codex-dry" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --dry-run >/dev/null 2>&1
+if [ "$(entries_except_git)" -eq 0 ]; then
+  printf '  ✅ Codex --dry-run 零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex --dry-run 不该写文件\n'; FAIL=$((FAIL+1))
+fi
+
+bash "$SETUP" local --host=codex --no-instructions >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then
+  printf '  ✅ Codex local + --no-instructions 被拒（退 2）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex local + --no-instructions 没被拒\n'; FAIL=$((FAIL+1))
+fi
+
+cd "$TMP/s" || exit 1
+
 bash "$SETUP" local >/dev/null 2>&1
 if grep -q "原有内容" <<<"$(head -1 CLAUDE.md)"; then
   printf '  ✅ 原 CLAUDE.md 内容保留\n'; PASS=$((PASS+1))
@@ -963,6 +1013,20 @@ if [ -f .agent/state.json ] && [ -n "$(CLAUDE_PROJECT_DIR="$TMP/td" bash "$H" 2>
   printf '  ✅ --keep-state 保留 state.json,hook 仍激活（零足迹模式）\n'; PASS=$((PASS+1))
 else
   printf '  ❌ --keep-state 行为不对\n'; FAIL=$((FAIL+1))
+fi
+
+# 两个 host 共存时，只拆目标 host；另一个声明块仍是有效激活信号，不能停用 state。
+rm -rf "$TMP/td-host"; mkdir -p "$TMP/td-host"; cd "$TMP/td-host" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github >/dev/null 2>&1
+bash "$SETUP" github --host=codex >/dev/null 2>&1
+CLAUDE_PLUGIN_ROOT="$PLUGDIR" bash "$TD" --host=codex >/dev/null 2>&1
+if grep -q 'BEGIN:agent-skills-convention' CLAUDE.md \
+   && ! grep -q 'BEGIN:spec-guard-codex-convention' AGENTS.md 2>/dev/null \
+   && [ -f .agent/state.json ] \
+   && [ ! -f .agent/state.json.disabled ]; then
+  printf '  ✅ Codex teardown 只移除 Codex 块，保留 Claude 块和 state.json\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex teardown 错删其他 host 或停用了 state.json\n'; FAIL=$((FAIL+1))
 fi
 
 # ── 写操作必须钉死在项目根，不能跟着 cwd 跑 ────────────────

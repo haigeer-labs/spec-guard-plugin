@@ -16,24 +16,54 @@
 set -uo pipefail
 
 MODE="${1:-github}"
+HOST=claude
 DRY=false
 REPLACE=false      # 已存在的声明块：默认跳过，--replace 才就地升级
 NO_BLOCK=false     # 零 CLAUDE.md 足迹：完全不写声明块，靠 .agent/state.json 激活
+NO_INSTRUCTIONS=false
 MIGRATE=false      # 迁移散落在根上的 spec 产物：默认只报告，--migrate 才真动文件
 for a in "$@"; do
   case "$a" in
     --dry-run)      DRY=true ;;
     --replace)      REPLACE=true ;;
     --no-claude-md) NO_BLOCK=true ;;
+    --no-instructions) NO_INSTRUCTIONS=true ;;
+    --host=claude)  HOST=claude ;;
+    --host=codex)   HOST=codex ;;
+    --host=*)       echo "host 必须是 claude 或 codex"; exit 2 ;;
     --migrate)      MIGRATE=true ;;
   esac
 done
 case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exit 2 ;; esac
 
+case "$HOST" in
+  claude)
+    INSTRUCTIONS=CLAUDE.md
+    TEMPLATE_PREFIX=claude
+    MARK_B="<!-- BEGIN:agent-skills-convention -->"
+    MARK_E="<!-- END:agent-skills-convention -->"
+    ;;
+  codex)
+    INSTRUCTIONS=AGENTS.md
+    TEMPLATE_PREFIX=codex
+    MARK_B="<!-- BEGIN:spec-guard-codex-convention -->"
+    MARK_E="<!-- END:spec-guard-codex-convention -->"
+    ;;
+esac
+
+if [ "$HOST" = codex ] && [ "$NO_BLOCK" = true ]; then
+  echo "❌ --no-claude-md 只适用于 Claude host。"
+  exit 2
+fi
+if [ "$HOST" = claude ] && [ "$NO_INSTRUCTIONS" = true ]; then
+  echo "❌ --no-instructions 只适用于 Codex host。"
+  exit 2
+fi
+
 # 零足迹模式靠 spec-github-bridge skill 承接细则，而本地模式**没有对应的 skill**。
 # 去掉声明块之后目录约定无处可放 —— 装了等于没装，还比没装更迷惑
 # （hook 会照常报状态，看着像在工作）。
-if [ "$MODE" = local ] && [ "$NO_BLOCK" = true ]; then
+if [ "$MODE" = local ] && { [ "$NO_BLOCK" = true ] || [ "$NO_INSTRUCTIONS" = true ]; }; then
   echo "❌ local 模式不支持 --no-claude-md。"
   echo "   零足迹模式是靠 spec-github-bridge skill 承接细则的，本地模式没有对应的 skill；"
   echo "   去掉声明块之后目录约定无处可放，装了等于没装。"
@@ -55,8 +85,6 @@ TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 ${TPL}）"; exit 1; }
 
 ISSUE_TYPES=unknown          # github 模式下由前置检查探测后覆盖
-MARK_B="<!-- BEGIN:agent-skills-convention -->"
-MARK_E="<!-- END:agent-skills-convention -->"
 F=0
 act(){ [ "$DRY" = true ] && printf '  [dry-run] %s\n' "$1" || printf '  ✅ %s\n' "$1"; }
 skip(){ printf '  ⏭  %s\n' "$1"; }
@@ -134,7 +162,7 @@ echo ""
 echo "═══ 落地约定（模式：${MODE}）═══"
 
 # 已安装则只报告（--replace 时改为就地升级）
-if [ -f CLAUDE.md ] && grep -q "$MARK_B" CLAUDE.md 2>/dev/null; then
+if [ -f "$INSTRUCTIONS" ] && grep -q "$MARK_B" "$INSTRUCTIONS" 2>/dev/null; then
   ALREADY=true
 else
   ALREADY=false
@@ -200,41 +228,43 @@ if [ -n "${PAIRS}" ]; then
   fi
 fi
 
-# CLAUDE.md：追加，绝不覆盖标记之外的任何内容
-SRC="$TPL/claude-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
+# 指令文件：追加，绝不覆盖标记之外的任何内容
+SRC="$TPL/${TEMPLATE_PREFIX}-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
 if [ "$NO_BLOCK" = true ]; then
-  skip "CLAUDE.md 声明块（--no-claude-md）—— 改由 .agent/state.json 激活 hook"
+  skip "${INSTRUCTIONS} 声明块（--no-claude-md）—— 改由 .agent/state.json 激活 hook"
+elif [ "$NO_INSTRUCTIONS" = true ]; then
+  skip "${INSTRUCTIONS} 声明块（--no-instructions）"
 elif [ "$ALREADY" = true ] && [ "$REPLACE" = false ]; then
-  skip "CLAUDE.md 声明块已存在（升级到当前模板：加 --replace）"
+  skip "${INSTRUCTIONS} 声明块已存在（升级到当前模板：加 --replace）"
 elif [ "$ALREADY" = true ]; then
   # 就地替换标记之间的内容。**只动标记内**，标记外一个字节不碰。
   # 用 python3 而不是 sed：bash 3.2 的 sed 在多字节内容上不可靠。
   [ -f "$SRC" ] || bad "模板缺失: $SRC"
   if [ "$DRY" = false ] && [ -f "$SRC" ]; then
-    OLDN=$(python3 - "$SRC" "$MARK_B" "$MARK_E" <<'PYEOF'
+    OLDN=$(python3 - "$SRC" "$MARK_B" "$MARK_E" "$INSTRUCTIONS" <<'PYEOF'
 import sys
-src, mb, me = sys.argv[1], sys.argv[2], sys.argv[3]
-lines = open('CLAUDE.md', encoding='utf-8').read().split('\n')
+src, mb, me, instructions = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+lines = open(instructions, encoding='utf-8').read().split('\n')
 b = next(i for i, l in enumerate(lines) if l.strip() == mb)
 e = len(lines) - 1 - next(i for i, l in enumerate(reversed(lines)) if l.strip() == me)
 body = open(src, encoding='utf-8').read().rstrip('\n').split('\n')
 out = lines[:b + 1] + body + lines[e:]
-open('CLAUDE.md', 'w', encoding='utf-8').write('\n'.join(out))
+open(instructions, 'w', encoding='utf-8').write('\n'.join(out))
 print(e - b - 1)
 PYEOF
 ) || OLDN="?"
     NEWN=$(wc -l < "$SRC" | tr -d ' ')
-    act "CLAUDE.md 声明块（就地升级：${OLDN} 行 → ${NEWN} 行）"
+    act "${INSTRUCTIONS} 声明块（就地升级：${OLDN} 行 → ${NEWN} 行）"
   else
-    act "CLAUDE.md 声明块（就地升级）"
+    act "${INSTRUCTIONS} 声明块（就地升级）"
   fi
 else
   [ -f "$SRC" ] || bad "模板缺失: $SRC"
   if [ "$DRY" = false ] && [ -f "$SRC" ]; then
-    [ -f CLAUDE.md ] && printf '\n' >> CLAUDE.md
-    { echo "$MARK_B"; cat "$SRC"; echo "$MARK_E"; } >> CLAUDE.md
+    [ -f "$INSTRUCTIONS" ] && printf '\n' >> "$INSTRUCTIONS"
+    { echo "$MARK_B"; cat "$SRC"; echo "$MARK_E"; } >> "$INSTRUCTIONS"
   fi
-  act "CLAUDE.md 声明块（追加，$(wc -l < "$SRC" | tr -d ' ') 行）"
+  act "${INSTRUCTIONS} 声明块（追加，$(wc -l < "$SRC" | tr -d ' ') 行）"
 fi
 
 # state.json：不覆盖
@@ -315,7 +345,7 @@ c=json.load(sys.stdin)['hookSpecificOutput']['additionalContext']
 print(re.search(r'当前阶段: \*\*(.+?)\*\*',c).group(1))" 2>/dev/null)
     echo "  ✅ hook 正常，当前阶段：$P"
   else
-    bad "hook 无输出 —— 检查 CLAUDE.md 是否含约定标题"
+    bad "hook 无输出 —— 检查 ${INSTRUCTIONS} 是否含约定标题"
   fi
 else
   echo "  ⚠️  找不到 hook（${HOOK}），跳过自检"
@@ -330,7 +360,7 @@ fi
 echo "═══ 完成 ═══"
 echo ""
 echo "⚠️  下列文件要提交进仓库，队友才能共享同一套约定："
-git status --short CLAUDE.md spec/ .agent/ 2>/dev/null | sed 's/^/     /'
+git status --short "$INSTRUCTIONS" spec/ .agent/ 2>/dev/null | sed 's/^/     /'
 echo ""
 echo "下一步："
 echo "  1. 编辑 spec/CAPABILITY-MAP.md 填入模块划分"

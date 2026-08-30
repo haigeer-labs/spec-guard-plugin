@@ -66,6 +66,10 @@ echo "═══ 指纹算法自检 ═══"
 python3 plugins/spec-guard/hooks/spec-digest.py --selftest || F=1
 echo ""
 
+echo "═══ Codex 适配器回归 ═══"
+/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
+echo ""
+
 # 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」
 # 不用花钱就能验 —— 喂已知坏输入必须非零退出。
 echo "═══ 评测判决器自身的回归（不调模型）═══"

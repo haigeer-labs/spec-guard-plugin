@@ -165,8 +165,8 @@ MAP_IDS=""
 if [ ! -f "${MAP}" ]; then
   warn "${MAP} 不存在 —— 单模块项目可忽略；多模块的话 Phase 0 没落地"
 else
-  MAP_IDS=$(python3 - "${MAP}" <<'PY'
-import re, sys
+  MAP_IDS=$(python3 -c '
+import sys
 ids = []
 for line in open(sys.argv[1], encoding="utf-8"):
     if not line.lstrip().startswith("|"):
@@ -175,13 +175,11 @@ for line in open(sys.argv[1], encoding="utf-8"):
     if len(cells) < 2:
         continue
     first = cells[0]
-    # 跳过表头和 |---|---| 分隔行
     if not first or first.lower() == "module id" or set(first) <= set("-: "):
         continue
-    ids.append(first.strip(chr(96)))  # chr(96)=反引号；写字面量会截断外层 $( )
+    ids.append(first.strip(chr(96)))
 print("\n".join(ids))
-PY
-)
+' "${MAP}")
   N=$(printf '%s' "${MAP_IDS}" | grep -c . || true)
   if [ "${N}" -eq 0 ]; then
     warn "${MAP} 里没解析出任何 module id —— 表格格式可能不对"

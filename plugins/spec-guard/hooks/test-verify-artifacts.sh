@@ -7,6 +7,11 @@ HOOKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V="${HOOKDIR}/verify-artifacts.sh"
 [ -f "${V}" ] || { echo "找不到 ${V}"; exit 1; }
 
+if grep -q 'python3 - "${MAP}" <<' "${V}"; then
+  echo "verify 的能力图解析不得使用 here-doc（Codex read-only sandbox 不支持）"
+  exit 1
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 PASS=0; FAIL=0

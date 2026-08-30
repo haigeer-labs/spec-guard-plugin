@@ -62,10 +62,12 @@ bad()  { printf '  ❌ %s\n' "$1"; F=$((F+1)); }
 skip() { printf '  ⏭  %s\n' "$1"; }
 
 # ── 约定未启用就别装懂 ──────────────────────────────────────
-# 激活信号三种，满足其一即可：Claude/Codex 的完整说明块，或 .agent/state.json 存在
+# 激活信号三种，满足其一即可：Claude 的说明块或旧版标题、Codex 的完整说明块，
+# 或 .agent/state.json 存在
 # （后者是零说明文件足迹模式，见 phase-guard.sh 同处注释）。
 has_claude_block() {
-  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null
+  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null \
+    || grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
 }
 
 has_codex_block() {

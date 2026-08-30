@@ -178,6 +178,16 @@ else
   printf '  ❌ 未启用约定应退出 2\n'; FAIL=$((FAIL+1))
 fi
 
+# 兼容旧版 Claude 项目：只保留约定标题时仍应启用校验。
+rm -rf "${TMP}/legacy-claude"; mkdir -p "${TMP}/legacy-claude"
+printf '# Agent Skills 集成约定\n' > "${TMP}/legacy-claude/CLAUDE.md"
+CLAUDE_PROJECT_DIR="${TMP}/legacy-claude" bash "${V}" >/dev/null 2>&1
+if [ $? -ne 2 ]; then
+  printf '  ✅ 旧版 Claude 约定标题仍独立启用校验\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 旧版 Claude 约定标题被误判为未启用\n'; FAIL=$((FAIL+1))
+fi
+
 # Codex 只写 AGENTS.md；完整标记必须独立启用校验，不依赖 CLAUDE.md 或 state.json。
 rm -rf "${TMP}/codex"; mkdir -p "${TMP}/codex"
 printf '%s\n' '<!-- BEGIN:spec-guard-codex-convention -->' \

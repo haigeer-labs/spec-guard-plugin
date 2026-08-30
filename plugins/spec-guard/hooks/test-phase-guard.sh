@@ -447,6 +447,17 @@ else
   printf '  ❌ Claude 声明块适配器没有保留原有契约\n'; FAIL=$((FAIL+1))
 fi
 
+# 旧版项目只留下约定标题，没有新声明标记；这仍是 Claude 的有效激活信号。
+rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
+printf '# Agent Skills 集成约定\n' > CLAUDE.md
+LEGACY_CLAUDE_CTX="$(ctx)"
+if case "$LEGACY_CLAUDE_CTX" in *"当前阶段"*) true ;; *) false ;; esac \
+   && case "$LEGACY_CLAUDE_CTX" in *"零足迹模式"*) false ;; *) true ;; esac; then
+  printf '  ✅ 旧版 Claude 约定标题仍独立激活\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 旧版 Claude 约定标题被误判为未启用\n'; FAIL=$((FAIL+1))
+fi
+
 # Codex 只写 AGENTS.md；它是完整的启用信号，不该误落到 Claude 的零足迹分支。
 rm -rf "$TMP/codex-phase"; mkdir -p "$TMP/codex-phase"; cd "$TMP/codex-phase" || exit 1
 git init -q 2>/dev/null

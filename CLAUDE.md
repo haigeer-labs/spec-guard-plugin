@@ -14,7 +14,7 @@
 
 ## 这是什么
 
-一个 Claude Code 插件，给 `addyosmani/agent-skills` 补三样东西：
+一个 Claude Code / Codex 插件，给 `addyosmani/agent-skills` 补三样东西：
 
 1. 多模块 Spec 目录约定
 2. GitHub Issue 打通
@@ -31,6 +31,7 @@
 .claude-plugin/marketplace.json         ← marketplace 清单（路径不能改）
 plugins/spec-guard/
 ├── .claude-plugin/plugin.json          ← 插件清单（路径不能改）
+├── .codex-plugin/plugin.json           ← Codex 清单（与 Claude 版本一致）
 ├── commands/*.md                       ← slash 命令
 ├── hooks/
 │   ├── hooks.json                      ← hook 注册
@@ -40,6 +41,7 @@ plugins/spec-guard/
 │   ├── teardown-convention.sh          ← 移除约定（唯一的破坏性操作，确定性执行）
 │   └── test-*.sh                       ← 回归测试
 ├── skills/spec-github-bridge/SKILL.md
+├── skills/spec-guard-ops/SKILL.md       ← Codex 显式操作入口
 └── templates/                          ← 由 /setup-convention 写入用户项目
 docs/design.md                          ← 需求与设计
 scripts/
@@ -89,6 +91,8 @@ scripts/
 /bin/bash scripts/validate.sh
 /bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
 /bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
+/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh
+/bin/bash evals/codex-plugin-smoke.sh --selftest
 ```
 
 **显式写 `/bin/bash`**，不要写 `bash` —— macOS 上后者可能是 Homebrew 的 5.x，
@@ -257,6 +261,10 @@ task 重新取出来。做法是**差分** —— 两个脚手架只差一条 `C
 claude plugin marketplace update spec-guard-marketplace
 claude plugin update spec-guard@spec-guard-marketplace   # 之后要重启才生效
 ```
+
+Codex 发版后还要在新会话的 `/hooks` 审核并信任 `UserPromptSubmit`，再运行
+`/bin/bash evals/codex-plugin-smoke.sh`；仅退出 0 是真实宿主通过，退出 2 是安装、登录或
+trust 环境未就绪。
 
 **版本号不升，使用者收不到更新** —— Claude Code 靠 `plugin.json` 的 `version`
 判断是否拉取新版。

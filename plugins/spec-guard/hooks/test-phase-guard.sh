@@ -680,6 +680,111 @@ base; mkdir -p .agent; mkmap "$G" 'example-a|...|—' 'example-b|...|example-a'
 echo '{"tracker":"github","activeModule":"identity","modules":{"example-a":{"issue":101}}}' > .agent/state.json
 sw "反：能力图还是 example-* 占位符 → 不报" "无"
 
+# ── 休眠项目的提示：有多模块产物但没落约定 ────────────────
+#   这一组测的是**未激活**路径，所以不能用 base()（它写约定标题）。
+#   正向三条对应三种证据，反向五条守住性质 1 和性质 2 ——
+#   这个项目修过的假断链比真 bug 多，报错的那半边不值钱，
+#   **不报**的那半边才是。
+echo ""
+echo "═══ 休眠项目的迁移提示 ═══"
+
+nudge_base() {   # 没有 CLAUDE.md 声明块、没有 state.json 的裸项目
+  rm -rf "$TMP/r"; mkdir -p "$TMP/r"; cd "$TMP/r" || exit 1
+  git init -q 2>/dev/null
+}
+nudged() {       # 有没有出那条提示
+  case "$(ctx)" in
+    *"未落约定的多模块 spec 产物"*) echo yes ;;
+    *)                              echo no ;;
+  esac
+}
+nz() {           # $1=说明 $2=期望(yes/no)
+  local got; got="$(nudged)"
+  if [ "$got" = "$2" ]; then
+    printf '  ✅ %s\n' "$1"; PASS=$((PASS+1))
+  else
+    printf '  ❌ %s\n     得到 [%s] 期望 [%s]\n' "$1" "$got" "$2"; FAIL=$((FAIL+1))
+  fi
+}
+
+nudge_base; echo '# ch' > SPEC-channel.md
+nz "正：根目录有 SPEC-<模块>.md → 提示" yes
+
+nudge_base; echo '# m' > capability-map.md
+nz "正：根目录有小写 capability-map.md → 提示" yes
+
+nudge_base; echo '# M' > CAPABILITY-MAP.md
+nz "正：根目录有大写 CAPABILITY-MAP.md → 提示" yes
+
+nudge_base; mkdir -p tasks/a tasks/b; echo x > tasks/a/plan.md; echo x > tasks/b/plan.md
+nz "正：tasks/ 下两个模块的 plan.md → 提示" yes
+
+# ── 以下全部是反向 ──
+nudge_base; echo '# 单模块' > SPEC.md
+nz "反：根上只有 SPEC.md（agent-skills 合法单模块形态）→ 不提示" no
+
+nudge_base; mkdir -p tasks/a; echo x > tasks/a/plan.md
+nz "反：只有一个模块的 plan.md → 不提示" no
+
+nudge_base
+nz "反：什么产物都没有的空项目 → 不提示" no
+
+nudge_base; echo '# ch' > SPEC-channel.md; touch .spec-guard-ignore
+nz "反：有 .spec-guard-ignore → 静音" no
+
+nudge_base; echo '# ch' > SPEC-channel.md
+echo "## Agent Skills 集成约定" > CLAUDE.md
+nz "反：约定已激活（声明块）→ 走正常状态机，不出这条提示" no
+
+nudge_base; echo '# ch' > SPEC-channel.md
+mkdir -p .agent; echo '{"tracker":"github","activeModule":""}' > .agent/state.json
+nz "反：约定已激活（state.json 零足迹）→ 不出这条提示" no
+
+# 建议的模式要跟着远端走 —— 写死 github 会把非 GitHub 项目
+# 指进一条前置检查必退 1 的路。
+nudge_base; echo '# ch' > SPEC-channel.md
+git remote add origin https://github.com/o/r.git 2>/dev/null
+if grep -q "setup-convention github --migrate" <<<"$(ctx)"; then
+  printf '  ✅ 正：远端是 GitHub → 建议 github 模式\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 远端是 GitHub 却没建议 github 模式\n'; FAIL=$((FAIL+1))
+fi
+
+nudge_base; echo '# ch' > SPEC-channel.md
+if grep -q "setup-convention local --migrate" <<<"$(ctx)"; then
+  printf '  ✅ 反：无 origin 远端 → 建议 local 模式，不指向必然失败的 github\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 无远端时仍建议了 github 模式\n'; FAIL=$((FAIL+1))
+fi
+
+# SSH host 别名要认成 GitHub —— 作者自己的所有仓库都是 `github-collab:`。
+nudge_base; echo '# ch' > SPEC-channel.md
+git remote add origin git@github-collab:o/r.git 2>/dev/null
+if grep -q "setup-convention github --migrate" <<<"$(ctx)"; then
+  printf '  ✅ 正：SSH host 别名 github-collab: 认成 GitHub\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ SSH host 别名没被认成 GitHub（判据只看 host 段）\n'; FAIL=$((FAIL+1))
+fi
+
+# 反过来不能松：github 出现在**路径**里不算 GitHub。
+nudge_base; echo '# ch' > SPEC-channel.md
+git remote add origin https://gitlab.com/me/github-tools.git 2>/dev/null
+if grep -q "setup-convention local --migrate" <<<"$(ctx)"; then
+  printf '  ✅ 反：gitlab.com/me/github-tools 不算 GitHub（那是仓库名不是宿主）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 路径里的 github 被误判成宿主\n'; FAIL=$((FAIL+1))
+fi
+
+# 激活之后必须还是那台状态机 —— 上面两条只验了「没出提示」，
+# 空断言在这个仓库出过（0.7.20 三条），补一条正面的。
+nudge_base; echo '# ch' > SPEC-channel.md
+echo "## Agent Skills 集成约定" > CLAUDE.md
+if grep -q "当前阶段" <<<"$(ctx)"; then   # 不用管道：grep -q 命中即关，ctx 吃 SIGPIPE
+  printf '  ✅ 反向断言不是空的：激活后照常注入「当前阶段」\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 激活后没有「当前阶段」，上面两条反向断言可能是空的\n'; FAIL=$((FAIL+1))
+fi
+
 # ── setup-convention.sh 的回归 ──
 echo ""
 echo "═══ setup-convention 回归 ═══"
@@ -932,6 +1037,81 @@ if [ "$RC" -ne 0 ] && [ ! -f .agent/state.json ] && [ -f .agent/state.json.disab
   printf '  ✅ tracker 不符时拒绝恢复、也不新建（.disabled 原样保留）\n'; PASS=$((PASS+1))
 else
   printf '  ❌ tracker 不符时行为不对（退出码 %s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
+# ── --migrate：把散在根上的 spec 产物迁进 spec/ ────────────
+echo ""
+echo "═══ setup-convention --migrate ═══"
+
+mig_base() {
+  rm -rf "$TMP/m"; mkdir -p "$TMP/m/tasks/channel"; cd "$TMP/m" || exit 1
+  git init -q 2>/dev/null
+  echo '# ch'  > SPEC-channel.md
+  echo '# de'  > SPEC-detection.md
+  echo '# map' > capability-map.md
+  echo 'see ../../SPEC-channel.md' > tasks/channel/plan.md
+  git add -A >/dev/null 2>&1
+  git -c user.email=t@t -c user.name=t commit -qm init >/dev/null 2>&1
+}
+ok_(){ printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)); }
+no_(){ printf '  ❌ %s\n' "$1"; FAIL=$((FAIL+1)); }
+
+# 反：不加 --migrate 一个文件都不许动
+mig_base
+OUT="$(bash "$SETUP" local 2>&1)"
+if [ -f SPEC-channel.md ] && [ ! -f spec/channel.md ] \
+   && grep -q "未迁移" <<<"${OUT}"; then
+  ok_ "反：不加 --migrate → 只报告，根上的文件原样不动"
+else
+  no_ "反：不加 --migrate 却动了文件（或没报告）"
+fi
+
+# 正：--migrate 真迁
+mig_base
+bash "$SETUP" local --migrate >/dev/null 2>&1
+if [ ! -f SPEC-channel.md ] && [ ! -f capability-map.md ] \
+   && [ -f spec/channel.md ] && [ -f spec/detection.md ] && [ -f spec/CAPABILITY-MAP.md ]; then
+  ok_ "正：--migrate → SPEC-<mod>.md 与能力图都进了 spec/"
+else
+  no_ "正：--migrate 没把文件迁到位"
+fi
+
+# 正：迁过来的是**原内容**，不是被模板覆盖掉的空壳。
+# 这条是冲着一个具体的踩法去的：迁移和「复制能力图模板」都写
+# spec/CAPABILITY-MAP.md，顺序反了就把用户写好的能力图冲掉，
+# 而上一条断言（文件存在）照样绿。
+if grep -q "^# map$" spec/CAPABILITY-MAP.md 2>/dev/null; then
+  ok_ "正：迁过来的能力图是原内容，没被模板覆盖"
+else
+  no_ "正：spec/CAPABILITY-MAP.md 不是迁过来的那份 —— 被模板冲掉了"
+fi
+
+# 正：仍在引用旧路径的文件要报出来
+mig_base
+OUT="$(bash "$SETUP" local --migrate 2>&1)"
+if grep -q "仍在引用旧路径" <<<"${OUT}" && grep -q "tasks/channel/plan.md" <<<"${OUT}"; then
+  ok_ "正：报出仍在引用旧路径的文件（不自动改）"
+else
+  no_ "正：没报出引用旧路径的文件"
+fi
+
+# 反：目标已存在一律不覆盖，且要非零退出
+mig_base; mkdir -p spec; echo '# 已有的' > spec/channel.md
+bash "$SETUP" local --migrate >/dev/null 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && [ -f SPEC-channel.md ] && grep -q "^# 已有的$" spec/channel.md; then
+  ok_ "反：目标已存在 → 不覆盖、源文件留在原地、退出码非零"
+else
+  no_ "反：目标已存在时覆盖了或退出码为 0（RC=${RC}）"
+fi
+
+# 反：--dry-run 下 --migrate 也不许动文件
+mig_base
+OUT="$(bash "$SETUP" local --migrate --dry-run 2>&1)"
+if [ -f SPEC-channel.md ] && [ ! -d spec ] && grep -q "dry-run] 迁移" <<<"${OUT}"; then
+  ok_ "反：--dry-run --migrate → 只打印，不动文件"
+else
+  no_ "反：--dry-run 下动了文件"
 fi
 
 echo ""

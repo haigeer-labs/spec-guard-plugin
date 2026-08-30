@@ -112,15 +112,24 @@ except Exception:
 " "$1" 2>/dev/null
 }
 
+# 远端是不是 GitHub —— **只看 host 段**，与 phase-guard.sh 里那份逐字相同。
+#   写 `*github.*` 会漏掉 SSH host 别名：`git@github-collab:o/r.git` 里
+#   `github` 后面跟的是 `-` 不是 `.`。反过来松成 `*github*` 又会把
+#   `gitlab.com/me/github-tools.git` 误判成 GitHub —— 那是仓库名不是宿主。
+#   **两个 hook 共用的判据，改一处必须改另一处，两边都要加用例。**
+is_github_remote() {  # $1=remote url
+  local h="$1"
+  h="${h#*://}"; h="${h#*@}"; h="${h%%/*}"; h="${h%%:*}"
+  case "$h" in *github*) return 0 ;; *) return 1 ;; esac
+}
+
 # ── tracker 判定（与 phase-guard 同一套顺序）────────────────
 TRACKER=$(jread "${STATE}" "d.get('tracker')")
 if [ -z "${TRACKER}" ]; then
   R=$(git remote get-url origin 2>/dev/null || echo "")
-  case "${R}" in
-    *github.com*|*github.*) TRACKER="github" ;;
-    "")                     TRACKER="none" ;;
-    *)                      TRACKER="other" ;;
-  esac
+  if [ -z "${R}" ]; then TRACKER="none"
+  elif is_github_remote "${R}"; then TRACKER="github"
+  else TRACKER="other"; fi
 fi
 MODULE=$(jread "${STATE}" "d.get('activeModule')")
 EPIC=$(jread "${STATE}" "d.get('initiative',{}).get('issue')")

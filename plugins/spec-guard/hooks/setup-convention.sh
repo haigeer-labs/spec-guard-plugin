@@ -11,6 +11,7 @@
 #
 #   --replace       已存在的声明块就地升级到当前模板（只动 BEGIN/END 之间）
 #   --no-claude-md  完全不写声明块，hook 改由 .agent/state.json 激活
+#   --migrate       把散在根上的 SPEC-<mod>.md / 能力图迁进 spec/（不加只报告）
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
@@ -18,11 +19,13 @@ MODE="${1:-github}"
 DRY=false
 REPLACE=false      # 已存在的声明块：默认跳过，--replace 才就地升级
 NO_BLOCK=false     # 零 CLAUDE.md 足迹：完全不写声明块，靠 .agent/state.json 激活
+MIGRATE=false      # 迁移散落在根上的 spec 产物：默认只报告，--migrate 才真动文件
 for a in "$@"; do
   case "$a" in
     --dry-run)      DRY=true ;;
     --replace)      REPLACE=true ;;
     --no-claude-md) NO_BLOCK=true ;;
+    --migrate)      MIGRATE=true ;;
   esac
 done
 case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exit 2 ;; esac
@@ -140,6 +143,63 @@ fi
 if [ "$DRY" = false ]; then mkdir -p spec tasks .agent; fi
 act "目录 spec/ tasks/ .agent/"
 
+# ── 散落在根上的 spec 产物 ─────────────────────────────────
+#   没跑过本命令就直接 /spec 的项目，agent-skills 会把 SPEC-<mod>.md 和
+#   能力图落在项目根 —— 而模板第三条明确禁止这个形状（/build 只认根
+#   SPEC.md、docs/SPEC.md、spec/ 三条路径，只有第三条是通配的）。
+#   光写好声明块不解决存量：文件还在根上，约定和现实对不上。
+#
+#   **默认只报告，--migrate 才真动。** 移动用户的文件比往 CLAUDE.md 追加
+#   一段危险得多，而本脚本此前唯一的破坏性操作是 teardown。
+#   目标已存在一律不覆盖，报错让人自己看。
+PAIRS=""
+MAP_STRAY=false   # 根上有能力图 → 迁移会占住 spec/CAPABILITY-MAP.md，模板别再报要建
+for f in SPEC-*.md; do
+  [ -e "$f" ] || continue
+  m="${f#SPEC-}"; m="${m%.md}"
+  m="$(printf '%s' "${m}" | tr '[:upper:]' '[:lower:]')"
+  PAIRS="${PAIRS}${f}	spec/${m}.md
+"
+done
+for f in *.md; do
+  case "$f" in
+    [Cc][Aa][Pp][Aa][Bb][Ii][Ll][Ii][Tt][Yy]-[Mm][Aa][Pp].md)
+      PAIRS="${PAIRS}${f}	spec/CAPABILITY-MAP.md
+"; MAP_STRAY=true ;;
+  esac
+done
+
+if [ -n "${PAIRS}" ]; then
+  if [ "$MIGRATE" = false ]; then
+    printf '  ⚠️  根目录有 %s 个未落约定的 spec 产物，本次**未迁移**（加 --migrate）：\n' \
+      "$(printf '%s' "${PAIRS}" | grep -c .)"
+    while IFS="$(printf '\t')" read -r sf df; do
+      [ -n "${sf}" ] && printf '       %s → %s\n' "${sf}" "${df}"
+    done <<<"${PAIRS}"
+  else
+    while IFS="$(printf '\t')" read -r sf df; do
+      [ -n "${sf}" ] || continue
+      if [ -e "${df}" ]; then
+        bad "迁移跳过 ${sf}：目标 ${df} 已存在（不覆盖，手工合并后重跑）"
+      elif [ "$DRY" = true ]; then
+        act "迁移 ${sf} → ${df}"
+      elif git mv "${sf}" "${df}" 2>/dev/null || mv "${sf}" "${df}" 2>/dev/null; then
+        act "迁移 ${sf} → ${df}"
+      else
+        bad "迁移失败 ${sf} → ${df}"
+      fi
+    done <<<"${PAIRS}"
+    # 链接不自动改：改别人正文里的相对路径属于越权，而且改错了很难发现。
+    # 只报出还在引用旧路径的文件，让人自己决定。
+    STALE="$(grep -rl -- "SPEC-" --include="*.md" . 2>/dev/null \
+             | grep -v "^./spec/" | grep -v "^./.git/" || true)"
+    if [ -n "${STALE}" ]; then
+      printf '  ⚠️  下列文件仍在引用旧路径，迁移不会自动改它们：\n'
+      printf '%s\n' "${STALE}" | sed 's|^|       |'
+    fi
+  fi
+fi
+
 # CLAUDE.md：追加，绝不覆盖标记之外的任何内容
 SRC="$TPL/claude-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
 if [ "$NO_BLOCK" = true ]; then
@@ -231,8 +291,10 @@ EOF
 fi
 
 # 能力图：不覆盖
-if [ -f spec/CAPABILITY-MAP.md ]; then
-  skip "spec/CAPABILITY-MAP.md 已存在"
+# dry-run 下迁移不真动文件，但它**会**占住这个路径 —— 不算进来的话
+# dry-run 会说「要建模板」，真跑却是「已存在，跳过」，两者对不上。
+if [ -f spec/CAPABILITY-MAP.md ] || { [ "$MIGRATE" = true ] && [ "$MAP_STRAY" = true ]; }; then
+  skip "spec/CAPABILITY-MAP.md 已存在（或由本次迁移占住）"
 else
   [ "$DRY" = false ] && cp "$TPL/CAPABILITY-MAP.md" spec/CAPABILITY-MAP.md
   act "spec/CAPABILITY-MAP.md（模板）"

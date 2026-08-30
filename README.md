@@ -119,6 +119,12 @@
 
 想先看会做什么：`/setup-convention github --dry-run`
 
+**新项目请把这一步放在 `/spec` 之前。** 没落约定的项目上 spec-guard 是静默的
+（见下面「默认不生效」），`/spec` 会走 agent-skills 的默认落点，把
+`SPEC-<模块>.md` 和能力图散在项目根上 —— 那正是问题①要治的形状，而且过程中
+不会有任何提示。已经散了的项目用 `/setup-convention github --migrate` 迁回来
+（先加 `--dry-run` 看会动哪些文件）。
+
 ### 为什么是两步
 
 ```
@@ -285,6 +291,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | `/setup-convention [github\|local] [--dry-run]` | 落地约定（首次跑一次） |
 | `/setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
 | `/setup-convention … --no-claude-md` | 不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github 模式**） |
+| `/setup-convention … --migrate` | 把根上的 `SPEC-<模块>.md` / 能力图迁进 `spec/`（不加只报告，不动文件） |
 | `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/phase` | 查看当前链路状态和断链项 |
 | `/verify-artifacts` | 校验已落地的产物是否符合约定 |

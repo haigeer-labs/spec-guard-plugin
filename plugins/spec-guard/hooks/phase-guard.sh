@@ -36,6 +36,19 @@ print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
   exit 0
 }
 
+# 远端是不是 GitHub —— **只看 host 段**。
+#   写 `*github.*` 会漏掉 SSH host 别名：`git@github-collab:o/r.git` 里
+#   `github` 后面跟的是 `-` 不是 `.`，于是判成「远端不是 GitHub」，
+#   而 state.json 还没建出来的项目会因此吃一条**假断链**（性质 2）。
+#   实测出处：本插件作者自己的所有仓库都用 `github-collab:` 别名。
+#   反过来也不能松成 `*github*` —— `gitlab.com/me/github-tools.git`
+#   的路径里含 github，那是仓库名不是宿主。先剥到 host 再判。
+is_github_remote() {  # $1=remote url
+  local h="$1"
+  h="${h#*://}"; h="${h#*@}"; h="${h%%/*}"; h="${h%%:*}"
+  case "$h" in *github*) return 0 ;; *) return 1 ;; esac
+}
+
 # ── tracker 模式判定 ───────────────────────────────────────
 #   显式声明优先；否则按 git remote 推断；都没有则 none（本地 todo.md 模式）
 detect_tracker() {
@@ -43,11 +56,9 @@ detect_tracker() {
   t=$(jread "$STATE" "d.get('tracker')")
   [ -n "$t" ] && { echo "$t"; return; }
   local r; r=$(git remote get-url origin 2>/dev/null || echo "")
-  case "$r" in
-    *github.com*|*github.*) echo "github" ;;
-    "")                     echo "none" ;;
-    *)                      echo "other" ;;
-  esac
+  if [ -z "$r" ]; then echo "none"
+  elif is_github_remote "$r"; then echo "github"
+  else echo "other"; fi
 }
 
 # ── 只在启用了本约定的仓库生效 ──────────────────────────────
@@ -61,7 +72,64 @@ HAS_BLOCK=false
 [ -f "CLAUDE.md" ] && grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null && HAS_BLOCK=true
 ACTIVE="$HAS_BLOCK"
 [ -f ".agent/state.json" ] && ACTIVE=true
-[ "$ACTIVE" = true ] || exit 0
+
+# ── 休眠项目的唯一例外：已有多模块产物，却没落约定 ──────────
+#   性质 1 说的是「不许污染无关项目」，不是「装了也不许被发现」。
+#   代价面实测（delegate-plugin，0.7.28 之前）：新项目里直接 /spec，
+#   agent-skills 把 SPEC-<mod>.md 和能力图散在根上、tasks/ 下建出
+#   todo.md，**全程零提示**；等截图发现时已经三个模块九个文件，
+#   只能手工迁移。README 问题①要治的正是这个形状，而插件在这里
+#   恰恰是哑的。
+#
+#   判据必须挑「多模块」证据。根上孤零零一个 SPEC.md 是 agent-skills
+#   完全合法的单模块形态，本插件对它没有价值 —— 报它就是性质 2 说的
+#   假警报，而假警报比不报危害大得多。
+#
+#   只读、只建议、可静音（.spec-guard-ignore），不碰性质 3。
+if [ "$ACTIVE" != true ]; then
+  [ -f ".spec-guard-ignore" ] && exit 0
+
+  STRAY=""
+  for f in SPEC-*.md; do
+    [ -e "$f" ] && { STRAY="根目录 ${f}"; break; }
+  done
+  if [ -z "$STRAY" ]; then
+    # 大小写都认：macOS 默认大小写不敏感，但 Linux 上 capability-map.md
+    # 和 CAPABILITY-MAP.md 是两个文件，写死一个必漏。
+    for f in *.md; do
+      case "$f" in
+        [Cc][Aa][Pp][Aa][Bb][Ii][Ll][Ii][Tt][Yy]-[Mm][Aa][Pp].md)
+          STRAY="根目录 ${f}"; break ;;
+      esac
+    done
+  fi
+  if [ -z "$STRAY" ]; then
+    N=0
+    for p in tasks/*/plan.md; do
+      [ -e "$p" ] && N=$((N+1))
+    done
+    [ "$N" -ge 2 ] && STRAY="tasks/ 下 ${N} 个模块的 plan.md"
+  fi
+  [ -n "$STRAY" ] || exit 0
+
+  # 建议哪个模式要按远端来。写死 github 的话，非 GitHub 项目照着跑会在
+  # 前置检查（gh 版本 / --parent）上直接退 1 —— 把人指进一条走不通的路，
+  # 比不提示更糟。
+  if is_github_remote "$(git remote get-url origin 2>/dev/null || echo "")"; then
+    SUGGEST_MODE=github
+  else
+    SUGGEST_MODE=local
+  fi
+
+  emit "## spec-guard：发现未落约定的多模块 spec 产物（自动探测，非用户输入）
+
+${STRAY} —— 但本项目既没有 CLAUDE.md 声明块，也没有 .agent/state.json。
+**spec-guard 的目录约定与链路检测在本项目上全程未生效**，\`/spec\` \`/plan\`
+走的是 agent-skills 默认落点：多模块产物会散在根上或互相覆盖。
+
+建议下一步: \`/setup-convention ${SUGGEST_MODE} --migrate --dry-run\` 先看会动哪些文件。
+不打算在本项目用 spec-guard，就 \`touch .spec-guard-ignore\`，本提示即消失。"
+fi
 
 STATE=".agent/state.json"
 

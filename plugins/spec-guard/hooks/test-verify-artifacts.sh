@@ -824,6 +824,19 @@ else
   printf '  ❌ 目录不存在时应退出 1\n'; FAIL=$((FAIL+1))
 fi
 
+# ── 远端判定：与 phase-guard 共用的判据，两边都要有用例 ────
+echo ""
+echo "═══ 远端 host 判定（与 phase-guard 共用）═══"
+base; map identity
+echo '{"tracker":"","modules":{},"activeModule":""}' > .agent/state.json
+git remote add origin git@github-collab:o/r.git 2>/dev/null
+has "正：SSH host 别名 github-collab: 认成 github" "tracker=github"
+
+base; map identity
+echo '{"tracker":"","modules":{},"activeModule":""}' > .agent/state.json
+git remote add origin https://gitlab.com/me/github-tools.git 2>/dev/null
+has "反：路径里的 github 不算宿主 → tracker=other" "tracker=other"
+
 echo ""
 echo "  总计 ${PASS} 通过 / ${FAIL} 失败"
 [ "${FAIL}" -eq 0 ] || exit 1

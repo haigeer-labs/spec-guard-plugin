@@ -862,6 +862,24 @@ else
   printf '  ❌ Codex local + --no-instructions 没被拒\n'; FAIL=$((FAIL+1))
 fi
 
+rm -rf "$TMP/codex-no-claude"; mkdir -p "$TMP/codex-no-claude"; cd "$TMP/codex-no-claude" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --no-claude-md >/dev/null 2>&1
+if [ "$?" -eq 2 ] && [ ! -d .agent ]; then
+  printf '  ✅ Codex + --no-claude-md 被拒（退 2 且零写入）\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex + --no-claude-md 没被拒或留下写入\n'; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/codex-no-instructions"; mkdir -p "$TMP/codex-no-instructions"; cd "$TMP/codex-no-instructions" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" github --host=codex --no-instructions >/dev/null 2>&1
+if [ -f .agent/state.json ] \
+   && [ ! -e AGENTS.md ] \
+   && python3 -c 'import json; json.load(open(".agent/state.json"))' 2>/dev/null; then
+  printf '  ✅ Codex + --no-instructions 不写 AGENTS.md，仍建立合法 state.json\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex + --no-instructions 写了 AGENTS.md 或没建立 state.json\n'; FAIL=$((FAIL+1))
+fi
+
 cd "$TMP/s" || exit 1
 
 bash "$SETUP" local >/dev/null 2>&1

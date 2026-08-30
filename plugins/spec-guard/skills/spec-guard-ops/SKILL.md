@@ -5,14 +5,26 @@ description: 在 Codex 中执行 spec-guard 的约定落地、状态探测、产
 
 ## 公共环境
 
-所有确定性脚本操作都从插件根和项目根解析路径：
+所有确定性脚本操作都从 Codex 已启用插件清单和项目根解析路径：
 
 ```bash
-ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+CODEX_PLUGINS="$(codex plugin list --available --json 2>/dev/null || true)"
+ROOT="$(python3 -c '
+import json, sys
+try:
+    plugins = json.load(sys.stdin).get("installed", [])
+except (ValueError, TypeError):
+    raise SystemExit
+for plugin in plugins:
+    if plugin.get("name") == "spec-guard" and plugin.get("installed") and plugin.get("enabled"):
+        print(plugin["source"]["path"])
+        break
+' <<<"$CODEX_PLUGINS")"
 PROJECT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
-若 `ROOT` 为空，停止并说明 spec-guard 插件未被宿主加载；不要猜测用户目录中的插件版本。
+若 `ROOT` 为空，停止并说明 spec-guard 未安装或未启用；不要猜测用户目录，也不要假定 hook
+环境变量会传递给 agent shell。
 
 ## `setup`
 

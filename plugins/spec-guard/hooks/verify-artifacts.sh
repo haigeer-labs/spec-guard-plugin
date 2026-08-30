@@ -66,8 +66,10 @@ skip() { printf '  ⏭  %s\n' "$1"; }
 # 或 .agent/state.json 存在
 # （后者是零说明文件足迹模式，见 phase-guard.sh 同处注释）。
 has_claude_block() {
-  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null \
-    || grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
+  if grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null; then
+    return 0
+  fi
+  grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
 }
 
 has_codex_block() {

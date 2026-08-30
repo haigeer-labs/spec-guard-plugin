@@ -70,8 +70,10 @@ detect_tracker() {
 #   控制在 200 行内，而声明块曾经一口气占掉 100 多行。
 #   .agent/ 是本插件自己的目录，拿它当信号不会污染无关项目。
 has_claude_block() {
-  grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null \
-    || grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
+  if grep -q "<!-- BEGIN:agent-skills-convention -->" CLAUDE.md 2>/dev/null; then
+    return 0
+  fi
+  grep -q "Agent Skills 集成约定" CLAUDE.md 2>/dev/null
 }
 
 has_codex_block() {

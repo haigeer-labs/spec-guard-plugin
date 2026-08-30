@@ -9,7 +9,7 @@ description: 在 Codex 中执行 spec-guard 的约定落地、状态探测、产
 
 ```bash
 CODEX_PLUGINS="$(codex plugin list --available --json 2>/dev/null || true)"
-ROOT="$(python3 -c '
+ROOT="$(printf '%s' "$CODEX_PLUGINS" | python3 -c '
 import json, sys
 try:
     plugins = json.load(sys.stdin).get("installed", [])
@@ -19,7 +19,7 @@ for plugin in plugins:
     if plugin.get("name") == "spec-guard" and plugin.get("installed") and plugin.get("enabled"):
         print(plugin["source"]["path"])
         break
-' <<<"$CODEX_PLUGINS")"
+')"
 PROJECT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 

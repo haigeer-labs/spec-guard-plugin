@@ -146,6 +146,10 @@ if 'plugin.get("name") == "spec-guard"' not in ops:
     raise SystemExit("操作 skill 未精确选择 spec-guard 插件")
 if 'PLUGIN_ROOT' in ops or 'CLAUDE_PLUGIN_ROOT' in ops:
     raise SystemExit("操作 skill 不得假定 hook 环境变量会传给 agent shell")
+if '<<<"$CODEX_PLUGINS"' in ops:
+    raise SystemExit("操作 skill 不得用 here-string，Codex 只读 sandbox 无法创建临时文件")
+if 'printf' not in ops or '| python3 -c' not in ops:
+    raise SystemExit("操作 skill 必须用管道把插件清单传给 Python")
 if 'PROJECT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"' not in ops:
     raise SystemExit("操作 skill 未安全定位项目根目录")
 if 'setup-convention.sh" github --host=codex' not in ops:

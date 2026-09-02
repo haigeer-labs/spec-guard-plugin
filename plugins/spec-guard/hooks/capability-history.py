@@ -211,6 +211,7 @@ def verify(data, root_path):
             if checkpoint is None:
                 continue
             verify_artifact(root, checkpoint["map"])
+            verify_artifact(root, checkpoint.get("state"))
             for module in checkpoint["modules"]:
                 verify_artifact(root, module["spec"])
                 verify_artifact(root, module["plan"])

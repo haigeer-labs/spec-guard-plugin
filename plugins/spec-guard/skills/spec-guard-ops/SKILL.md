@@ -58,6 +58,16 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/verify-artifacts.sh"
 
 如有违规，说明原因与修复方式，得到用户确认后才改动项目；退出码 2 表示尚未启用约定。
 
+## `verify-history`
+
+历史证据校验为只读操作，调用共享脚本：
+
+```bash
+/bin/bash "$ROOT/hooks/verify-history.sh" "$PROJECT"
+```
+
+无账本时报告“未验证”；orphan 或篡改证据时报告失败，不自动删除任何文件。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

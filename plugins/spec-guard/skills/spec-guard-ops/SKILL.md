@@ -69,6 +69,17 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/teardown-convention.sh" --h
 
 原样转述脚本结果；不要删除标记外内容或手动修改 state。
 
+## `lifecycle`
+
+用户请求暂停、恢复或结束 initiative 时，先说明真实操作会复制或恢复当前
+`spec/`、`tasks/` 与 `.agent/state.json`，并明确要求确认。仅在确认后调用共享脚本：
+
+```bash
+CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/initiative-lifecycle.sh" <pause|resume|complete|abandon|supersede> --project "$PROJECT" --initiative <id>
+```
+
+用户只要求预览时追加 `--dry-run`；不要自行复制、移动或覆盖这些文件。
+
 ## `sync-map`
 
 加载 `spec-guard:spec-github-bridge`，并仅按该 skill 的“操作一：能力图落库”执行。

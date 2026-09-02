@@ -27,10 +27,10 @@ Build order: history-ledger → initiative-lifecycle, history-verification, hist
 
 ## 评审记录
 
-- [ ] 模块边界确认：账本、生命周期、校验、迁移和宿主接入可以独立验证。
-- [ ] 依赖方向单向无环。
-- [ ] module id 已定稿：kebab-case，后续不改名。
-- [ ] 构建顺序符合依赖拓扑。
+- [x] 模块边界确认：账本、生命周期、校验、迁移和宿主接入可以独立验证。
+- [x] 依赖方向单向无环。
+- [x] module id 已定稿：kebab-case，后续不改名。
+- [x] 构建顺序符合依赖拓扑。
 
-评审人：
-日期：
+评审人：用户确认（Codex 辅助评审）
+日期：2026-09-02

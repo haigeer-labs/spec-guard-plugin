@@ -16,43 +16,29 @@
 
 ## Task List
 
+> Tasks tracked in GitHub Issues #6.
+
 ### Phase 1: Schema and read-only validation
 
-- [ ] Task 1: 建立账本 schema 与事件状态机
-  - Acceptance: 能验证 initiative ID、首个 `created` 事件、允许状态转换、模块/路径字段与
-    checkpoint ID；非法输入给出非零结果和可读原因。
-  - Verify: 新增 self-test，覆盖合法完整生命周期及每种非法转换。
-  - Files: `plugins/spec-guard/hooks/capability-history.py`, `plugins/spec-guard/hooks/test-capability-history.sh`
+- #11 建立账本 schema 与事件状态机
 
-- [ ] Task 2: 实现 checkpoint 查询与完整性验证
-  - Acceptance: 可按 `initiative-id/module-id` 查询最新 checkpoint；能发现 map/spec/plan 缺失、
-    摘要不一致、绝对路径和目录逃逸。
-  - Verify: fixture 覆盖同名模块跨 initiative、`null` 未产生证据、篡改和缺失文件。
-  - Files: `plugins/spec-guard/hooks/capability-history.py`, `plugins/spec-guard/hooks/test-capability-history.sh`
+- #12 实现 checkpoint 查询与完整性验证（blocked by #11）
 
 ### Checkpoint: Read-only contract
 
-- [ ] 全部账本 schema 与完整性正反用例通过。
-- [ ] 读取任何损坏账本都不产生“通过”结果。
+- #13 全部账本 schema 与完整性正反用例通过；读取任何损坏账本都不产生“通过”结果。（blocked by #12）
+
 
 ### Phase 2: Safe append API
 
-- [ ] Task 3: 实现原子创建与事件追加
-  - Acceptance: 可创建账本、追加合法事件；重复 initiative、重复 checkpoint 或中断写入不破坏
-    原文件；写后可立即被只读验证。
-  - Verify: 模拟写前失败和替换失败，比较原账本字节不变；追加后运行查询用例。
-  - Files: `plugins/spec-guard/hooks/capability-history.py`, `plugins/spec-guard/hooks/test-capability-history.sh`
+- #14 实现原子创建与事件追加（blocked by #13）
 
-- [ ] Task 4: 接入仓库校验门禁
-  - Acceptance: 账本 self-test 被 `scripts/validate.sh` 执行；新脚本符合 Bash 3.2/Python 3
-    和现有检查器约束。
-  - Verify: `/bin/bash scripts/validate.sh` 通过，且故意损坏 fixture 时测试失败。
-  - Files: `scripts/validate.sh`, `plugins/spec-guard/hooks/test-capability-history.sh`
+- #15 接入仓库校验门禁（blocked by #14）
 
 ### Checkpoint: Ledger complete
 
-- [ ] 账本创建、查询、追加、完整性验证和中断保护均通过。
-- [ ] 既有 phase、verify 与 Codex adapter 回归保持通过。
+- #16 账本创建、查询、追加、完整性验证和中断保护均通过；既有 phase、verify 与 Codex adapter 回归保持通过。（blocked by #15）
+
 
 ## Risks and Mitigations
 

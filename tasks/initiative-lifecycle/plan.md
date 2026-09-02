@@ -7,25 +7,15 @@
 
 ## Task List
 
-- [ ] Task 1: 实现 pause 的 dry-run 与失败保护
-  - Acceptance: 枚举当前 map/spec/plan 与目标 checkpoint；冲突、缺当前图或账本写入失败时不删除源文件。
-  - Verify: `test-initiative-lifecycle.sh` 覆盖 dry-run、冲突与失败回滚。
-  - Files: `initiative-lifecycle.sh`, `test-initiative-lifecycle.sh`
+> Tasks tracked in GitHub Issues #7.
 
-- [ ] Task 2: 实现 pause 与终态 checkpoint
-  - Acceptance: 成功后历史目录和账本事件完整，当前路径/state 被安全清理；终态类型准确。
-  - Verify: A 暂停、完成、放弃、替代的 fixture 回归。
-  - Files: `initiative-lifecycle.sh`, `test-initiative-lifecycle.sh`
+- #17 实现 pause 的 dry-run 与失败保护
 
-- [ ] Task 3: 实现 resume
-  - Acceptance: 仅最后状态为 paused 的 A 可恢复；B 活跃时先暂停 B；恢复后 state 与当前路径指向 A。
-  - Verify: A→B→resume A 和目标冲突/损坏 checkpoint 反向用例。
-  - Files: `initiative-lifecycle.sh`, `test-initiative-lifecycle.sh`
+- #18 实现 pause 与终态 checkpoint（blocked by #17）
 
-- [ ] Task 4: 接入总校验与宿主入口
-  - Acceptance: 测试进入 `validate.sh`，Claude/Codex 入口使用相同脚本与确认语义。
-  - Verify: `scripts/validate.sh`、hook 回归和 Codex adapter 回归全绿。
-  - Files: `scripts/validate.sh`, commands/skills, tests
+- #19 实现 resume（blocked by #18）
+
+- #20 接入总校验与宿主入口（blocked by #19）
 
 ## Risks
 

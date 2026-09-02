@@ -1,0 +1,14 @@
+{
+  "tracker": "github",
+  "initiative": { "title": "capability-history", "issue": 5, "map": "spec/CAPABILITY-MAP.md", "goalDigest": "4861266577be" },
+  "issueTypes": false,
+  "modules": {
+    "history-ledger": { "issue": 6, "rowDigest": "8c3188cb491a" },
+    "initiative-lifecycle": { "issue": 7, "rowDigest": "4bab50174843" },
+    "history-verification": { "issue": 8, "rowDigest": "7611b5772636" },
+    "history-migration": { "issue": 9, "rowDigest": "0ec2ec5feb24" },
+    "history-workflow-integration": { "issue": 10, "rowDigest": "a33491be0670" }
+  },
+  "activeModule": "initiative-lifecycle",
+  "updatedAt": "2026-09-02T18:02:00+0800"
+}

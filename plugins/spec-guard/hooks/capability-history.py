@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Validate and query spec-guard's initiative lifecycle ledger."""
+import hashlib
 import json
+import os
 import re
 import sys
 
@@ -44,6 +46,8 @@ def check_artifact(value, prefix):
     if not isinstance(value, dict):
         fail("artifact must be object or null")
     check_path(value.get("path"), prefix)
+    if value["path"] != prefix:
+        fail("artifact path must match checkpoint location")
     if not isinstance(value.get("sha256"), str) or not SHA256.fullmatch(value["sha256"]):
         fail("artifact sha256 must be 64 lowercase hex characters")
 
@@ -132,15 +136,53 @@ def load(path):
     return data
 
 
+def digest(path):
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+def verify_artifact(root, artifact):
+    if artifact is None:
+        return
+    path = os.path.realpath(os.path.join(root, artifact["path"]))
+    if os.path.commonpath([root, path]) != root:
+        fail("artifact resolves outside project root")
+    if not os.path.isfile(path):
+        fail("history artifact is missing")
+    if digest(path) != artifact["sha256"]:
+        fail("history artifact digest differs")
+
+
+def verify(data, root_path):
+    root = os.path.realpath(root_path)
+    if not os.path.isdir(root):
+        fail("project root is not a directory")
+    for initiative in data["initiatives"]:
+        for event in initiative["events"]:
+            checkpoint = event.get("checkpoint")
+            if checkpoint is None:
+                continue
+            verify_artifact(root, checkpoint["map"])
+            for module in checkpoint["modules"]:
+                verify_artifact(root, module["spec"])
+                verify_artifact(root, module["plan"])
+
+
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root>", file=sys.stderr)
         return 2
     try:
         data = load(argv[1])
         if argv[0] == "validate":
             if len(argv) != 2:
                 return 2
+            print("ok")
+            return 0
+        if argv[0] == "verify":
+            if len(argv) != 3:
+                return 2
+            verify(data, argv[2])
             print("ok")
             return 0
         if len(argv) != 3:

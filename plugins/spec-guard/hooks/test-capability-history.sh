@@ -31,6 +31,22 @@ expect_invalid() {
   fi
 }
 
+expect_verified() {
+  if [ -f "$HISTORY" ] && python3 "$HISTORY" verify "$2" "$3" >/dev/null 2>&1; then
+    ok "$1"
+  else
+    bad "$1"
+  fi
+}
+
+expect_unverified() {
+  if [ "${VERIFY_READY:-false}" = true ] && ! python3 "$HISTORY" verify "$2" "$3" >/dev/null 2>&1; then
+    ok "$1"
+  else
+    bad "$1"
+  fi
+}
+
 echo "═══ Capability history ledger regression ═══"
 
 VALID="$TMP/valid.json"
@@ -80,6 +96,23 @@ expect_invalid "反：未暂停直接 resumed 被拒绝" "$BAD_FLOW"
 BAD_MODULES="$TMP/bad-modules.json"
 write_history "$BAD_MODULES" '{"schemaVersion":1,"initiatives":[{"id":"a","title":"A","startedAt":"2026-09-02T09:00:00Z","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/a/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[{"id":"same","responsibility":"one","dependsOn":[],"status":"not-started","issue":null,"spec":null,"plan":null},{"id":"same","responsibility":"two","dependsOn":[],"status":"not-started","issue":null,"spec":null,"plan":null}]}}]}]}'
 expect_invalid "反：同一 checkpoint 重复 module id 被拒绝" "$BAD_MODULES"
+
+PROJECT="$TMP/project"
+CHECKPOINT="20260902T090000Z-0001"
+mkdir -p "$PROJECT/spec/history/a/$CHECKPOINT" "$PROJECT/tasks/history/a/$CHECKPOINT/payment-api"
+printf 'map evidence\n' > "$PROJECT/spec/history/a/$CHECKPOINT/CAPABILITY-MAP.md"
+printf 'spec evidence\n' > "$PROJECT/spec/history/a/$CHECKPOINT/payment-api.md"
+printf 'plan evidence\n' > "$PROJECT/tasks/history/a/$CHECKPOINT/payment-api/plan.md"
+MAP_SHA="$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$PROJECT/spec/history/a/$CHECKPOINT/CAPABILITY-MAP.md")"
+SPEC_SHA="$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$PROJECT/spec/history/a/$CHECKPOINT/payment-api.md")"
+PLAN_SHA="$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$PROJECT/tasks/history/a/$CHECKPOINT/payment-api/plan.md")"
+EVIDENCE="$TMP/evidence.json"
+write_history "$EVIDENCE" "{\"schemaVersion\":1,\"initiatives\":[{\"id\":\"a\",\"title\":\"A\",\"startedAt\":\"2026-09-02T09:00:00Z\",\"events\":[{\"type\":\"created\",\"at\":\"2026-09-02T09:00:00Z\",\"checkpoint\":{\"id\":\"$CHECKPOINT\",\"map\":{\"path\":\"spec/history/a/$CHECKPOINT/CAPABILITY-MAP.md\",\"sha256\":\"$MAP_SHA\"},\"modules\":[{\"id\":\"payment-api\",\"responsibility\":\"Payment API\",\"dependsOn\":[],\"status\":\"completed\",\"issue\":101,\"spec\":{\"path\":\"spec/history/a/$CHECKPOINT/payment-api.md\",\"sha256\":\"$SPEC_SHA\"},\"plan\":{\"path\":\"tasks/history/a/$CHECKPOINT/payment-api/plan.md\",\"sha256\":\"$PLAN_SHA\"}}]}}]}]}"
+expect_verified "正：历史 map/spec/plan 与 SHA-256 一致" "$EVIDENCE" "$PROJECT"
+VERIFY_READY=false
+if python3 "$HISTORY" verify "$EVIDENCE" "$PROJECT" >/dev/null 2>&1; then VERIFY_READY=true; fi
+printf 'tampered plan\n' > "$PROJECT/tasks/history/a/$CHECKPOINT/payment-api/plan.md"
+expect_unverified "反：历史 plan 被篡改时校验失败" "$EVIDENCE" "$PROJECT"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

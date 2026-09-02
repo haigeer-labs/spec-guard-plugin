@@ -9,6 +9,6 @@
     "history-migration": { "issue": 9, "rowDigest": "0ec2ec5feb24" },
     "history-workflow-integration": { "issue": 10, "rowDigest": "a33491be0670" }
   },
-  "activeModule": "initiative-lifecycle",
+  "activeModule": "history-verification",
   "updatedAt": "2026-09-02T18:02:00+0800"
 }

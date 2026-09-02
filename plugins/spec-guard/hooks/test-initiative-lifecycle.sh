@@ -34,5 +34,30 @@ else
   bad "反：账本不存在时 pause 失败且不删除源文件"
 fi
 
+HISTORY="$HOOKDIR/capability-history.py"
+LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
+CREATED="$TMP/created.json"
+printf '%s\n' '{"id":"payment-v2","title":"Payment v2","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/payment-v2/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}' > "$CREATED"
+python3 "$HISTORY" create "$LEDGER" "$CREATED" >/dev/null 2>&1 || true
+if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
+  && [ ! -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ ! -f "$PROJECT/.agent/state.json" ]; then
+  ok "正：pause 写入 checkpoint 后才清理当前工作区"
+else
+  bad "正：pause 写入 checkpoint 后才清理当前工作区"
+fi
+
+TERMINAL_PROJECT="$TMP/terminal-project"
+mkdir -p "$TERMINAL_PROJECT/spec" "$TERMINAL_PROJECT/.agent"
+: > "$TERMINAL_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{}' > "$TERMINAL_PROJECT/.agent/state.json"
+python3 "$HISTORY" create "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" "$CREATED" >/dev/null 2>&1 || true
+if "$LIFECYCLE" complete --project "$TERMINAL_PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
+  && [ ! -f "$TERMINAL_PROJECT/spec/CAPABILITY-MAP.md" ] \
+  && [ "$(python3 "$HISTORY" status "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = completed ]; then
+  ok "正：complete 写入终态 checkpoint 后才清理当前工作区"
+else
+  bad "正：complete 写入终态 checkpoint 后才清理当前工作区"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

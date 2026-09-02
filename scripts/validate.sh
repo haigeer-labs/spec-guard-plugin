@@ -70,6 +70,10 @@ echo "═══ Capability history ledger regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-capability-history.sh || F=1
 echo ""
 
+echo "═══ Initiative lifecycle regression ═══"
+/bin/bash plugins/spec-guard/hooks/test-initiative-lifecycle.sh || F=1
+echo ""
+
 echo "═══ Codex 适配器回归 ═══"
 /bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
 echo ""

@@ -17,8 +17,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$ACTION" in
-  pause|complete|abandon|supersede) ;;
-  *) echo "用法: initiative-lifecycle.sh <pause|complete|abandon|supersede> --project <path> --initiative <id> [--dry-run]" >&2; exit 2 ;;
+  pause|resume|complete|abandon|supersede) ;;
+  *) echo "用法: initiative-lifecycle.sh <pause|resume|complete|abandon|supersede> --project <path> --initiative <id> [--dry-run]" >&2; exit 2 ;;
 esac
 EVENT_TYPE="$ACTION"
 [ "$ACTION" = pause ] && EVENT_TYPE=paused
@@ -26,8 +26,6 @@ EVENT_TYPE="$ACTION"
 [ "$ACTION" = abandon ] && EVENT_TYPE=abandoned
 [ "$ACTION" = supersede ] && EVENT_TYPE=superseded
 [ -n "$PROJECT" ] && [ -n "$INITIATIVE" ] || { echo "必须指定项目和 initiative" >&2; exit 2; }
-[ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] || { echo "缺少当前能力图" >&2; exit 1; }
-[ -f "$PROJECT/.agent/state.json" ] || { echo "缺少当前状态" >&2; exit 1; }
 HISTORY="$(cd "$(dirname "$0")" && pwd)/capability-history.py"
 LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
 
@@ -38,16 +36,122 @@ fi
 
 [ -f "$LEDGER" ] || { echo "缺少 spec/CAPABILITY-HISTORY.json；先创建账本后才能暂停。" >&2; exit 1; }
 
+if [ "$ACTION" = resume ]; then
+  python3 "$HISTORY" verify-checkpoint "$LEDGER" "$PROJECT" "$INITIATIVE" >/dev/null || exit 1
+  CHECKPOINT_JSON="$(mktemp)"
+  STAGE="$(mktemp -d "$PROJECT/.initiative-resume.XXXXXX")"
+  trap 'rm -f "$CHECKPOINT_JSON"; rm -rf "$STAGE"' EXIT
+  python3 "$HISTORY" checkpoint "$LEDGER" "$INITIATIVE" > "$CHECKPOINT_JSON" || exit 1
+
+  while IFS=$'\t' read -r SOURCE TARGET; do
+    [ -n "$SOURCE" ] && [ -n "$TARGET" ] || { echo "checkpoint 缺少 state 或产物" >&2; exit 1; }
+    [ ! -e "$PROJECT/$TARGET" ] || { echo "恢复目标已存在: $TARGET" >&2; exit 1; }
+    mkdir -p "$(dirname "$STAGE/$TARGET")" || exit 1
+    cp "$PROJECT/$SOURCE" "$STAGE/$TARGET" || exit 1
+  done < <(python3 - "$CHECKPOINT_JSON" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    checkpoint = json.load(handle)
+state = checkpoint.get("state")
+if not state:
+    sys.exit(1)
+print("%s\t.agent/state.json" % state["path"])
+print("%s\tspec/CAPABILITY-MAP.md" % checkpoint["map"]["path"])
+for module in checkpoint["modules"]:
+    if module.get("spec"):
+        print("%s\tspec/%s.md" % (module["spec"]["path"], module["id"]))
+    if module.get("plan"):
+        print("%s\ttasks/%s/plan.md" % (module["plan"]["path"], module["id"]))
+PY
+)
+
+  RESTORED="$STAGE/restored"
+  : > "$RESTORED"
+  while IFS= read -r TARGET; do
+    mkdir -p "$(dirname "$PROJECT/$TARGET")" || exit 1
+    cp "$STAGE/$TARGET" "$PROJECT/$TARGET" || {
+      while IFS= read -r CREATED; do rm -f "$PROJECT/$CREATED"; done < "$RESTORED"
+      exit 1
+    }
+    printf '%s\n' "$TARGET" >> "$RESTORED"
+  done < <(find "$STAGE" -type f ! -name restored -print | sed "s|$STAGE/||")
+
+  EVENT="$(mktemp)"
+  python3 -c 'import json,sys; json.dump({"type":"resumed","at":"now"}, open(sys.argv[1], "w"))' "$EVENT" || exit 1
+  if ! python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT"; then
+    while IFS= read -r CREATED; do rm -f "$PROJECT/$CREATED"; done < "$RESTORED"
+    rm -f "$EVENT"
+    exit 1
+  fi
+  rm -f "$EVENT"
+  echo "已恢复 initiative=$INITIATIVE"
+  exit 0
+fi
+
+[ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] || { echo "缺少当前能力图" >&2; exit 1; }
+[ -f "$PROJECT/.agent/state.json" ] || { echo "缺少当前状态" >&2; exit 1; }
+
 CHECKPOINT="$(date -u +%Y%m%dT%H%M%SZ)-0001"
 DEST="$PROJECT/spec/history/$INITIATIVE/$CHECKPOINT"
 [ ! -e "$DEST" ] || { echo "checkpoint 已存在" >&2; exit 1; }
-mkdir -p "$DEST" || exit 1
+STATE_DEST="$PROJECT/.agent/history/$INITIATIVE/$CHECKPOINT"
+mkdir -p "$DEST" "$STATE_DEST" || exit 1
 cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
-SHA="$(shasum -a 256 "$DEST/CAPABILITY-MAP.md" | awk '{print $1}')"
+cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
+MAP_SHA="$(shasum -a 256 "$DEST/CAPABILITY-MAP.md" | awk '{print $1}')"
+STATE_SHA="$(shasum -a 256 "$STATE_DEST/state.json" | awk '{print $1}')"
+while IFS= read -r MODULE; do
+  [ -n "$MODULE" ] || continue
+  [ ! -f "$PROJECT/spec/$MODULE.md" ] || cp "$PROJECT/spec/$MODULE.md" "$DEST/$MODULE.md" || exit 1
+  if [ -f "$PROJECT/tasks/$MODULE/plan.md" ]; then
+    mkdir -p "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE" || exit 1
+    cp "$PROJECT/tasks/$MODULE/plan.md" "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE/plan.md" || exit 1
+  fi
+done < <(python3 -c 'import json,sys; print("\\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
 EVENT="$(mktemp)"
 trap 'rm -f "$EVENT"' EXIT
-python3 -c 'import json,sys; json.dump({"type":sys.argv[1],"at":"now","checkpoint":{"id":sys.argv[2],"map":{"path":sys.argv[3],"sha256":sys.argv[4]},"modules":[]}}, open(sys.argv[5], "w"))' \
-  "$EVENT_TYPE" "$CHECKPOINT" "spec/history/$INITIATIVE/$CHECKPOINT/CAPABILITY-MAP.md" "$SHA" "$EVENT" || exit 1
+python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" <<'PY' || exit 1
+import hashlib
+import json
+import os
+import sys
+
+event_path, event_type, project, initiative, checkpoint_id, map_sha, state_sha = sys.argv[1:]
+state = json.load(open(os.path.join(project, ".agent", "state.json"), encoding="utf-8"))
+modules = []
+for module_id, module_state in state.get("modules", {}).items():
+    spec_path = "spec/history/%s/%s/%s.md" % (initiative, checkpoint_id, module_id)
+    plan_path = "tasks/history/%s/%s/%s/plan.md" % (initiative, checkpoint_id, module_id)
+    def artifact(path):
+        absolute = os.path.join(project, path)
+        if not os.path.isfile(absolute):
+            return None
+        with open(absolute, "rb") as handle:
+            sha256 = hashlib.sha256(handle.read()).hexdigest()
+        return {"path": path, "sha256": sha256}
+    modules.append({
+        "id": module_id,
+        "responsibility": module_id,
+        "dependsOn": [],
+        "status": "in-progress" if state.get("activeModule") == module_id else "not-started",
+        "issue": module_state.get("issue"),
+        "spec": artifact(spec_path),
+        "plan": artifact(plan_path),
+    })
+event = {
+    "type": event_type,
+    "at": "now",
+    "checkpoint": {
+        "id": checkpoint_id,
+        "map": {"path": "spec/history/%s/%s/CAPABILITY-MAP.md" % (initiative, checkpoint_id), "sha256": map_sha},
+        "state": {"path": ".agent/history/%s/%s/state.json" % (initiative, checkpoint_id), "sha256": state_sha},
+        "modules": modules,
+    },
+}
+json.dump(event, open(event_path, "w", encoding="utf-8"))
+PY
 python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
 rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 echo "已执行 $ACTION initiative=$INITIATIVE"

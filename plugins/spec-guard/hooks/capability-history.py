@@ -69,6 +69,8 @@ def check_checkpoint(checkpoint, initiative_id):
     if not isinstance(map_value.get("sha256"), str) or not SHA256.fullmatch(map_value["sha256"]):
         fail("map sha256 must be 64 lowercase hex characters")
 
+    check_artifact(checkpoint.get("state"), ".agent/history/%s/%s/state.json" % (initiative_id, checkpoint_id))
+
     modules = checkpoint.get("modules")
     if not isinstance(modules, list):
         fail("checkpoint modules must be an array")
@@ -214,9 +216,36 @@ def verify(data, root_path):
                 verify_artifact(root, module["plan"])
 
 
+def initiative_by_id(data, initiative_id):
+    for initiative in data["initiatives"]:
+        if initiative["id"] == initiative_id:
+            return initiative
+    fail("initiative not found")
+
+
+def paused_checkpoint(data, initiative_id):
+    initiative = initiative_by_id(data, initiative_id)
+    event = initiative["events"][-1]
+    if event["type"] != "paused":
+        fail("initiative is not paused")
+    return event["checkpoint"]
+
+
+def verify_checkpoint(data, root_path, initiative_id):
+    root = os.path.realpath(root_path)
+    if not os.path.isdir(root):
+        fail("project root is not a directory")
+    checkpoint = paused_checkpoint(data, initiative_id)
+    verify_artifact(root, checkpoint["map"])
+    verify_artifact(root, checkpoint.get("state"))
+    for module in checkpoint["modules"]:
+        verify_artifact(root, module["spec"])
+        verify_artifact(root, module["plan"])
+
+
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "create", "append"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | create <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "checkpoint", "verify-checkpoint", "create", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
         if argv[0] == "create":
@@ -243,13 +272,23 @@ def main(argv):
             verify(data, argv[2])
             print("ok")
             return 0
+        if argv[0] == "checkpoint":
+            if len(argv) != 3:
+                return 2
+            json.dump(paused_checkpoint(data, argv[2]), sys.stdout, ensure_ascii=False)
+            sys.stdout.write("\n")
+            return 0
+        if argv[0] == "verify-checkpoint":
+            if len(argv) != 4:
+                return 2
+            verify_checkpoint(data, argv[2], argv[3])
+            print("ok")
+            return 0
         if len(argv) != 3:
             return 2
-        for initiative in data["initiatives"]:
-            if initiative["id"] == argv[2]:
-                print("active" if initiative["events"][-1]["type"] == "created" else initiative["events"][-1]["type"])
-                return 0
-        fail("initiative not found")
+        initiative = initiative_by_id(data, argv[2])
+        print("active" if initiative["events"][-1]["type"] == "created" else initiative["events"][-1]["type"])
+        return 0
     except (OSError, json.JSONDecodeError, Invalid) as error:
         print("capability history: %s" % error, file=sys.stderr)
         return 1

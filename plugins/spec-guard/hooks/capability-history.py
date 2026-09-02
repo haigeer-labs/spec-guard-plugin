@@ -231,6 +231,13 @@ def paused_checkpoint(data, initiative_id):
     return event["checkpoint"]
 
 
+def active_initiative(data):
+    active = [item["id"] for item in data["initiatives"] if item["events"][-1]["type"] in {"created", "resumed"}]
+    if len(active) != 1:
+        fail("expected exactly one active initiative")
+    return active[0]
+
+
 def verify_checkpoint(data, root_path, initiative_id):
     root = os.path.realpath(root_path)
     if not os.path.isdir(root):
@@ -244,7 +251,7 @@ def verify_checkpoint(data, root_path, initiative_id):
 
 
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "checkpoint", "verify-checkpoint", "create", "append"}:
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "active", "checkpoint", "verify-checkpoint", "create", "append"}:
         print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
@@ -277,6 +284,11 @@ def main(argv):
                 return 2
             json.dump(paused_checkpoint(data, argv[2]), sys.stdout, ensure_ascii=False)
             sys.stdout.write("\n")
+            return 0
+        if argv[0] == "active":
+            if len(argv) != 2:
+                return 2
+            print(active_initiative(data))
             return 0
         if argv[0] == "verify-checkpoint":
             if len(argv) != 4:

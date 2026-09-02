@@ -37,6 +37,12 @@ fi
 [ -f "$LEDGER" ] || { echo "缺少 spec/CAPABILITY-HISTORY.json；先创建账本后才能暂停。" >&2; exit 1; }
 
 if [ "$ACTION" = resume ]; then
+  if [ -e "$PROJECT/spec/CAPABILITY-MAP.md" ] || [ -e "$PROJECT/.agent/state.json" ]; then
+    [ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ -f "$PROJECT/.agent/state.json" ] || { echo "当前工作区不完整，无法暂停后恢复" >&2; exit 1; }
+    ACTIVE="$(python3 "$HISTORY" active "$LEDGER")" || exit 1
+    [ "$ACTIVE" != "$INITIATIVE" ] || { echo "目标 initiative 已是当前工作区" >&2; exit 1; }
+    "$0" pause --project "$PROJECT" --initiative "$ACTIVE" || exit 1
+  fi
   python3 "$HISTORY" verify-checkpoint "$LEDGER" "$PROJECT" "$INITIATIVE" >/dev/null || exit 1
   CHECKPOINT_JSON="$(mktemp)"
   STAGE="$(mktemp -d "$PROJECT/.initiative-resume.XXXXXX")"

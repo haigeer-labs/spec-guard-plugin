@@ -114,5 +114,38 @@ if python3 "$HISTORY" verify "$EVIDENCE" "$PROJECT" >/dev/null 2>&1; then VERIFY
 printf 'tampered plan\n' > "$PROJECT/tasks/history/a/$CHECKPOINT/payment-api/plan.md"
 expect_unverified "反：历史 plan 被篡改时校验失败" "$EVIDENCE" "$PROJECT"
 
+NEW_INIT="$TMP/new-initiative.json"
+write_history "$NEW_INIT" '{"id":"new","title":"New","startedAt":"2026-09-02T09:00:00Z","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/new/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}'
+LEDGER="$TMP/ledger.json"
+if [ -f "$HISTORY" ] && python3 "$HISTORY" create "$LEDGER" "$NEW_INIT" >/dev/null 2>&1; then
+  ok "正：可从 created initiative 原子创建账本"
+  CREATE_READY=true
+else
+  bad "正：可从 created initiative 原子创建账本"
+  CREATE_READY=false
+fi
+if [ "$CREATE_READY" = true ] && python3 "$HISTORY" validate "$LEDGER" >/dev/null 2>&1; then
+  ok "正：新建账本立即可读"
+else
+  bad "正：新建账本立即可读"
+fi
+PAUSE="$TMP/pause.json"
+write_history "$PAUSE" '{"type":"paused","at":"2026-09-03T09:00:00Z","checkpoint":{"id":"20260903T090000Z-0002","map":{"path":"spec/history/new/20260903T090000Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"modules":[]}}'
+if [ "$CREATE_READY" = true ] && python3 "$HISTORY" append "$LEDGER" new "$PAUSE" >/dev/null 2>&1 \
+  && [ "$(python3 "$HISTORY" status "$LEDGER" new 2>/dev/null || true)" = "paused" ]; then
+  ok "正：追加合法事件并更新派生状态"
+  APPEND_READY=true
+else
+  bad "正：追加合法事件并更新派生状态"
+  APPEND_READY=false
+fi
+BEFORE="$(shasum -a 256 "$LEDGER" 2>/dev/null | awk '{print $1}')"
+if [ "$APPEND_READY" = true ] && ! python3 "$HISTORY" append "$LEDGER" new "$NEW_INIT" >/dev/null 2>&1 \
+  && [ "$BEFORE" = "$(shasum -a 256 "$LEDGER" | awk '{print $1}')" ]; then
+  ok "反：非法追加不改写原账本"
+else
+  bad "反：非法追加不改写原账本"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

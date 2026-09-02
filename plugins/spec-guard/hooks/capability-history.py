@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CHECKPOINT_ID = re.compile(r"^\d{8}T\d{6}Z-\d{4}$")
@@ -119,9 +120,7 @@ def check_initiative(initiative):
         previous = event_type
 
 
-def load(path):
-    with open(path, encoding="utf-8") as handle:
-        data = json.load(handle)
+def validate_data(data):
     if not isinstance(data, dict) or data.get("schemaVersion") != 1:
         fail("unsupported capability history schema")
     initiatives = data.get("initiatives")
@@ -134,6 +133,53 @@ def load(path):
             fail("duplicate initiative id")
         ids.add(initiative["id"])
     return data
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return validate_data(json.load(handle))
+
+
+def write_atomic(path, data):
+    directory = os.path.dirname(os.path.abspath(path)) or "."
+    if not os.path.isdir(directory):
+        fail("ledger directory does not exist")
+    descriptor, temporary = tempfile.mkstemp(prefix=".capability-history-", dir=directory)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def create(ledger_path, initiative_path):
+    if os.path.exists(ledger_path):
+        fail("ledger already exists")
+    with open(initiative_path, encoding="utf-8") as handle:
+        initiative = json.load(handle)
+    check_initiative(initiative)
+    write_atomic(ledger_path, {"schemaVersion": 1, "initiatives": [initiative]})
+
+
+def append(ledger_path, initiative_id, event_path):
+    data = load(ledger_path)
+    with open(event_path, encoding="utf-8") as handle:
+        event = json.load(handle)
+    for initiative in data["initiatives"]:
+        if initiative["id"] == initiative_id:
+            initiative["events"].append(event)
+            validate_data(data)
+            write_atomic(ledger_path, data)
+            return
+    fail("initiative not found")
 
 
 def digest(path):
@@ -169,10 +215,22 @@ def verify(data, root_path):
 
 
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "create", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | create <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
+        if argv[0] == "create":
+            if len(argv) != 3:
+                return 2
+            create(argv[1], argv[2])
+            print("ok")
+            return 0
+        if argv[0] == "append":
+            if len(argv) != 4:
+                return 2
+            append(argv[1], argv[2], argv[3])
+            print("ok")
+            return 0
         data = load(argv[1])
         if argv[0] == "validate":
             if len(argv) != 2:

@@ -19,7 +19,7 @@ printf '%s\n' "{\"schemaVersion\":1,\"initiatives\":[{\"id\":\"a\",\"title\":\"A
 printf 'tampered\n' > "$PROJECT/.agent/history/a/$CP/state.json"
 ! "$HISTORY" verify "$LEDGER" "$PROJECT" >/dev/null 2>&1
 rm -f "$LEDGER"
-"$VERIFY" "$PROJECT" | grep -q '未验证'
+grep -q '未验证' <<<"$("$VERIFY" "$PROJECT")"
 printf '%s\n' '{"schemaVersion":1,"initiatives":[]}' > "$LEDGER"
 mkdir -p "$PROJECT/spec/history/orphan/20260902T090000Z-0001"
 printf 'orphan\n' > "$PROJECT/spec/history/orphan/20260902T090000Z-0001/CAPABILITY-MAP.md"

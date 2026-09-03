@@ -152,7 +152,22 @@ fi
 base; mkdir -p spec .agent; touch spec/a.md
 git remote add origin https://gitlab.com/a/b.git 2>/dev/null
 echo '{"activeModule":"x","modules":{"x":{}}}' > .agent/state.json
-chk "GitLab未声明tracker" "SPECED (非 GitHub tracker)|断链1"
+chk "GitLab.com 未声明 tracker → GitLab 模式" "SPECED (gitlab)|断链1"
+
+# 自建 GitLab 的 host 不必含 gitlab。只有 glab 能确认当前 remote 时才认作 GitLab。
+base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
+git remote add origin git@mgit.lgroup.co:hqdf/web/x9-live-player.git 2>/dev/null
+echo '{"activeModule":"x","modules":{"x":{"issue":42}}}' > .agent/state.json
+mkdir -p "$TMP/glab-bin"
+cat > "$TMP/glab-bin/glab" <<'STUB'
+#!/bin/bash
+[ "$1" = repo ] && [ "$2" = view ] && exit 0
+exit 1
+STUB
+chmod +x "$TMP/glab-bin/glab"
+OLD_GLAB_PATH="$PATH"; export PATH="$TMP/glab-bin:$PATH"
+chk "自建 GitLab 由 glab 确认" "PLANNED (gitlab)|断链0"
+export PATH="$OLD_GLAB_PATH"
 
 rm -rf "$TMP/r2"; mkdir -p "$TMP/r2"; echo "# 普通项目" > "$TMP/r2/CLAUDE.md"
 if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/r2" bash "$H" 2>/dev/null)" ]; then

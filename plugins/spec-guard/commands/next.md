@@ -1,7 +1,7 @@
 ---
 description: 从 GitHub 取下一个可执行任务并开始实现
 ---
-Invoke the spec-github-bridge skill，执行「操作三：取下一个任务」，
+读取 `.agent/state.json.tracker` 后路由：`github` 调用 `spec-github-bridge`；`gitlab` 调用 `spec-gitlab-bridge`；`none` 使用本地任务流程。
 取到后接 /build。
 
 - **留在当前的模块分支上**，取到新 task 不要另开分支、不要开 PR ——

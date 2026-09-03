@@ -1,0 +1,18 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "Parallel Order Conflict Guard",
+    "issue": 85,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "c7dde4780427"
+  },
+  "issueTypes": false,
+  "modules": {
+    "parallel-order-conflict-guard": {
+      "issue": 86,
+      "rowDigest": "650f59c2b3ee"
+    }
+  },
+  "activeModule": "parallel-order-conflict-guard",
+  "updatedAt": ""
+}

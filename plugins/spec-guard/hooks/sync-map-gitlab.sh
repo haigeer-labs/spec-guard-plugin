@@ -21,11 +21,12 @@ if state.get('tracker')!='gitlab': raise SystemExit('❌ 当前不是 gitlab tra
 text=p.read_text()
 if re.search(r'- \[ \]', text): raise SystemExit('❌ 能力图评审记录尚未全部勾选')
 title=re.search(r'^# Capability Map:\s*(.+)$', text, re.M)
-goal=re.search(r'^## (?:目标|Goal)\s*\n\n(.+?)(?=\n## |\Z)', text, re.S)
-table=re.search(r'^## 模块\s*\n\n\|[^\n]+\|\n\|[-| ]+\|\n((?:\|[^\n]+\|\n)+)', text, re.M)
-if not title or not goal or not table: raise SystemExit('❌ 能力图缺少标题、目标或模块表')
+goal=re.search(r'^## (?:目标|Goal)\s*\n\n(.+?)(?=\n## |\Z)', text, re.M|re.S)
+section=re.search(r'^## 模块\s*\n\n(.+?)(?=\n\nBuild order:|\n---|\Z)', text, re.M|re.S)
+if not title or not goal or not section: raise SystemExit('❌ 能力图缺少标题、目标或模块表')
 mods=[]
-for row in table.group(1).strip().splitlines():
+rows=[line for line in section.group(1).splitlines() if line.startswith('|')]
+for row in rows[2:]:
     cells=[x.strip() for x in row.strip('|').split('|')]
     if len(cells)>=2 and not cells[0].startswith('example-'): mods.append({'id':cells[0], 'responsibility':cells[1]})
 if not mods: raise SystemExit('❌ 能力图没有真实模块')

@@ -78,6 +78,10 @@ echo "═══ History verification regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-history-verification.sh || F=1
 echo ""
 
+echo "═══ History migration regression ═══"
+/bin/bash plugins/spec-guard/hooks/test-history-migration.sh || F=1
+echo ""
+
 echo "═══ Codex 适配器回归 ═══"
 /bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
 echo ""

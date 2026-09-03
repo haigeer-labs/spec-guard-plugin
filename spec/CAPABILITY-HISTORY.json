@@ -270,6 +270,76 @@
           }
         }
       ]
+    },
+    {
+      "id": "70",
+      "title": "70",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T185103Z-0001",
+            "map": {
+              "path": "spec/history/70/20260903T185103Z-0001/CAPABILITY-MAP.md",
+              "sha256": "afb0ef77b3d7768c7bcdb3803b582ef01b57a3d8f65988d1293e2740a14e5085"
+            },
+            "state": {
+              "path": ".agent/history/70/20260903T185103Z-0001/state.json",
+              "sha256": "ec1782c8f3e4994c92bad5bb39bf206d6b1df6b28f745bcdf32686ab2e637e4b"
+            },
+            "modules": [
+              {
+                "id": "claude-desktop-mcp",
+                "responsibility": "claude-desktop-mcp",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 71,
+                "spec": {
+                  "path": "spec/history/70/20260903T185103Z-0001/claude-desktop-mcp.md",
+                  "sha256": "ecf6a3207ed83bcd74b44e47f005368de96e70625a58947389346a7072a5c1ea"
+                },
+                "plan": {
+                  "path": "tasks/history/70/20260903T185103Z-0001/claude-desktop-mcp/plan.md",
+                  "sha256": "b92dddda403ab89e7f6a4342c41719e865b15e1335da81b8efd4a59988268b47"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T185103Z-0001",
+            "map": {
+              "path": "spec/history/70/20260903T185103Z-0001/CAPABILITY-MAP.md",
+              "sha256": "afb0ef77b3d7768c7bcdb3803b582ef01b57a3d8f65988d1293e2740a14e5085"
+            },
+            "state": {
+              "path": ".agent/history/70/20260903T185103Z-0001/state.json",
+              "sha256": "ec1782c8f3e4994c92bad5bb39bf206d6b1df6b28f745bcdf32686ab2e637e4b"
+            },
+            "modules": [
+              {
+                "id": "claude-desktop-mcp",
+                "responsibility": "claude-desktop-mcp",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 71,
+                "spec": {
+                  "path": "spec/history/70/20260903T185103Z-0001/claude-desktop-mcp.md",
+                  "sha256": "ecf6a3207ed83bcd74b44e47f005368de96e70625a58947389346a7072a5c1ea"
+                },
+                "plan": {
+                  "path": "tasks/history/70/20260903T185103Z-0001/claude-desktop-mcp/plan.md",
+                  "sha256": "b92dddda403ab89e7f6a4342c41719e865b15e1335da81b8efd4a59988268b47"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

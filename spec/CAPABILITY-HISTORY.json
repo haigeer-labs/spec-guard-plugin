@@ -340,6 +340,44 @@
           }
         }
       ]
+    },
+    {
+      "id": "parallel-readiness-guidance",
+      "title": "parallel-readiness-guidance",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T210029Z-0001",
+            "map": {
+              "path": "spec/history/parallel-readiness-guidance/20260903T210029Z-0001/CAPABILITY-MAP.md",
+              "sha256": "e0a595a400875d5563a5892a96e74ff926db9e12f2b9b58a80065252c4aec549"
+            },
+            "state": {
+              "path": ".agent/history/parallel-readiness-guidance/20260903T210029Z-0001/state.json",
+              "sha256": "524fe98187d8368eccc06c28c4e6feecfc2dbd05e769d49bd3990bf93a0a189f"
+            },
+            "modules": []
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T210029Z-0001",
+            "map": {
+              "path": "spec/history/parallel-readiness-guidance/20260903T210029Z-0001/CAPABILITY-MAP.md",
+              "sha256": "e0a595a400875d5563a5892a96e74ff926db9e12f2b9b58a80065252c4aec549"
+            },
+            "state": {
+              "path": ".agent/history/parallel-readiness-guidance/20260903T210029Z-0001/state.json",
+              "sha256": "524fe98187d8368eccc06c28c4e6feecfc2dbd05e769d49bd3990bf93a0a189f"
+            },
+            "modules": []
+          }
+        }
+      ]
     }
   ]
 }

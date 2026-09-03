@@ -9,6 +9,7 @@ CLAUDE_MANIFEST="$PLUGDIR/.claude-plugin/plugin.json"
 HOOKS="$HOOKDIR/hooks.json"
 OPS_SKILL="$PLUGDIR/skills/spec-guard-ops/SKILL.md"
 BRIDGE_SKILL="$PLUGDIR/skills/spec-github-bridge/SKILL.md"
+README="$PLUGDIR/../../README.md"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -130,13 +131,14 @@ else
 fi
 
 check_skills() {
-  python3 - "$OPS_SKILL" "$BRIDGE_SKILL" <<'PY'
+  python3 - "$OPS_SKILL" "$BRIDGE_SKILL" "$README" <<'PY'
 import sys
 
 ops = open(sys.argv[1], encoding="utf-8").read()
 bridge = open(sys.argv[2], encoding="utf-8").read()
+readme = open(sys.argv[3], encoding="utf-8").read()
 
-for operation in ("setup", "phase", "verify", "verify-history", "history-migration", "parallel-readiness", "parallel-safety-gate", "teardown", "lifecycle", "sync-map", "next", "deliver"):
+for operation in ("setup", "phase", "verify", "verify-history", "history-migration", "parallel-readiness", "parallel-safety-gate", "parallel-subagent-preflight", "teardown", "lifecycle", "sync-map", "next", "deliver"):
     if ops.count(f"`{operation}`") != 1:
         raise SystemExit(f"操作 {operation} 必须恰好声明一次")
 
@@ -164,6 +166,15 @@ if 'UserPromptSubmit' in ops:
     raise SystemExit("parallel-readiness 不得接入 UserPromptSubmit hook")
 if 'parallel-safety-gate.py' not in ops or 'manual-parallel-eligible' not in ops:
     raise SystemExit("parallel-safety-gate 必须声明共享入口与保守分类")
+preflight_start = ops.find("## `parallel-subagent-preflight`")
+preflight_end = ops.find("\n## `", preflight_start + 1)
+preflight = ops[preflight_start:preflight_end if preflight_end != -1 else None]
+for token in ("用户明确确认", "spawn_agent", "只读", "父会话", "等待", "汇总", "parallel-safety-gate.py", "manual-parallel-eligible", "parallel-guidance"):
+    if token not in preflight:
+        raise SystemExit(f"parallel-subagent-preflight 缺少必要约束：{token}")
+for forbidden in ("创建顶层任务", "自动创建 worktree", "并行写入代码"):
+    if forbidden in preflight:
+        raise SystemExit(f"parallel-subagent-preflight 不得承诺：{forbidden}")
 if '确认' not in ops:
     raise SystemExit("teardown 未要求用户确认")
 if 'initiative-lifecycle.sh' not in ops or 'lifecycle' not in ops:
@@ -180,10 +191,13 @@ if "spec-digest:" not in bridge:
     raise SystemExit("bridge 未要求 hook 注入 spec-digest 事实")
 if "停止" not in bridge or "spec-guard 未加载" not in bridge:
     raise SystemExit("bridge 未在 digest 事实缺失时明确停止")
+for token in ("parallel-subagent-preflight", "Codex 专用", "用户明确确认", "只读预检", "不等于隔离 worktree"):
+    if token not in readme:
+        raise SystemExit(f"README 缺少子智能体预检边界说明：{token}")
 PY
 }
 
-if [ -f "$OPS_SKILL" ] && [ -f "$BRIDGE_SKILL" ] && check_skills; then
+if [ -f "$OPS_SKILL" ] && [ -f "$BRIDGE_SKILL" ] && [ -f "$README" ] && check_skills; then
   ok "Codex 显式操作 skill 与 bridge digest 依赖约束正确"
 else
   bad "Codex 显式操作 skill 或 bridge digest 依赖约束错误"

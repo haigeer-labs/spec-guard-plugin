@@ -30,6 +30,8 @@ fi
 
 if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
   && [ ! -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ ! -f "$PROJECT/.agent/state.json" ] \
+  && [ ! -f "$PROJECT/spec/payment-api.md" ] && [ ! -f "$PROJECT/spec/ledger.md" ] \
+  && [ ! -f "$PROJECT/tasks/payment-api/plan.md" ] && [ ! -f "$PROJECT/tasks/ledger/plan.md" ] \
   && [ -f "$PROJECT/spec/CAPABILITY-HISTORY.json" ] \
   && [ "$(python3 "$HOOKDIR/capability-history.py" status "$PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = paused ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ] \

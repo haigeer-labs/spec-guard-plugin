@@ -1,6 +1,6 @@
 {
   "name": "spec-guard",
-  "version": "0.7.32",
+  "version": "0.7.33",
   "description": "多模块 Spec 目录约定、GitHub Issue 打通与链路检测。",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json"

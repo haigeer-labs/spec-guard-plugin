@@ -178,5 +178,9 @@ PY
   rm -f "$CREATED_EVENT"
 }
 python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
+while IFS= read -r MODULE; do
+  [ -n "$MODULE" ] || continue
+  rm -f "$PROJECT/spec/$MODULE.md" "$PROJECT/tasks/$MODULE/plan.md"
+done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
 rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 echo "已执行 $ACTION initiative=$INITIATIVE"

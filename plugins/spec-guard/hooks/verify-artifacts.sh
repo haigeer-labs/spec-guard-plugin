@@ -88,7 +88,7 @@ ACTIVE="$HAS_BLOCK"
 [ -f .agent/state.json ] && ACTIVE=true
 if [ "$ACTIVE" != true ]; then
   echo "本项目没有启用 spec-guard 约定（缺少项目说明块，且无 .agent/state.json）。"
-  echo "先跑 /setup-convention。"
+  echo "先跑 /spec-guard:setup-convention。"
   exit 2
 fi
 
@@ -262,13 +262,13 @@ mis=d.get('missing') or []
 if mis: print('BAD|能力图有 %d 个模块，其中 %d 个没落成 issue: %s' % (d['mapCount'], len(mis), ', '.join(mis)))
 else:   print('OK|能力图的 %d 个模块都已落成 issue' % d['mapCount'])
 g=d.get('goalStale')
-if g is True:  print('BAD|能力图的「## 目标」段改过，Epic 正文摘要已过期 —— /sync-map 刷新')
+if g is True:  print('BAD|能力图的「## 目标」段改过，Epic 正文摘要已过期 —— /spec-guard:sync-map 刷新')
 elif g is None: print('SKIP|目标段指纹判不了（能力图无「## 目标」段，或 state.json 没存 goalDigest）')
 else: print('OK|Epic 正文摘要与能力图目标段一致')
 rs=d.get('rowsStale') or []
-if rs: print('BAD|%s 的职责描述改过，对应 issue 正文摘要已过期 —— /sync-map 刷新' % ', '.join(rs))
+if rs: print('BAD|%s 的职责描述改过，对应 issue 正文摘要已过期 —— /spec-guard:sync-map 刷新' % ', '.join(rs))
 ex=d.get('extra') or []
-if ex: print('WARN|%s 在 state.json 里有 issue 号，但能力图里已经没有这一行 —— 弃用了就在 /sync-map 里确认，手滑删的就改回来' % ', '.join(ex))
+if ex: print('WARN|%s 在 state.json 里有 issue 号，但能力图里已经没有这一行 —— 弃用了就在 /spec-guard:sync-map 里确认，手滑删的就改回来' % ', '.join(ex))
 " 2>/dev/null || true)
     if [ -z "${DOUT}" ]; then
       skip "指纹比对没给出结论，跳过（不代表通过）"

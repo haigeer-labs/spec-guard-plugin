@@ -142,6 +142,12 @@ want fail "command-names: 模板引用不存在的命令 → 报错" \
   bash -c "cd '$TMP/cnbad' && python3 '$ROOT/scripts/check-command-names.py'"
 want pass "command-names: 引用本插件真实命令 → 放行" \
   bash -c "cd '$TMP/cngood' && python3 '$ROOT/scripts/check-command-names.py'"
+printf '跑一下 `/demo:real` 就好。\n' >> "$TMP/cngood/plugins/demo/templates/t.md"
+want pass "command-names: Claude 插件命名空间命令 → 放行" \
+  bash -c "cd '$TMP/cngood' && python3 '$ROOT/scripts/check-command-names.py'"
+printf '跑一下 `/demo:not-real` 就好。\n' >> "$TMP/cngood/plugins/demo/templates/t.md"
+want fail "command-names: 命名空间里的不存在命令 → 报错" \
+  bash -c "cd '$TMP/cngood' && python3 '$ROOT/scripts/check-command-names.py'"
 
 # 它自己声明「不查 hooks/test-*.sh」—— 这条豁免也要有用例，
 # 否则下次有人收紧范围时会静默把它去掉（这正是 0.7.3 修过的那次）

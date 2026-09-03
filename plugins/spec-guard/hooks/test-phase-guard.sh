@@ -1317,6 +1317,21 @@ else
   no_ "反：--dry-run 下动了文件"
 fi
 
+# ── Claude 插件命令必须带命名空间 ───────────────────────────
+# Claude Code 会把插件 commands 注册为 /<plugin>:<command>；裸命令会直接
+# 报 Unknown command。README、模板和 hook 的用户可执行建议必须保持一致。
+echo ""
+echo "═══ Claude 命令命名空间 ═══"
+if grep -q '/spec-guard:setup-convention' "$PLUGDIR/../../README.md" \
+   && grep -q '/spec-guard:verify-artifacts' "$PLUGDIR/../../README.md" \
+   && grep -q '/spec-guard:setup-convention' "$PLUGDIR/templates/claude-block-gitlab.md" \
+   && grep -q 'NEXT="/spec-guard:next ' "$H" \
+   && ! grep -q 'NEXT="/next ' "$H"; then
+  ok_ "Claude 命令、模板与 hook 建议都使用 /spec-guard: 命名空间"
+else
+  no_ "Claude 命令入口混用了会报 Unknown command 的裸命令"
+fi
+
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"
 [ "$FAIL" -eq 0 ] || exit 1

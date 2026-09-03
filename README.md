@@ -4,7 +4,7 @@
 **多模块 Spec 支持**、**GitHub / GitLab Issue 打通**、**链路断裂检测**。
 
 > **给 AI agent 的提示**：本 README 包含完整的手动安装步骤和需要写入 `CLAUDE.md`
-> 的原文。你可以直接照做，不必依赖 `/setup-convention` 命令。见
+> 的原文。你可以直接照做，不必依赖 `/spec-guard:setup-convention` 命令。见
 > [手动安装](#手动安装给-agent-或不想跑命令的人)。
 
 ---
@@ -13,7 +13,7 @@
 
 | 宿主 | 支持范围 | 约定与注意事项 |
 |---|---|---|
-| Claude Code | 完整支持：slash 命令、hook 与 bridge skill | `/setup-convention` 写入 `CLAUDE.md`。|
+| Claude Code | 完整支持：slash 命令、hook 与 bridge skill | 插件命令必须以 `/spec-guard:` 为前缀，例如 `/spec-guard:setup-convention`。|
 | Codex | 共享 hook、检查器与 `spec-guard-ops` 显式操作 skill | 先启用插件、在 `/hooks` 审核并信任 hook，再由 skill 写入 `AGENTS.md`。Claude slash 命令不适用于 Codex。|
 
 Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件 hook。真实宿主 smoke
@@ -127,15 +127,15 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 /plugin install spec-guard
 
 # 每个项目一次：落地约定（写进项目仓库并提交）
-/setup-convention github     # 或 gitlab / local
+/spec-guard:setup-convention github     # 或 gitlab / local
 ```
 
-想先看会做什么：`/setup-convention github --dry-run`
+想先看会做什么：`/spec-guard:setup-convention github --dry-run`
 
 **新项目请把这一步放在 `/spec` 之前。** 没落约定的项目上 spec-guard 是静默的
 （见下面「默认不生效」），`/spec` 会走 agent-skills 的默认落点，把
 `SPEC-<模块>.md` 和能力图散在项目根上 —— 那正是问题①要治的形状，而且过程中
-不会有任何提示。已经散了的项目用 `/setup-convention github --migrate` 迁回来
+不会有任何提示。已经散了的项目用 `/spec-guard:setup-convention github --migrate` 迁回来
 （先加 `--dry-run` 看会动哪些文件）。
 
 ### 为什么是两步
@@ -152,7 +152,7 @@ Tracker 分支的开关——不在仓库里，队友拉下代码后 `/plan` 还
 
 ## 手动安装（给 agent，或不想跑命令的人）
 
-`/setup-convention` 内部调用的是
+`/spec-guard:setup-convention` 内部调用的是
 [`hooks/setup-convention.sh`](plugins/spec-guard/hooks/setup-convention.sh)。
 下面是它做的全部事情。
 
@@ -165,7 +165,7 @@ mkdir -p spec tasks .agent
 ### 2. 往 `CLAUDE.md` **追加**下面这段
 
 ⚠️ **追加，不是覆盖。** 用户的 CLAUDE.md 里有他们自己的项目规范。
-前后必须包上标记，工具靠它识别 —— `/setup-convention --replace` 升级本块时
+前后必须包上标记，工具靠它识别 —— `/spec-guard:setup-convention --replace` 升级本块时
 也只认这对标记。
 
 > 下面两段与 [`templates/claude-block-*.md`](plugins/spec-guard/templates/) **逐字节一致**，
@@ -180,8 +180,8 @@ mkdir -p spec tasks .agent
 <!-- BEGIN:agent-skills-convention -->
 ## Agent Skills 集成约定
 
-> 由 `/setup-convention github` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-github-bridge` skill 里。**
-> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/setup-convention --replace` 靠它升级本块。
+> 由 `/spec-guard:setup-convention github` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-github-bridge` skill 里。**
+> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/spec-guard:setup-convention --replace` 靠它升级本块。
 
 - 任务的事实源是 **GitHub Issues**。**不要创建任何 `todo.md`**
 - 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
@@ -207,8 +207,8 @@ mkdir -p spec tasks .agent
 <!-- BEGIN:agent-skills-convention -->
 ## Agent Skills 集成约定
 
-> 由 `/setup-convention gitlab` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-gitlab-bridge` skill 里。**
-> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/setup-convention --replace` 靠它升级本块。
+> 由 `/spec-guard:setup-convention gitlab` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-gitlab-bridge` skill 里。**
+> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/spec-guard:setup-convention --replace` 靠它升级本块。
 
 - 任务的事实源是 **GitLab Issues**。**不要创建任何 `todo.md`**
 - 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
@@ -234,8 +234,8 @@ mkdir -p spec tasks .agent
 <!-- BEGIN:agent-skills-convention -->
 ## Agent Skills 集成约定
 
-> 由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
-> 保留 `<!-- BEGIN/END -->` 标记，`/setup-convention --replace` 靠它升级本块。
+> 由 `/spec-guard:setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 保留 `<!-- BEGIN/END -->` 标记，`/spec-guard:setup-convention --replace` 靠它升级本块。
 
 - 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
 - **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、
@@ -313,7 +313,7 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 | 计划文档 | `tasks/plan.md`（单例，多模块会互相覆盖） | `tasks/<module-id>/plan.md` |
 | 任务清单 | `tasks/todo.md` | github 模式下**不存在**，改为 issue |
 | 谁推进流程 | 用户自己按顺序敲命令 | hook 每轮注入状态 + 报断链 |
-| 产物对不对 | 无检测 | `/verify-artifacts` |
+| 产物对不对 | 无检测 | `/spec-guard:verify-artifacts` |
 | 交付粒度 | 未定义（`/build` 到 commit 为止） | 一个模块一条分支一个 PR，禁 squash |
 
 其余一切照旧 —— `/spec` `/plan` `/build` `/test` `/review` 的用法、
@@ -326,19 +326,22 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 
 ## 使用
 
+Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`、`/plan`、`/build`
+等 agent-skills 命令不带此前缀。Codex 请使用 `spec-guard-ops` skill，而非这些 slash 命令。
+
 | 命令 | 作用 |
 |---|---|
-| `/setup-convention [github\|gitlab\|local] [--dry-run]` | 落地约定（首次跑一次） |
-| `/setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
-| `/setup-convention … --no-claude-md` | Claude：不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
-| `/setup-convention … --no-instructions` | Codex：不写 `AGENTS.md` 声明块，仍由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
-| `/setup-convention … --migrate` | 把根上的 `SPEC-<模块>.md` / 能力图迁进 `spec/`（不加只报告，不动文件） |
-| `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
-| `/phase` | 查看当前链路状态和断链项 |
-| `/verify-artifacts` | 校验已落地的产物是否符合约定 |
-| `/sync-map` | 能力图 → 当前 tracker 的任务结构 |
-| `/next` | 取下一个可执行任务 |
-| `/deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
+| `/spec-guard:setup-convention [github\|gitlab\|local] [--dry-run]` | 落地约定（首次跑一次） |
+| `/spec-guard:setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
+| `/spec-guard:setup-convention … --no-claude-md` | Claude：不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
+| `/spec-guard:setup-convention … --no-instructions` | Codex：不写 `AGENTS.md` 声明块，仍由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
+| `/spec-guard:setup-convention … --migrate` | 把根上的 `SPEC-<模块>.md` / 能力图迁进 `spec/`（不加只报告，不动文件） |
+| `/spec-guard:teardown-convention` | 移除约定（保留你的 spec 和 plan） |
+| `/spec-guard:phase` | 查看当前链路状态和断链项 |
+| `/spec-guard:verify-artifacts` | 校验已落地的产物是否符合约定 |
+| `/spec-guard:sync-map` | 能力图 → 当前 tracker 的任务结构 |
+| `/spec-guard:next` | 取下一个可执行任务 |
+| `/spec-guard:deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
 
 ### 历史工作流
 
@@ -358,21 +361,21 @@ Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `li
 ```
 1. 编辑 spec/CAPABILITY-MAP.md 填模块划分
 2. 人工评审模块边界和 build order          ← 不能跳
-3. /sync-map      能力图落成 Epic + 模块 issue
+3. /spec-guard:sync-map      能力图落成 Epic + 模块 issue
 4. /spec          为第一个模块写 spec/<module-id>.md     ← 每个模块一次
 5. /plan          为该模块拆解任务 → sub-issue
 6. git checkout -b <type>/<module-id>       ← 一个模块一条分支
 7. /build auto    跑完整个模块（每个 task 一条带 Closes #n 的 commit）
-8. /deliver       开模块级 PR（Closes #module-issue）
+8. /spec-guard:deliver       开模块级 PR（Closes #module-issue）
 9. 合并用 --merge 或 --rebase，**不要 squash**
-   然后 /next 推进到下一模块 —— 回到第 4 步，不是回到第 1 步
+   然后 /spec-guard:next 推进到下一模块 —— 回到第 4 步，不是回到第 1 步
 ```
 
 **第 4 步以前漏写了。** 少了它，照着 README 一路做到第 3 步会得到一个
 `MAP_ONLY` 断链（「能力图已存在但一份模块 spec 都没有」）—— 文档把用户
 送进了自己的检查器要报警的状态。
 
-**3 和 4 可以互换。** `/sync-map` 只依赖能力图，不依赖任何模块 spec
+**3 和 4 可以互换。** `/spec-guard:sync-map` 只依赖能力图，不依赖任何模块 spec
 （0.7.19 起明确写进 skill）；先写第一个模块的 spec 再落库也行。
 
 **第 5 步是关键验证点**：看 `/plan` 到底建 issue 还是写 `todo.md`。

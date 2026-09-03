@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.44] - 2026-09-04
+
+- **修复 Claude Code 的插件命令入口。** Claude 当前版本会将插件命令注册为
+  `/spec-guard:<command>`；README、注入的 `CLAUDE.md` 模板和 hook 的下一步建议已统一使用
+  命名空间形式，避免显示“Unknown command”。
+
 ## [0.7.43] - 2026-09-04
 
 ### 修复

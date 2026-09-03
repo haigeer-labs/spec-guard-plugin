@@ -375,7 +375,7 @@ echo "下一步："
 echo "  1. 编辑 spec/CAPABILITY-MAP.md 填入模块划分"
 echo "  2. 人工评审模块边界和 build order（不能跳）"
 if [ "$MODE" = github ]; then
-  echo "  3. /sync-map   把能力图落成 GitHub Issue"
+  echo "  3. /spec-guard:sync-map   把能力图落成 GitHub Issue"
   echo "  4. /plan   为第一个模块拆解任务"
 elif [ "$MODE" = gitlab ]; then
   echo "  3. 加载 spec-guard:spec-gitlab-bridge，把能力图落成 GitLab Issues"

@@ -443,10 +443,11 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 |---|---|---|
 | `github` | GitHub Issues | 完整（含任务层） |
 | `github` + `issueTypes:false` | GitHub Issues（个人仓库） | 完整，仅省略 `--type` |
+| `gitlab` | GitLab Issues | 完整（含任务层；平面 Issue，`relates_to` 仅作关联） |
 | `none` | `tasks/<module>/todo.md` | 完整（上游原生路径） |
-| `other` / `gitlab` / `jira` | 你自己的系统 | **只到 plan 层** |
+| `other` / `jira` | 你自己的系统 | **只到 plan 层** |
 
-**目录约定三种模式完全一样**，只有任务层落点不同。从 `none` 迁到 `github`，
+**目录约定四种模式完全一样**，只有任务层落点不同。从 `none` 迁到 `github` 或 `gitlab`，
 `spec/` 和 `plan.md` 一个字不用改。
 
 > 不确定的话**先用 `local` 跑两周**，验证多模块拆分本身跑不跑得通。
@@ -493,8 +494,9 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 
 ## 已知限制
 
-1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 只检测到 plan 层 ——
-   0.7.7 起它们有自己的状态分支（`PLANNED (gitlab)` 等），不再被塞 GitHub 专属建议。
+1. **任务层自动化覆盖 `github`、`gitlab` 和 `none`**。GitLab 使用平面 Issue 与 Merge
+   Request；受 GitLab 15.3 API 能力限制，`relates_to` 只表示关联，不代表父子或阻塞关系。
+   `jira` 等其他 tracker 仍只检测到 plan 层。
 2. **需要 `gh` ≥ 2.94.0**。
 3. ~~`/deliver` 的 PR 环节未经端到端实测~~ —— **0.7.1 起作废，已实测。**
    在 `sentinel-livelab` 上真跑了 4 个 PR（#65 #67 #70 #72），`gh pr create` →

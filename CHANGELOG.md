@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.40] - 2026-09-04
+
+### 修复
+
+- **GitLab 支持矩阵与已知限制已同步实现。** README 现在明确 GitLab 的 Issue / Merge Request 任务流，以及 GitLab 15.3 下平面 Issue 与 `relates_to` 的边界。
+
 ## [0.7.39] - 2026-09-04
 
 ### 修复

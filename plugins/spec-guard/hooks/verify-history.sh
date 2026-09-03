@@ -28,4 +28,5 @@ for base in ("spec/history", "tasks/history", ".agent/history"):
         if base == "spec/history" and relative not in expected:
             raise SystemExit("orphan history evidence: " + relative)
 PY
+[ "$?" -eq 0 ] || exit 1
 echo "历史证据校验通过"

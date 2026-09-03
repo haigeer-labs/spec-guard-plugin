@@ -151,7 +151,7 @@ want fail "command-names: 命名空间里的不存在命令 → 报错" \
 
 # tracker 路由命令不能只是描述「调用 bridge」：真实 Claude 会把这种短句当成
 # 背景信息而静默结束。必须点明加载 skill、执行哪项操作、以及写入前的确认边界。
-if grep -q '加载对应 bridge skill 后完整执行其「操作一：sync-map」' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
+if grep -q 'GitLab 使用确定性脚本' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
    && grep -q '不要只复述路由规则或静默结束' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
    && grep -q '完整执行其「操作三：next」' "$ROOT/plugins/spec-guard/commands/next.md" \
    && grep -q '完整执行其「操作四：deliver」' "$ROOT/plugins/spec-guard/commands/deliver.md" \

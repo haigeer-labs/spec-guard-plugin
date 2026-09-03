@@ -175,6 +175,27 @@ mkdir -p tasks/identity; printf '## Task List\n> Tasks tracked in GitLab Issues:
 has "GitLab 模块 Issue 映射进入本地指纹校验" "能力图的 1 个模块都已落成 issue"
 has "GitLab plan 的 Issue 索引不是 checklist" "Task List 不是 checklist"
 
+# GitLab 远端层必须逐项确认 state 记录的 initiative / module Issue 仍可读取。
+GLAB_VERIFY_BIN="$TMP/glab-verify-bin"; mkdir -p "$GLAB_VERIFY_BIN"
+cat > "$GLAB_VERIFY_BIN/glab" <<'STUB'
+#!/bin/bash
+case "$*" in
+  "auth status") exit 0 ;;
+  "repo view --output json") echo '{"path_with_namespace":"group/project"}' ;;
+  "api projects/group%2Fproject") echo '{"id":42}' ;;
+  "api projects/42/issues/7") echo '{"iid":7,"state":"opened"}' ;;
+  "api projects/42/issues/5") echo '{"iid":5,"state":"opened"}' ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$GLAB_VERIFY_BIN/glab"
+base; map identity; touch spec/identity.md
+echo '{"tracker":"gitlab","activeModule":"identity","initiative":{"issue":7},"modules":{"identity":{"issue":5}}}' > .agent/state.json
+mkdir -p tasks/identity; printf '## Task List\n> Tasks tracked in GitLab Issues: #11\n' > tasks/identity/plan.md
+OLD_VERIFY_PATH="$PATH"; export PATH="$GLAB_VERIFY_BIN:$PATH"
+has "GitLab 远端层校验 state 中的 initiative 与模块 Issue" "GitLab state 记录的 2 条 Issue 都可读取"
+export PATH="$OLD_VERIFY_PATH"
+
 # ── 降级：state.json 缺失不崩，靠 remote 推断 ──
 base; map identity; touch spec/identity.md
 rm -f .agent/state.json

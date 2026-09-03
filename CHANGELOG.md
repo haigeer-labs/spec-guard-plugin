@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.38] - 2026-09-04
+
+### 修复
+
+- **GitLab 的下一步不再被误导为不受支持。** `PLANNED (gitlab)` 现在会路由到
+  `spec-gitlab-bridge`，并以 state 中的模块 Issue 与 GitLab `opened` 状态作为进入
+  `/build` 的判据。
+
 ## [0.7.37] - 2026-09-03
 
 ### 新增

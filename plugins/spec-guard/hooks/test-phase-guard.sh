@@ -123,6 +123,12 @@ gl() {  # $1=state.json
 }
 gl '{"tracker":"gitlab","activeModule":"x","modules":{"x":{"issue":42}}}'
 chk "gitlab 齐全 → PLANNED (gitlab)" "PLANNED (gitlab)|断链0"
+GITLAB_PHASE="$(CLAUDE_PROJECT_DIR="$TMP/r" bash "$H" 2>/dev/null)"
+if grep -q '加载 spec-gitlab-bridge' <<<"$GITLAB_PHASE"; then
+  printf '  ✅ GitLab PLANNED 路由到 spec-gitlab-bridge\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ GitLab PLANNED 未路由到 spec-gitlab-bridge\n'; FAIL=$((FAIL+1))
+fi
 
 gl '{"tracker":"jira","activeModule":"x","modules":{"x":{"issue":"AUTH-7"}}}'
 chk "jira 齐全 → PLANNED (jira)" "PLANNED (jira)|断链0"

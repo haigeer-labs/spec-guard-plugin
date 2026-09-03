@@ -149,6 +149,17 @@ printf '跑一下 `/demo:not-real` 就好。\n' >> "$TMP/cngood/plugins/demo/tem
 want fail "command-names: 命名空间里的不存在命令 → 报错" \
   bash -c "cd '$TMP/cngood' && python3 '$ROOT/scripts/check-command-names.py'"
 
+# tracker 路由命令不能只是描述「调用 bridge」：真实 Claude 会把这种短句当成
+# 背景信息而静默结束。必须点明加载 skill、执行哪项操作、以及写入前的确认边界。
+if grep -q '加载对应 bridge skill 后完整执行其「操作一：sync-map」' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
+   && grep -q '不要只复述路由规则或静默结束' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
+   && grep -q '完整执行其「操作三：next」' "$ROOT/plugins/spec-guard/commands/next.md" \
+   && grep -q '完整执行其「操作四：deliver」' "$ROOT/plugins/spec-guard/commands/deliver.md"; then
+  printf '  ✅ tracker 路由命令强制加载 bridge 并禁止静默结束\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ tracker 路由命令可能只复述规则后静默结束\n'; FAIL=$((FAIL+1))
+fi
+
 # 它自己声明「不查 hooks/test-*.sh」—— 这条豁免也要有用例，
 # 否则下次有人收紧范围时会静默把它去掉（这正是 0.7.3 修过的那次）
 mkc "$TMP/cnskip" real

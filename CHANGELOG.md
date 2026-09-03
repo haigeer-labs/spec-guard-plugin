@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.51] - 2026-09-04
+
+- **修复已归档项目的 phase 误报。** 当合法 capability history 证明所有 Initiative
+  都已终态结束时，遗留 module spec 现显示为 `IDLE (已归档)`；没有有效终态账本的
+  缺失 state 仍会报断链。
+
 ## [0.7.50] - 2026-09-04
 
 - **新增 Claude Desktop MCPB 入口。** 以官方 MCP Bundle 分发只读 `phase`、验证、history

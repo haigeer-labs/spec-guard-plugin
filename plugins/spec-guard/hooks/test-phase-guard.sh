@@ -72,6 +72,16 @@ chk "只有能力图" "MAP_ONLY|断链1"
 base; mkdir -p spec; touch spec/CAPABILITY-MAP.md spec/a.md
 chk "有 spec 但无 state.json" "SPECED|断链1"
 
+# 只有已验证的终态 history 才能证明这是归档后的遗留 spec；无 history 的同形项目
+# 仍必须报断链，不能因这条豁免掩盖丢失 state 的真实项目。
+base; mkdir -p spec; touch spec/a.md
+printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"modules":[]}}]}]}' > spec/CAPABILITY-HISTORY.json
+chk "终态 history + 遗留 spec → 已归档，不报断链" "IDLE (已归档)|断链0"
+
+base; mkdir -p spec; touch spec/a.md
+printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"active","title":"Active","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/active/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}]}' > spec/CAPABILITY-HISTORY.json
+chk "活跃 history + 遗留 spec → 仍报断链" "SPECED|断链1"
+
 base; touch SPEC.md; mkdir -p spec; touch spec/a.md
 chk "根目录SPEC + 无 state.json" "SPECED|断链2"
 

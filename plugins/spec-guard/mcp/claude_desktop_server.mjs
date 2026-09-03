@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const serverInfo = { name: "spec-guard", version: "0.7.50" };
+const serverInfo = { name: "spec-guard", version: "0.7.51" };
 const tools = [
   ["phase", "Read the current Spec Guard phase for a project."],
   ["verify", "Read-only validation of Spec Guard artifacts."],

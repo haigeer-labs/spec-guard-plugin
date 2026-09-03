@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "spec-guard",
-  "version": "0.7.50",
+  "version": "0.7.51",
   "description": "Read-only Spec Guard phase, verification, and tracker synchronization previews for Claude Desktop.",
   "author": {
     "name": "yizhongkaimail-collab"

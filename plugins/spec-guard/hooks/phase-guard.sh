@@ -261,6 +261,28 @@ for f in spec/*.md; do
   SPEC_COUNT=$((SPEC_COUNT + 1))
 done
 
+# 生命周期完成后，当前 map/state 会移入 history，但老版本留下的 module spec 可能
+# 仍在根 spec/。只有账本本身合法、至少有一条 initiative、且每条都处于终态时，才能
+# 把这种形状判为已归档；不能因为「看见 history 文件」就吞掉真正丢失 state 的断链。
+HAS_ARCHIVED_HISTORY=false
+LEDGER="spec/CAPABILITY-HISTORY.json"
+if [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -gt 0 ] && [ ! -f "$STATE" ] \
+   && [ -f "$LEDGER" ] && [ -f "${SELF_DIR}/hooks/capability-history.py" ] \
+   && command -v python3 >/dev/null 2>&1 \
+   && python3 "${SELF_DIR}/hooks/capability-history.py" validate "$LEDGER" >/dev/null 2>&1 \
+   && python3 - "$LEDGER" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    initiatives = json.load(handle).get("initiatives", [])
+terminal = {"completed", "abandoned", "superseded"}
+raise SystemExit(0 if initiatives and all(item["events"][-1]["type"] in terminal for item in initiatives) else 1)
+PY
+then
+  HAS_ARCHIVED_HISTORY=true
+fi
+
 # 违规：spec 放错位置
 if ls -1 SPEC*.md >/dev/null 2>&1; then
   broken "根目录有 SPEC*.md —— /build 的路径规则只认 spec/ 通配，挪进 spec/"
@@ -462,6 +484,10 @@ elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
   # （/sync-map 是 github 专属），所以这是本地模式跑完 /spec 的必经状态。
   PHASE="IDLE (无活跃模块)"
   NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
+
+elif [ "$HAS_ARCHIVED_HISTORY" = true ]; then
+  PHASE="IDLE (已归档)"
+  NEXT="当前没有活跃 initiative；/spec 开始新的一轮"
 
 elif [ -z "$MODULE" ]; then
   # 到这里：有 spec、activeModule 为空、且 state.json **不存在**

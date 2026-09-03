@@ -13,13 +13,13 @@
 
 ## Task List
 
-> Tasks tracked in GitHub Issues #37 after approval.
+> Tasks tracked in GitHub Issues #37.
 
-### Proposed tasks
+### Tasks
 
-1. 增加 GitLab bridge skill，定义安全的 `glab` 命令和能力探测。
-2. 让 setup/路由入口在 GitLab 中创建平面 Issue 与可审计关联。
-3. 用 mGit 项目执行 Issue、关联、MR、清理的真实 E2E 回归。
+- #43 定义 GitLab bridge 命令与能力降级
+- #44 接入 GitLab 平面 Issue 与关联路由（blocked by #43）
+- #45 执行 GitLab workflow 真实 E2E 回归（blocked by #44）
 
 ## Verification
 

@@ -118,6 +118,17 @@ python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
 只有用户明确要求并确认联网刷新后才追加 `--refresh`。缺失边界声明或任意冲突必须报告
 `needs-review`/`sequential-required`，不得推荐自动并行。
 
+## `parallel-guidance`
+
+只为 `manual-parallel-eligible` 输出人工 worker 命名与汇合清单，不创建、管理或回收
+worktree、任务、分支或 Issue：
+
+```bash
+python3 "$ROOT/hooks/parallel-guidance.py" --project "$PROJECT"
+```
+
+用户明确确认联网刷新后才追加 `--refresh`；其余结果仅说明为何应人工审查或串行。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

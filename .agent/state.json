@@ -1,0 +1,18 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "Claude Desktop MCP Adapter",
+    "issue": 70,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "db3fdc7c9840"
+  },
+  "issueTypes": false,
+  "modules": {
+    "claude-desktop-mcp": {
+      "issue": 71,
+      "rowDigest": "45982ff20737"
+    }
+  },
+  "activeModule": "claude-desktop-mcp",
+  "updatedAt": "2026-09-04"
+}

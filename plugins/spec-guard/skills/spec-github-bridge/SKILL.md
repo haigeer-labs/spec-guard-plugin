@@ -323,10 +323,15 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
 筛选规则（按顺序）。**除第 3 条外全部只用上面这一次响应，不必逐个 task 再打 API**：
 
 1. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
-2. 排除 `issue_dependencies_summary.blocked_by > 0` —— 这个字段数的就是
-   **未关闭**的阻塞者，已关闭的不计（实测：某 task `total_blocked_by=1` 而
-   `blocked_by=0`，因为那个前置 issue 已经关了）。答案已经在手里，
-   不要为此逐个 task 打 `dependencies/blocked_by`
+2. `issue_dependencies_summary.blocked_by > 0` 时直接排除；它为 `0` **不能当作
+   无阻塞的证明**。GitHub 在私有仓库的实测中会让该汇总保持 `0`，即使
+   `dependencies/blocked_by` 已返回开放的阻塞 task。对其余候选逐个确认：
+
+       gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by" \
+         --jq '[.[] | select(.state == "open")] | length'
+
+   结果大于 0 就排除。已关闭的阻塞者不计；汇总字段只是减少 API 调用的优化，
+   不能取代这个端点。
 3. **排除本分支已经做完的** —— 模块级 PR 下 task issue 要到 PR 合入默认分支
    才关，做完的 task 在**整个模块周期里一直是 open**，前两条一条都挡不住它。
    少了这一条，`/next` 会把上一轮刚做完的那个原样再取出来做第二遍。

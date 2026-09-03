@@ -43,14 +43,43 @@ print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
 #   实测出处：本插件作者自己的所有仓库都用 `github-collab:` 别名。
 #   反过来也不能松成 `*github*` —— `gitlab.com/me/github-tools.git`
 #   的路径里含 github，那是仓库名不是宿主。先剥到 host 再判。
-is_github_remote() {  # $1=remote url
+remote_host() {  # $1=remote url
   local h="$1"
   h="${h#*://}"; h="${h#*@}"; h="${h%%/*}"; h="${h%%:*}"
+  printf '%s\n' "$h"
+}
+
+is_github_remote() {  # $1=remote url
+  local h
+  h=$(remote_host "$1")
   case "$h" in *github*) return 0 ;; *) return 1 ;; esac
 }
 
+# GitLab.com 可从 host 无歧义判定；自建实例不能假定 host 含 gitlab（例如
+# mgit.lgroup.co），只接受 glab 对当前仓库的成功只读识别。hook 每轮执行，
+# 所以把探测限制在两秒内，失败就由调用者安全回退到 none。
+is_gitlab_remote() {  # $1=remote url
+  local h pid waited rc
+  h=$(remote_host "$1")
+  case "$h" in gitlab.com|*.gitlab.com) return 0 ;; esac
+  command -v glab >/dev/null 2>&1 || return 1
+  glab repo view >/dev/null 2>&1 &
+  pid=$!; waited=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$waited" -ge 2 ]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  wait "$pid"; rc=$?
+  return "$rc"
+}
+
 # ── tracker 模式判定 ───────────────────────────────────────
-#   显式声明优先；否则按 git remote 推断；都没有则 none（本地 todo.md 模式）
+#   显式声明优先；否则按 git remote 推断；不确定则 none（本地模式）。
 detect_tracker() {
   local t
   t=$(jread "$STATE" "d.get('tracker')")
@@ -58,7 +87,8 @@ detect_tracker() {
   local r; r=$(git remote get-url origin 2>/dev/null || echo "")
   if [ -z "$r" ]; then echo "none"
   elif is_github_remote "$r"; then echo "github"
-  else echo "other"; fi
+  elif is_gitlab_remote "$r"; then echo "gitlab"
+  else echo "none"; fi
 }
 
 # ── 只在启用了本约定的仓库生效 ──────────────────────────────

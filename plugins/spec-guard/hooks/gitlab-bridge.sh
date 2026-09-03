@@ -3,13 +3,14 @@
 set -euo pipefail
 
 ACTION=${1:-}; shift || true
-case "$ACTION" in issue|relate|mr) ;; *) echo 'usage: gitlab-bridge.sh <issue|relate|mr> ...' >&2; exit 2;; esac
+case "$ACTION" in issue|relate|mr|merge) ;; *) echo 'usage: gitlab-bridge.sh <issue|relate|mr|merge> ...' >&2; exit 2;; esac
 command -v glab >/dev/null || { echo 'glab 未安装' >&2; exit 1; }
 if [ "${1:-}" = --help ]; then
   case "$ACTION" in
     issue) glab issue create --help ;;
     relate) echo 'relate: <project-id> <source-iid> <target-iid>' ;;
     mr) glab mr create --help ;;
+    merge) echo 'merge: --repo <group/project> --iid <iid>' ;;
   esac
   exit 0
 fi
@@ -29,5 +30,19 @@ case "$ACTION" in
       && [ "$5" = --target-branch ] && [ "$7" = --title ] \
       || { echo 'mr 仅接受 --repo --source-branch --target-branch --title' >&2; exit 2; }
     glab repo view >/dev/null; glab mr create "$@"
+    ;;
+  merge)
+    [ "$#" -eq 4 ] && [ "$1" = --repo ] && [ "$3" = --iid ] && case "$4" in *[!0-9]*|'') false;; *) true;; esac \
+      || { echo 'merge 仅接受 --repo <group/project> --iid <iid>' >&2; exit 2; }
+    repo="$2"; iid="$4"
+    glab repo view >/dev/null
+    if glab mr merge "$iid" --repo "$repo" --yes --remove-source-branch; then exit 0; fi
+    status="$(glab api "projects/${repo//\//%2F}/merge_requests/$iid" | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+print("retry" if d.get("state")=="opened" and d.get("merge_status")=="can_be_merged" and not d.get("has_conflicts") else "stop")
+')" || exit 1
+    [ "$status" = retry ] || { echo 'merge 未满足有限重试条件' >&2; exit 1; }
+    glab mr merge "$iid" --repo "$repo" --yes --remove-source-branch
     ;;
 esac

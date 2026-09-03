@@ -71,6 +71,16 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 
 始终在输出中标明 `relates_to` 是降级关联。未知 API 版本或 404 时停止并说明该能力不可用。
 
+对刚创建的 MR，GitLab 15.3 可能短暂返回 422，但随后状态仍为 `opened`、
+`can_be_merged` 且无冲突。只能通过受限入口处理这一情形：
+
+```bash
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" merge --repo <group/project> --iid <iid>
+```
+
+它只会在首次失败后读取远端状态，并且**仅**在上述三个条件同时满足时重试一次；
+其他失败不得重试或绕过保护。
+
 ## 操作二：`/plan` 后任务落库
 
 `plan.md` 是设计与实现步骤，不是远端 task 的第二份副本。对每个可独立执行的步骤创建

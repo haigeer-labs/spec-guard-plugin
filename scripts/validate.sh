@@ -82,6 +82,14 @@ echo "═══ History migration regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-history-migration.sh || F=1
 echo ""
 
+echo "═══ GitLab sync-map regression ═══"
+/bin/bash plugins/spec-guard/hooks/test-sync-map-gitlab.sh || F=1
+echo ""
+
+echo "═══ GitLab bridge regression ═══"
+/bin/bash plugins/spec-guard/hooks/test-gitlab-bridge.sh || F=1
+echo ""
+
 echo "═══ Codex 适配器回归 ═══"
 /bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
 echo ""

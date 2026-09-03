@@ -30,7 +30,12 @@ for row in rows[2:]:
     cells=[x.strip() for x in row.strip('|').split('|')]
     if len(cells)>=2 and not cells[0].startswith('example-'): mods.append({'id':cells[0], 'responsibility':cells[1]})
 if not mods: raise SystemExit('❌ 能力图没有真实模块')
-print(json.dumps({'title':title.group(1).strip(),'goal':goal.group(1).strip(),'modules':mods},ensure_ascii=False))
+order_line=re.search(r'^Build order:\s*(.+)$', text, re.M|re.I)
+if not order_line: raise SystemExit('❌ 能力图缺少 Build order')
+order=[item.strip().strip('`') for item in re.split(r'\s*(?:→|->)\s*', order_line.group(1).strip())]
+by_id={item['id']: item for item in mods}
+if len(order)!=len(mods) or set(order)!=set(by_id): raise SystemExit('❌ Build order 必须恰好包含每个模块一次')
+print(json.dumps({'title':title.group(1).strip(),'goal':goal.group(1).strip(),'modules':[by_id[item] for item in order]},ensure_ascii=False))
 PY
 )
 
@@ -45,14 +50,27 @@ fi
 
 initiative_iid=$(glab api -X POST "projects/$pid/issues" -f "title=$(printf '%s' "$plan" | python3 -c 'import json,sys; print(json.load(sys.stdin)["title"])')" -f "description=$(printf '%s' "$plan" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["goal"]+"\n\n<!-- spec-guard-sync:initiative -->")')" | python3 -c 'import json,sys; print(json.load(sys.stdin)["iid"])')
 
+python3 - "$initiative_iid" "$plan" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path('.agent/state.json'); d=json.loads(p.read_text()); plan=json.loads(sys.argv[2])
+d['initiative']['title']=plan['title']; d['initiative']['issue']=int(sys.argv[1])
+p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+PY
+
 printf '%s' "$plan" | python3 -c 'import json,sys; [print(m["id"]+"\t"+m["responsibility"]) for m in json.load(sys.stdin)["modules"]]' | while IFS=$'\t' read -r mid responsibility; do
   iid=$(glab api -X POST "projects/$pid/issues" -f "title=$mid" -f "description=$responsibility\n\nInitiative: #$initiative_iid\n<!-- spec-guard-sync:module:$mid -->" | python3 -c 'import json,sys; print(json.load(sys.stdin)["iid"])')
   python3 - "$mid" "$iid" "$initiative_iid" <<'PY'
 import json, pathlib, sys
 p=pathlib.Path('.agent/state.json'); d=json.loads(p.read_text())
-d['initiative']['issue']=int(sys.argv[3]); d['modules'][sys.argv[1]]={'issue':int(sys.argv[2])}; d['activeModule']=sys.argv[1]
+d['modules'][sys.argv[1]]={'issue':int(sys.argv[2])}
 p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
 PY
   echo "✅ 创建模块 Issue #${iid}: $mid"
 done
+python3 - "$plan" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path('.agent/state.json'); d=json.loads(p.read_text()); plan=json.loads(sys.argv[1])
+d['activeModule']=plan['modules'][0]['id']
+p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+PY
 echo "✅ 创建 initiative #${initiative_iid}，并写回 .agent/state.json"

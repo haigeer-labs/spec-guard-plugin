@@ -1,0 +1,18 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "GitLab Workflow Hardening",
+    "issue": 90,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "e01af1cc4c07"
+  },
+  "issueTypes": false,
+  "modules": {
+    "gitlab-workflow-hardening": {
+      "issue": 91,
+      "rowDigest": "74165742bbd4"
+    }
+  },
+  "activeModule": "gitlab-workflow-hardening",
+  "updatedAt": ""
+}

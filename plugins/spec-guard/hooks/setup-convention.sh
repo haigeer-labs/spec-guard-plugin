@@ -368,6 +368,9 @@ echo "  2. 人工评审模块边界和 build order（不能跳）"
 if [ "$MODE" = github ]; then
   echo "  3. /sync-map   把能力图落成 GitHub Issue"
   echo "  4. /plan   为第一个模块拆解任务"
+elif [ "$MODE" = gitlab ]; then
+  echo "  3. 加载 spec-guard:spec-gitlab-bridge，把能力图落成 GitLab Issues"
+  echo "  4. /plan   为第一个模块拆解任务到 GitLab Issues"
 else
   echo "  3. /spec       为第一个模块生成 spec/<module-id>.md"
   echo "  4. /plan   拆解任务到 tasks/<module-id>/todo.md"

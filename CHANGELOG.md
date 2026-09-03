@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.36] - 2026-09-03
+
+- 修复 GitLab 初始化后的下一步提示，改为 GitLab Issues 与 GitLab bridge 流程。
+
 ## [0.7.35] - 2026-09-03
 
 - 新增 `setup-convention gitlab --host=codex`，可在 GitLab 项目初始化 Codex 约定。

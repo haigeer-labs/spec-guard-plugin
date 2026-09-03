@@ -129,6 +129,31 @@ python3 "$ROOT/hooks/parallel-guidance.py" --project "$PROJECT"
 
 用户明确确认联网刷新后才追加 `--refresh`；其余结果仅说明为何应人工审查或串行。
 
+## `parallel-subagent-preflight`
+
+这是 **Codex 专用的只读预检**，不是并行代码实现。先运行 safety gate：
+
+```bash
+python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
+```
+
+只在报告对目标候选组返回 `manual-parallel-eligible`、当前会话提供原生 `spawn_agent`
+工具、且用户**明确确认**要开启子智能体预检时，父会话才可以为每个模块调用一次
+`spawn_agent`。每个任务名使用 `sg-preflight-<module-id>`，提示首行使用
+`SG 自动并行预检｜<module-id>`，并要求子智能体：
+
+- 只读检查模块 spec、`Parallel Boundary`、依赖、实施风险与测试范围；
+- 不修改文件，不运行会写入的测试，不提交、不推送；
+- 不运行 `git worktree`、`git branch`、`git merge`、`git push`，也不创建 Issue、PR 或改 state；
+- 用简短结构化结果报告边界冲突、待澄清项和建议的串行/人工 worktree 下一步。
+
+父会话必须等待全部子智能体并汇总结果，明确说明“通过预检不等于授权并行写入”。
+子智能体共享父会话工作目录，不能被描述为隔离 worktree。
+
+若 safety gate 不合格、用户未确认、或原生 `spawn_agent` 工具不可用，停止预检：不模拟
+子智能体、不启动独立聊天，报告降级原因并运行既有 `parallel-guidance` 生成用户手动管理的
+隔离 worktree 指引。任何 `--refresh` 仍需用户明确确认后才可透传。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

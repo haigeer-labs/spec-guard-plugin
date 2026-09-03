@@ -2,7 +2,18 @@
 description: 把评审通过的能力图落成当前 tracker 的任务结构
 allowed-tools: Bash, Read, Write
 ---
-立即读取 `.agent/state.json` 的 `tracker`，并**加载对应 bridge skill 后完整执行其「操作一：sync-map」**：
+立即读取 `.agent/state.json` 的 `tracker`。GitLab 使用确定性脚本，不依赖模型转述 bridge：
+
+```bash
+tracker=$(python3 -c 'import json; print(json.load(open(".agent/state.json")).get("tracker", ""))')
+if [ "$tracker" = gitlab ]; then
+  bash "${CLAUDE_PLUGIN_ROOT}/hooks/sync-map-gitlab.sh" $ARGUMENTS
+fi
+```
+
+不带参数时脚本只列出将创建的 Issue；用户确认后以 `--confirm` 重跑才会写入。
+
+其他 tracker 的路由：
 
 - `github`：`spec-github-bridge`
 - `gitlab`：`spec-gitlab-bridge`

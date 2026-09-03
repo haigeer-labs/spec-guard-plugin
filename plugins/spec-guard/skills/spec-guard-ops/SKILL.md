@@ -104,7 +104,19 @@ python3 "$ROOT/hooks/parallel-readiness.py" --project "$PROJECT" --refresh
 ```
 
 刷新失败时报告失败；不要回退成“最新”结论。无论哪种结果，都提示用户下一步需由
-`parallel-safety-gate` 审查路径、接口、迁移、配置和测试资源冲突。
+parallel-safety-gate 审查路径、接口、迁移、配置和测试资源冲突。
+
+## `parallel-safety-gate`
+
+这是显式、只读的安全门；`manual-parallel-eligible` 不会自动创建或回收任何 worktree、
+任务、分支、Issue 或子代理，也不改 state、`/next` 或 hook：
+
+```bash
+python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
+```
+
+只有用户明确要求并确认联网刷新后才追加 `--refresh`。缺失边界声明或任意冲突必须报告
+`needs-review`/`sequential-required`，不得推荐自动并行。
 
 ## `teardown`
 

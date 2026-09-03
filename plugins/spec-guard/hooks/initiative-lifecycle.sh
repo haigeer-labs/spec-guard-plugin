@@ -157,10 +157,9 @@ event = {
 }
 json.dump(event, open(event_path, "w", encoding="utf-8"))
 PY
-[ -f "$LEDGER" ] || {
-  CREATED_EVENT="$(mktemp)"
-  trap 'rm -f "$EVENT" "$CREATED_EVENT"' EXIT
-  python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
+CREATED_EVENT="$(mktemp)"
+trap 'rm -f "$EVENT" "$CREATED_EVENT"' EXIT
+python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
 import json
 import sys
 
@@ -174,9 +173,8 @@ json.dump(
     open(created_path, "w", encoding="utf-8"),
 )
 PY
-  python3 "$HISTORY" create "$LEDGER" "$CREATED_EVENT" || exit 1
-  rm -f "$CREATED_EVENT"
-}
+python3 "$HISTORY" ensure "$LEDGER" "$CREATED_EVENT" || exit 1
+rm -f "$CREATED_EVENT"
 python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
 while IFS= read -r MODULE; do
   [ -n "$MODULE" ] || continue

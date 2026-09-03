@@ -168,6 +168,13 @@ base; map identity; touch spec/identity.md
 echo '{"tracker":"gitlab","activeModule":""}' > .agent/state.json
 has "非 GitHub tracker 跳过 GitHub 层" "不涉及 GitHub"
 
+# GitLab 与 GitHub 都把模块 Issue 映射写进 state；本地指纹不能只在 GitHub 下检查。
+base; map identity; touch spec/identity.md
+echo '{"tracker":"gitlab","activeModule":"identity","modules":{"identity":{"issue":5}}}' > .agent/state.json
+mkdir -p tasks/identity; printf '## Task List\n> Tasks tracked in GitLab Issues: #11\n' > tasks/identity/plan.md
+has "GitLab 模块 Issue 映射进入本地指纹校验" "能力图的 1 个模块都已落成 issue"
+has "GitLab plan 的 Issue 索引不是 checklist" "Task List 不是 checklist"
+
 # ── 降级：state.json 缺失不崩，靠 remote 推断 ──
 base; map identity; touch spec/identity.md
 rm -f .agent/state.json
@@ -852,7 +859,7 @@ hasnt "反：老 state.json 没存指纹 → 不报职责过期"   "的职责描
 
 base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架' 'payments|收款'
 echo '{"tracker":"none","activeModule":"identity","modules":{}}' > .agent/state.json
-has   "反：tracker=none → 整段 skip，不发绿灯也不报" "指纹只由 /sync-map 写"
+has   "反：tracker=none → 整段 skip，不发绿灯也不报" "当前 tracker 不写远端映射指纹"
 
 base; dmap "${G}" 'identity|登录注册' 'catalog|商品上架' 'payments|收款'
 echo '{"tracker":"github","activeModule":"identity","modules":{}}' > .agent/state.json
@@ -886,7 +893,7 @@ has "正：SSH host 别名 github-collab: 认成 github" "tracker=github"
 base; map identity
 echo '{"tracker":"","modules":{},"activeModule":""}' > .agent/state.json
 git remote add origin https://gitlab.com/me/github-tools.git 2>/dev/null
-has "反：路径里的 github 不算宿主 → tracker=other" "tracker=other"
+has "正：gitlab.com 路径里的 github 不影响 GitLab 判定" "tracker=gitlab"
 
 echo ""
 echo "  总计 ${PASS} 通过 / ${FAIL} 失败"

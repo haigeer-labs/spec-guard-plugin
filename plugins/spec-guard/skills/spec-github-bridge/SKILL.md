@@ -323,15 +323,16 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
 筛选规则（按顺序）。**除第 3 条外全部只用上面这一次响应，不必逐个 task 再打 API**：
 
 1. 排除 `state != "open"` —— REST 返回**所有状态**，不像 `gh issue list` 有 `--state`
-2. `issue_dependencies_summary.blocked_by > 0` 时直接排除；它为 `0` **不能当作
-   无阻塞的证明**。GitHub 在私有仓库的实测中会让该汇总保持 `0`，即使
-   `dependencies/blocked_by` 已返回开放的阻塞 task。对其余候选逐个确认：
+2. 先得到本分支已经完成的 task 编号集合（第 3 条的 `git log` 命令），记为
+   `DONE`。`issue_dependencies_summary.blocked_by > 0` 时也不能直接排除：模块级
+   PR 尚未合入时，前置 task 虽仍在 GitHub 上 open，却可能已在 `DONE` 中。对每个
+   候选查询开放阻塞者，并只在存在**不在 `DONE` 中**的开放阻塞者时排除：
 
        gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by" \
-         --jq '[.[] | select(.state == "open")] | length'
+         --jq '[.[] | select(.state == "open") | .number]'
 
-   结果大于 0 就排除。已关闭的阻塞者不计；汇总字段只是减少 API 调用的优化，
-   不能取代这个端点。
+   已关闭的阻塞者和 `DONE` 中的阻塞者都不计；其余开放阻塞者才排除。汇总字段
+   只是减少 API 调用的优化，不能取代这个端点。
 3. **排除本分支已经做完的** —— 模块级 PR 下 task issue 要到 PR 合入默认分支
    才关，做完的 task 在**整个模块周期里一直是 open**，前两条一条都挡不住它。
    少了这一条，`/next` 会把上一轮刚做完的那个原样再取出来做第二遍。
@@ -354,7 +355,7 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
          | grep -oE '[0-9]+' | sort -u
 
    要的是**号的集合**，不是个数 —— 个数只够回答「模块做完没有」。
-   拿这组号和 sub_issues **求交集**后排除；分支上出现的、不属于本模块的号
+   拿这组号和 sub_issues **求交集**得到 `DONE`，排除 `DONE` 中的候选；分支上出现的、不属于本模块的号
    （顺手修的别的 bug）本来就不在 sub_issues 里，交集会自动丢掉。
 
    **`<base>` 取不到（既没有 main 也没有 master）时这条规则不排除任何东西。**

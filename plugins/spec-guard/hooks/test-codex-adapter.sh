@@ -136,7 +136,7 @@ import sys
 ops = open(sys.argv[1], encoding="utf-8").read()
 bridge = open(sys.argv[2], encoding="utf-8").read()
 
-for operation in ("setup", "phase", "verify", "verify-history", "history-migration", "teardown", "lifecycle", "sync-map", "next", "deliver"):
+for operation in ("setup", "phase", "verify", "verify-history", "history-migration", "parallel-readiness", "teardown", "lifecycle", "sync-map", "next", "deliver"):
     if ops.count(f"`{operation}`") != 1:
         raise SystemExit(f"操作 {operation} 必须恰好声明一次")
 
@@ -156,6 +156,12 @@ if 'setup-convention.sh" github --host=codex' not in ops:
     raise SystemExit("setup 未显式使用 --host=codex")
 if 'phase-guard.sh"' not in ops or 'verify-artifacts.sh"' not in ops:
     raise SystemExit("phase/verify 未调用共享只读检查脚本")
+if 'parallel-readiness.py' not in ops:
+    raise SystemExit("parallel-readiness 未调用共享分析脚本")
+if '--refresh' not in ops or '用户确认' not in ops:
+    raise SystemExit("parallel-readiness 未要求用户确认 --refresh")
+if 'UserPromptSubmit' in ops:
+    raise SystemExit("parallel-readiness 不得接入 UserPromptSubmit hook")
 if '确认' not in ops:
     raise SystemExit("teardown 未要求用户确认")
 if 'initiative-lifecycle.sh' not in ops or 'lifecycle' not in ops:

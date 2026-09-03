@@ -2,6 +2,12 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.32] - 2026-09-03
+
+### 修复
+
+- **新 initiative 的首次归档可自举历史账本。** 当 `pause`、`complete`、`abandon` 或 `supersede` 发现账本尚未建立时，lifecycle 会从当前完整产物先原子创建 `created` checkpoint，再追加目标事件；`resume` 仍拒绝无历史账本的工作区，避免凭空恢复。
+
 ## [0.7.31] - 2026-09-03
 
 ### 修复

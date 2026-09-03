@@ -34,9 +34,8 @@ if [ "$DRY" = true ]; then
   exit 0
 fi
 
-[ -f "$LEDGER" ] || { echo "缺少 spec/CAPABILITY-HISTORY.json；先创建账本后才能暂停。" >&2; exit 1; }
-
 if [ "$ACTION" = resume ]; then
+  [ -f "$LEDGER" ] || { echo "缺少 spec/CAPABILITY-HISTORY.json；无法恢复未归档的 initiative。" >&2; exit 1; }
   if [ -e "$PROJECT/spec/CAPABILITY-MAP.md" ] || [ -e "$PROJECT/.agent/state.json" ]; then
     [ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ -f "$PROJECT/.agent/state.json" ] || { echo "当前工作区不完整，无法暂停后恢复" >&2; exit 1; }
     ACTIVE="$(python3 "$HISTORY" active "$LEDGER")" || exit 1
@@ -158,6 +157,26 @@ event = {
 }
 json.dump(event, open(event_path, "w", encoding="utf-8"))
 PY
+[ -f "$LEDGER" ] || {
+  CREATED_EVENT="$(mktemp)"
+  trap 'rm -f "$EVENT" "$CREATED_EVENT"' EXIT
+  python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
+import json
+import sys
+
+event_path, created_path, initiative_id = sys.argv[1:]
+with open(event_path, encoding="utf-8") as handle:
+    event = json.load(handle)
+created = dict(event)
+created["type"] = "created"
+json.dump(
+    {"id": initiative_id, "title": initiative_id, "events": [created]},
+    open(created_path, "w", encoding="utf-8"),
+)
+PY
+  python3 "$HISTORY" create "$LEDGER" "$CREATED_EVENT" || exit 1
+  rm -f "$CREATED_EVENT"
+}
 python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
 rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 echo "已执行 $ACTION initiative=$INITIATIVE"

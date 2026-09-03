@@ -28,43 +28,37 @@ else
   bad "正：pause --dry-run 只报告，不修改当前产物"
 fi
 
-if [ -f "$LIFECYCLE" ] && ! "$LIFECYCLE" pause --project "$PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
-  && [ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ -f "$PROJECT/spec/payment-api.md" ] \
-  && [ -f "$PROJECT/tasks/payment-api/plan.md" ] && [ -f "$PROJECT/.agent/state.json" ]; then
-  ok "反：账本不存在时 pause 失败且不删除源文件"
-else
-  bad "反：账本不存在时 pause 失败且不删除源文件"
-fi
-
-HISTORY="$HOOKDIR/capability-history.py"
-LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
-CREATED="$TMP/created.json"
-printf '%s\n' '{"id":"payment-v2","title":"Payment v2","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/payment-v2/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}' > "$CREATED"
-python3 "$HISTORY" create "$LEDGER" "$CREATED" >/dev/null 2>&1 || true
 if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
   && [ ! -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ ! -f "$PROJECT/.agent/state.json" ] \
+  && [ -f "$PROJECT/spec/CAPABILITY-HISTORY.json" ] \
+  && [ "$(python3 "$HOOKDIR/capability-history.py" status "$PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = paused ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/payment-api.md ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/ledger.md ] \
   && [ -f "$PROJECT/tasks/history/payment-v2"/*/payment-api/plan.md ] \
   && [ -f "$PROJECT/tasks/history/payment-v2"/*/ledger/plan.md ] \
   && [ -f "$PROJECT/.agent/history/payment-v2"/*/state.json ]; then
-  ok "正：pause 写入 checkpoint 后才清理当前工作区"
+  ok "正：账本不存在时 pause 自动建账并归档当前工作区"
 else
-  bad "正：pause 写入 checkpoint 后才清理当前工作区"
+  bad "正：账本不存在时 pause 自动建账并归档当前工作区"
 fi
+
+HISTORY="$HOOKDIR/capability-history.py"
+LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
+CREATED="$TMP/created.json"
+printf '%s\n' '{"id":"payment-v2","title":"Payment v2","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/payment-v2/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}' > "$CREATED"
 
 TERMINAL_PROJECT="$TMP/terminal-project"
 mkdir -p "$TERMINAL_PROJECT/spec" "$TERMINAL_PROJECT/.agent"
 : > "$TERMINAL_PROJECT/spec/CAPABILITY-MAP.md"
 printf '{}' > "$TERMINAL_PROJECT/.agent/state.json"
-python3 "$HISTORY" create "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" "$CREATED" >/dev/null 2>&1 || true
 if "$LIFECYCLE" complete --project "$TERMINAL_PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
   && [ ! -f "$TERMINAL_PROJECT/spec/CAPABILITY-MAP.md" ] \
-  && [ "$(python3 "$HISTORY" status "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = completed ]; then
-  ok "正：complete 写入终态 checkpoint 后才清理当前工作区"
+  && [ "$(python3 "$HISTORY" status "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = completed ] \
+  && [ -f "$TERMINAL_PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ]; then
+  ok "正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区"
 else
-  bad "正：complete 写入终态 checkpoint 后才清理当前工作区"
+  bad "正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区"
 fi
 
 RESUME_PROJECT="$TMP/resume-project"

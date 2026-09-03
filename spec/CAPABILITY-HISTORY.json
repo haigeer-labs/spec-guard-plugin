@@ -378,6 +378,146 @@
           }
         }
       ]
+    },
+    {
+      "id": "parallel-subagent-preflight",
+      "title": "parallel-subagent-preflight",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T213539Z-0001",
+            "map": {
+              "path": "spec/history/parallel-subagent-preflight/20260903T213539Z-0001/CAPABILITY-MAP.md",
+              "sha256": "55d787aaccd896a233398c762cf8405c85de48b8249279be35e4185c0c0c9c65"
+            },
+            "state": {
+              "path": ".agent/history/parallel-subagent-preflight/20260903T213539Z-0001/state.json",
+              "sha256": "520d738ed2b2599ba8ddd2d77ff2fc5ca6f00b6926da16f4bb3db5fc2d3d3ef5"
+            },
+            "modules": [
+              {
+                "id": "parallel-subagent-preflight",
+                "responsibility": "parallel-subagent-preflight",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 81,
+                "spec": {
+                  "path": "spec/history/parallel-subagent-preflight/20260903T213539Z-0001/parallel-subagent-preflight.md",
+                  "sha256": "cdd2c5f4d66b8ee000a2c2c80f677c117b942cb0ea836541d63aa89ebf8de88e"
+                },
+                "plan": {
+                  "path": "tasks/history/parallel-subagent-preflight/20260903T213539Z-0001/parallel-subagent-preflight/plan.md",
+                  "sha256": "327cf2148130a5ce18ec98e1cb23b78aa04698a6eb1ecf12ee50fe402ade43eb"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T213539Z-0001",
+            "map": {
+              "path": "spec/history/parallel-subagent-preflight/20260903T213539Z-0001/CAPABILITY-MAP.md",
+              "sha256": "55d787aaccd896a233398c762cf8405c85de48b8249279be35e4185c0c0c9c65"
+            },
+            "state": {
+              "path": ".agent/history/parallel-subagent-preflight/20260903T213539Z-0001/state.json",
+              "sha256": "520d738ed2b2599ba8ddd2d77ff2fc5ca6f00b6926da16f4bb3db5fc2d3d3ef5"
+            },
+            "modules": [
+              {
+                "id": "parallel-subagent-preflight",
+                "responsibility": "parallel-subagent-preflight",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 81,
+                "spec": {
+                  "path": "spec/history/parallel-subagent-preflight/20260903T213539Z-0001/parallel-subagent-preflight.md",
+                  "sha256": "cdd2c5f4d66b8ee000a2c2c80f677c117b942cb0ea836541d63aa89ebf8de88e"
+                },
+                "plan": {
+                  "path": "tasks/history/parallel-subagent-preflight/20260903T213539Z-0001/parallel-subagent-preflight/plan.md",
+                  "sha256": "327cf2148130a5ce18ec98e1cb23b78aa04698a6eb1ecf12ee50fe402ade43eb"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "parallel-order-conflict-guard",
+      "title": "parallel-order-conflict-guard",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T214142Z-0001",
+            "map": {
+              "path": "spec/history/parallel-order-conflict-guard/20260903T214142Z-0001/CAPABILITY-MAP.md",
+              "sha256": "5dc5c7f4d14a8d2f9941470afea5e94f063bb4bc9e645ae7b98b85f52809b61d"
+            },
+            "state": {
+              "path": ".agent/history/parallel-order-conflict-guard/20260903T214142Z-0001/state.json",
+              "sha256": "0a896198ba517818e704575a73d0c43ae79cc92a768e746b1abcda03ebe7d17f"
+            },
+            "modules": [
+              {
+                "id": "parallel-order-conflict-guard",
+                "responsibility": "parallel-order-conflict-guard",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 86,
+                "spec": {
+                  "path": "spec/history/parallel-order-conflict-guard/20260903T214142Z-0001/parallel-order-conflict-guard.md",
+                  "sha256": "33a876430b1cca2c75147a651e3c53777c33496d134960f1740673f94ad01beb"
+                },
+                "plan": {
+                  "path": "tasks/history/parallel-order-conflict-guard/20260903T214142Z-0001/parallel-order-conflict-guard/plan.md",
+                  "sha256": "6a4d2ab6305ee2239887c911b3ae2234a0fd23d4eb8648713f47857713a45ffa"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "abandoned",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T214142Z-0001",
+            "map": {
+              "path": "spec/history/parallel-order-conflict-guard/20260903T214142Z-0001/CAPABILITY-MAP.md",
+              "sha256": "5dc5c7f4d14a8d2f9941470afea5e94f063bb4bc9e645ae7b98b85f52809b61d"
+            },
+            "state": {
+              "path": ".agent/history/parallel-order-conflict-guard/20260903T214142Z-0001/state.json",
+              "sha256": "0a896198ba517818e704575a73d0c43ae79cc92a768e746b1abcda03ebe7d17f"
+            },
+            "modules": [
+              {
+                "id": "parallel-order-conflict-guard",
+                "responsibility": "parallel-order-conflict-guard",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 86,
+                "spec": {
+                  "path": "spec/history/parallel-order-conflict-guard/20260903T214142Z-0001/parallel-order-conflict-guard.md",
+                  "sha256": "33a876430b1cca2c75147a651e3c53777c33496d134960f1740673f94ad01beb"
+                },
+                "plan": {
+                  "path": "tasks/history/parallel-order-conflict-guard/20260903T214142Z-0001/parallel-order-conflict-guard/plan.md",
+                  "sha256": "6a4d2ab6305ee2239887c911b3ae2234a0fd23d4eb8648713f47857713a45ffa"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

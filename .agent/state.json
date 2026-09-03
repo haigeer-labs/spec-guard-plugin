@@ -8,6 +8,6 @@
     "tracker-routing": { "issue": 38, "rowDigest": "e1618c6361d1" },
     "gitlab-e2e": { "issue": 39, "rowDigest": "01585c60abeb" }
   },
-  "activeModule": "tracker-routing",
+  "activeModule": "gitlab-e2e",
   "updatedAt": "2026-09-03T11:52:00Z"
 }

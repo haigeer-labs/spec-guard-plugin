@@ -5,6 +5,14 @@ set -euo pipefail
 ACTION=${1:-}; shift || true
 case "$ACTION" in issue|relate|mr) ;; *) echo 'usage: gitlab-bridge.sh <issue|relate|mr> ...' >&2; exit 2;; esac
 command -v glab >/dev/null || { echo 'glab 未安装' >&2; exit 1; }
+if [ "${1:-}" = --help ]; then
+  case "$ACTION" in
+    issue) glab issue create --help ;;
+    relate) echo 'relate: <project-id> <source-iid> <target-iid>' ;;
+    mr) glab mr create --help ;;
+  esac
+  exit 0
+fi
 case "$ACTION" in
   issue)
     [ "$#" -eq 6 ] && [ "$1" = --repo ] && [ "$3" = --title ] && [ "$5" = --description-file ] \

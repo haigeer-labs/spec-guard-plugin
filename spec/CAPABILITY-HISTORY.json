@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "initiatives": [
+    {
+      "id": "capability-history",
+      "title": "capability-history",
+      "events": [
+        {
+          "type": "created",
+          "at": "imported",
+          "checkpoint": {
+            "id": "19700101T000000Z-0001",
+            "map": {
+              "path": "spec/history/capability-history/19700101T000000Z-0001/CAPABILITY-MAP.md",
+              "sha256": "5b8d60f5f9f2c66596f607eeae4d6b41434c0b87a48ab9531d83e3f23c776167"
+            },
+            "modules": []
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T074408Z-0001",
+            "map": {
+              "path": "spec/history/capability-history/20260903T074408Z-0001/CAPABILITY-MAP.md",
+              "sha256": "5b8d60f5f9f2c66596f607eeae4d6b41434c0b87a48ab9531d83e3f23c776167"
+            },
+            "state": {
+              "path": ".agent/history/capability-history/20260903T074408Z-0001/state.json",
+              "sha256": "9fe47bab6bd585dcb1066f28d133c9aed1c5d8d4610be7334f66fac3d301f952"
+            },
+            "modules": [
+              {
+                "id": "history-ledger",
+                "responsibility": "history-ledger",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 6,
+                "spec": {
+                  "path": "spec/history/capability-history/20260903T074408Z-0001/history-ledger.md",
+                  "sha256": "d17ca82d35416bd73150900ddf64579dc0a858de6743ee679b1a29a58986a938"
+                },
+                "plan": {
+                  "path": "tasks/history/capability-history/20260903T074408Z-0001/history-ledger/plan.md",
+                  "sha256": "46995b2f9519596d4b5e089b9faba73a698d3898bbac52b18fd3a59e7f40ae89"
+                }
+              },
+              {
+                "id": "initiative-lifecycle",
+                "responsibility": "initiative-lifecycle",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 7,
+                "spec": {
+                  "path": "spec/history/capability-history/20260903T074408Z-0001/initiative-lifecycle.md",
+                  "sha256": "55cd533b7ea4303c166a63624aec39b68079ce3b00ccd178ca90586235ee6cdb"
+                },
+                "plan": {
+                  "path": "tasks/history/capability-history/20260903T074408Z-0001/initiative-lifecycle/plan.md",
+                  "sha256": "cd73a2222a2ba94b7247a05ba9b425d45e3a59d5547076440468d26d54fe45f1"
+                }
+              },
+              {
+                "id": "history-verification",
+                "responsibility": "history-verification",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 8,
+                "spec": {
+                  "path": "spec/history/capability-history/20260903T074408Z-0001/history-verification.md",
+                  "sha256": "de013b534faf85f4eaed396e4a4895c1551420a722a3b9f7416e495792639269"
+                },
+                "plan": {
+                  "path": "tasks/history/capability-history/20260903T074408Z-0001/history-verification/plan.md",
+                  "sha256": "fa7e50852c351af36b46f1f92c2f6f8d66100ba73053c8d8d9dccb786c033b15"
+                }
+              },
+              {
+                "id": "history-migration",
+                "responsibility": "history-migration",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 9,
+                "spec": {
+                  "path": "spec/history/capability-history/20260903T074408Z-0001/history-migration.md",
+                  "sha256": "3cd4416da741311961f67e4e97281e77bbf149672ea00922b25ec56131ccb015"
+                },
+                "plan": {
+                  "path": "tasks/history/capability-history/20260903T074408Z-0001/history-migration/plan.md",
+                  "sha256": "9de5514c7bcdf2afdf4aa3de7c87a281ac2f0c4253fd852080036bd944a694a9"
+                }
+              },
+              {
+                "id": "history-workflow-integration",
+                "responsibility": "history-workflow-integration",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 10,
+                "spec": {
+                  "path": "spec/history/capability-history/20260903T074408Z-0001/history-workflow-integration.md",
+                  "sha256": "2d9b9605e19bbf679aa842d408ea51207fc97848d491f2c1e65f7995afcf3566"
+                },
+                "plan": {
+                  "path": "tasks/history/capability-history/20260903T074408Z-0001/history-workflow-integration/plan.md",
+                  "sha256": "7d7fa4452832a44865c37ffd3e193f16af4a895dae29a0b61ed1b5e270020ac0"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

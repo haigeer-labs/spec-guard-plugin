@@ -2,6 +2,8 @@
 from __future__ import print_function
 
 import json
+import importlib.util
+import os
 import re
 
 
@@ -90,3 +92,28 @@ def classify_group(boundaries):
     return {"classification": "sequential-required", "evidence": evidence} if evidence else {
         "classification": "manual-parallel-eligible", "evidence": []
     }
+
+
+def readiness_report(project, refresh=False):
+    path = os.path.join(os.path.dirname(__file__), "parallel-readiness.py")
+    spec = importlib.util.spec_from_file_location("parallel_readiness_runtime", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.report(project, refresh=refresh)
+
+
+def gate_report(project, refresh=False):
+    readiness = readiness_report(project, refresh=refresh)
+    results = []
+    for group in readiness["candidateGroups"]:
+        boundaries = {}
+        for module_id in group["modules"]:
+            try:
+                boundaries[module_id] = parse_boundary(
+                    os.path.join(project, "spec", module_id + ".md")
+                )
+            except (BoundaryError, OSError):
+                boundaries[module_id] = None
+        results.append(dict(group, **classify_group(boundaries)))
+    return {"ok": True, "base": readiness["base"], "groups": results,
+            "warnings": readiness["warnings"]}

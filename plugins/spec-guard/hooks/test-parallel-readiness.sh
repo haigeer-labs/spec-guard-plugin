@@ -113,4 +113,43 @@ for name in ("unknown", "cycle", "self", "invalid_id", "bad_order"):
         raise AssertionError("%s map should be rejected" % name)
 PY
 
-printf 'parallel-readiness parser regression passed\n'
+git init --bare -q "$WORK/remote.git"
+git init -q "$WORK/project"
+git -C "$WORK/project" config user.email test@example.invalid
+git -C "$WORK/project" config user.name test
+mkdir -p "$WORK/project/spec"
+cp "$WORK/valid.md" "$WORK/project/spec/CAPABILITY-MAP.md"
+git -C "$WORK/project" add spec/CAPABILITY-MAP.md
+git -C "$WORK/project" commit -qm "test map"
+git -C "$WORK/project" branch -M trunk
+git -C "$WORK/project" remote add origin "$WORK/remote.git"
+git -C "$WORK/project" push -qu origin trunk
+git -C "$WORK/remote.git" symbolic-ref HEAD refs/heads/trunk
+git -C "$WORK/project" fetch -q origin
+git -C "$WORK/project" remote set-head origin -a
+
+python3 - "$ROOT/hooks/parallel-readiness.py" "$WORK/project" <<'PY'
+import json
+import subprocess
+import sys
+
+script, project = sys.argv[1:]
+before = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+result = subprocess.run(
+    ["python3", script, "--project", project, "--format", "json"],
+    check=True, capture_output=True, text=True,
+)
+report = json.loads(result.stdout)
+assert report["ok"] is True, report
+assert report["base"] == {"ref": "origin/trunk", "sha": before, "fresh": False}, report
+assert report["candidateGroups"] == [{
+    "layer": 0,
+    "modules": ["alpha", "beta"],
+    "classification": "candidate-only",
+}], report
+assert any("尚未验证远端新鲜度" in warning for warning in report["warnings"]), report
+after = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+assert after == before
+PY
+
+printf 'parallel-readiness regression passed\n'

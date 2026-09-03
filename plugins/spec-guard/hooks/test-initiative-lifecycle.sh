@@ -11,11 +11,13 @@ ok() { printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)); }
 bad() { printf '  ❌ %s\n' "$1"; FAIL=$((FAIL+1)); }
 
 PROJECT="$TMP/project"
-mkdir -p "$PROJECT/spec" "$PROJECT/tasks/payment-api" "$PROJECT/.agent"
+mkdir -p "$PROJECT/spec" "$PROJECT/tasks/payment-api" "$PROJECT/tasks/ledger" "$PROJECT/.agent"
 printf '# Capability Map: Payment\n\n## 目标\n\npay\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| payment-api | API | — |\n' > "$PROJECT/spec/CAPABILITY-MAP.md"
 printf '# Spec\n' > "$PROJECT/spec/payment-api.md"
+printf '# Ledger\n' > "$PROJECT/spec/ledger.md"
 printf '# Plan\n' > "$PROJECT/tasks/payment-api/plan.md"
-printf '{"activeModule":"payment-api","modules":{"payment-api":{"issue":101}}}\n' > "$PROJECT/.agent/state.json"
+printf '# Ledger plan\n' > "$PROJECT/tasks/ledger/plan.md"
+printf '{"activeModule":"payment-api","modules":{"payment-api":{"issue":101},"ledger":{"issue":102}}}\n' > "$PROJECT/.agent/state.json"
 
 echo "═══ Initiative lifecycle regression ═══"
 if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative payment-v2 --dry-run >/dev/null 2>&1 \
@@ -43,7 +45,9 @@ if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative p
   && [ ! -f "$PROJECT/spec/CAPABILITY-MAP.md" ] && [ ! -f "$PROJECT/.agent/state.json" ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ] \
   && [ -f "$PROJECT/spec/history/payment-v2"/*/payment-api.md ] \
+  && [ -f "$PROJECT/spec/history/payment-v2"/*/ledger.md ] \
   && [ -f "$PROJECT/tasks/history/payment-v2"/*/payment-api/plan.md ] \
+  && [ -f "$PROJECT/tasks/history/payment-v2"/*/ledger/plan.md ] \
   && [ -f "$PROJECT/.agent/history/payment-v2"/*/state.json ]; then
   ok "正：pause 写入 checkpoint 后才清理当前工作区"
 else

@@ -115,7 +115,7 @@ while IFS= read -r MODULE; do
     mkdir -p "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE" || exit 1
     cp "$PROJECT/tasks/$MODULE/plan.md" "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE/plan.md" || exit 1
   fi
-done < <(python3 -c 'import json,sys; print("\\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
+done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
 EVENT="$(mktemp)"
 trap 'rm -f "$EVENT"' EXIT
 python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" <<'PY' || exit 1

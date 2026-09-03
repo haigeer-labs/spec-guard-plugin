@@ -49,3 +49,44 @@ def parse_boundary(path):
     for value in result["paths"]:
         _path(value)
     return result
+
+
+def _paths_overlap(left, right):
+    return left == right or left.startswith(right + "/") or right.startswith(left + "/")
+
+
+def classify_group(boundaries):
+    """以最保守的规则分类一个 readiness 候选组。"""
+    modules = sorted(boundaries)
+    missing = [module for module in modules if not isinstance(boundaries[module], dict) or
+               set(boundaries[module]) != set(FIELDS)]
+    if missing:
+        return {"classification": "needs-review", "evidence": [
+            {"category": "missing-boundary", "modules": missing}
+        ]}
+
+    evidence = []
+    for module in modules:
+        boundary = boundaries[module]
+        for category in ("migrations", "globalConfig", "testResources"):
+            if boundary[category]:
+                evidence.append({"category": category, "modules": [module],
+                                 "values": sorted(boundary[category])})
+
+    for index, left_module in enumerate(modules):
+        left = boundaries[left_module]
+        for right_module in modules[index + 1:]:
+            right = boundaries[right_module]
+            paths = sorted({"%s|%s" % (a, b) for a in left["paths"] for b in right["paths"]
+                            if _paths_overlap(a, b)})
+            if paths:
+                evidence.append({"category": "paths", "modules": [left_module, right_module],
+                                 "values": paths})
+            interfaces = sorted(set(left["publicInterfaces"]) & set(right["publicInterfaces"]))
+            if interfaces:
+                evidence.append({"category": "publicInterfaces",
+                                 "modules": [left_module, right_module], "values": interfaces})
+
+    return {"classification": "sequential-required", "evidence": evidence} if evidence else {
+        "classification": "manual-parallel-eligible", "evidence": []
+    }

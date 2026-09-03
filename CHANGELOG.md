@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.49] - 2026-09-04
+
+- **Codex GitLab `sync-map` 与 Claude 统一。** `spec-guard-ops` 直接调用确定性预览/
+  确认脚本，不再依赖模型转述 bridge。
+
 ## [0.7.48] - 2026-09-04
 
 - **GitLab `sync-map` 现为确定性安全入口。** 默认预览 Initiative 与模块 Issue；仅显式

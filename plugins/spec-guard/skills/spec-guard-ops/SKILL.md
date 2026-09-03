@@ -108,9 +108,15 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/initiative-lifecycle.sh" <p
 
 ## `sync-map`
 
-先读取 `.agent/state.json` 的 `tracker`：`github` 加载 `spec-guard:spec-github-bridge`，
-`gitlab` 加载 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。只按对应 skill 的
-“能力图落库”操作执行；外部 tracker 可能创建 issue，必须遵循其中的前置检查、确认与增量写回规则。
+先读取 `.agent/state.json` 的 `tracker`。`github` 加载 `spec-guard:spec-github-bridge`，
+`none` 保持本地流程。GitLab 使用确定性入口，默认只预览：
+
+```bash
+CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/sync-map-gitlab.sh"
+```
+
+原样转述计划。只有用户明确确认将创建的 Issue 后，才追加 `--confirm` 重跑；脚本会逐条创建
+Issue 并写回 state。不要再以 bridge prose 模拟 GitLab 同步。
 
 ## `next`
 

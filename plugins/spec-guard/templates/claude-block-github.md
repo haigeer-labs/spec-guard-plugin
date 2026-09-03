@@ -1,7 +1,7 @@
 ## Agent Skills 集成约定
 
-> 由 `/setup-convention github` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-github-bridge` skill 里。**
-> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/setup-convention --replace` 靠它升级本块。
+> 由 `/spec-guard:setup-convention github` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-github-bridge` skill 里。**
+> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/spec-guard:setup-convention --replace` 靠它升级本块。
 
 - 任务的事实源是 **GitHub Issues**。**不要创建任何 `todo.md`**
 - 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）

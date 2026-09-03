@@ -61,7 +61,9 @@ UPSTREAM_SKILLS = {
 # 和 URL 里的片段当成命令。
 # ⚠️ 引号必须在集合里：hook 里的写法是 `NEXT="/plan 为 …"`，
 #    第一版漏了 `"` 导致这个 lint 抓不到它本该抓的那个 bug。
-CMD = re.compile(r"""(?:^|[\s`'"(（])/([a-z][a-z0-9-]*)""")
+# Claude Code 的插件命令实际注册为 `/<plugin>:<command>`，例如
+# `/spec-guard:verify-artifacts`；同时仍需识别上游和内建的裸命令。
+CMD = re.compile(r"""(?:^|[\s`'"(（])/(?:(?:([a-z][a-z0-9-]*):))?([a-z][a-z0-9-]*)""")
 
 SCOPES = ["hooks/*.sh", "templates/*.md", "commands/*.md"]
 
@@ -105,6 +107,20 @@ def own_commands(root: pathlib.Path) -> set[str]:
     return {p.stem for p in d.glob("*.md")} if d.is_dir() else set()
 
 
+def own_plugin_names(root: pathlib.Path) -> set[str]:
+    """读取插件的可用 Claude/Codex 名称；fixture 没有 manifest 时回退目录名。"""
+    import json
+    names = {root.name}
+    for manifest in (root / ".claude-plugin/plugin.json", root / ".codex-plugin/plugin.json"):
+        try:
+            name = json.loads(manifest.read_text(encoding="utf-8")).get("name")
+            if isinstance(name, str):
+                names.add(name)
+        except Exception:
+            pass
+    return names
+
+
 def own_skills(root: pathlib.Path) -> set[str]:
     d = root / "skills"
     return {p.name for p in d.iterdir() if p.is_dir()} if d.is_dir() else set()
@@ -121,7 +137,9 @@ def main() -> int:
     gone_cmds = (UPSTREAM - live_cmds) if live_cmds else set()
     gone_skills = (UPSTREAM_SKILLS - live_skills) if live_skills else set()
     for plugin in sorted(pathlib.Path("plugins").glob("*/")):
-        known = own_commands(plugin) | UPSTREAM | (live_cmds or set()) | BUILTIN
+        own_cmds = own_commands(plugin)
+        own_names = own_plugin_names(plugin)
+        known = own_cmds | UPSTREAM | (live_cmds or set()) | BUILTIN
         known_skills = own_skills(plugin) | UPSTREAM_SKILLS | (live_skills or set())
         for scope in SCOPES:
             for path in sorted(plugin.glob(scope)):
@@ -132,7 +150,12 @@ def main() -> int:
                     continue
                 checked += 1
                 for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                    for name in CMD.findall(line):
+                    for namespace, name in CMD.findall(line):
+                        if namespace:
+                            if namespace not in own_names or name not in own_cmds:
+                                print(f"  ❌ {path}:{lineno} 引用了不存在的插件命令 /{namespace}:{name}")
+                                ok = False
+                            continue
                         if name in gone_cmds:
                             print(f"  ❌ {path}:{lineno} /{name} 在兜底快照里，"
                                   f"但**本机装着的上游已经没有它了** —— 快照过期，"

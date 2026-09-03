@@ -16,11 +16,11 @@ CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev
 - **有 ⚠️** —— 提一句即可，不必追着修。
 - **⏭ 不等于通过** —— 远端 CLI 不可用或未认证时对应 tracker 层整段跳过，
   要明确告诉用户「这部分没验，不是验过了」。
-- **退出码 2** —— 项目没启用约定，提示跑 `/setup-convention`。
+- **退出码 2** —— 项目没启用约定，提示跑 `/spec-guard:setup-convention`。
 
-## 和 `/phase` 的分工
+## 和 `/spec-guard:phase` 的分工
 
-| | `/phase` | `/verify-artifacts` |
+| | `/spec-guard:phase` | `/spec-guard:verify-artifacts` |
 |---|---|---|
 | 问题 | 现在在哪个阶段、链路断没断 | 已经落下的产物对不对 |
 | 时机 | 每次发言前自动注入（hook） | 按需跑 |
@@ -33,7 +33,7 @@ CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev
 
 ## 什么时候该跑
 
-- `/sync-map` 之后：确认 issue 结构和能力图对得上
+- `/spec-guard:sync-map` 之后：确认 issue 结构和能力图对得上
 - `/plan` 之后：确认 task 落进了 issue 而不是 todo.md
-- `/deliver` 之前：确认模块 PR 会带上 `Closes #<module-issue>`，且每个 task 都有带 `Closes` 的 commit
+- `/spec-guard:deliver` 之前：确认模块 PR 会带上 `Closes #<module-issue>`，且每个 task 都有带 `Closes` 的 commit
 - 接手别人的分支、或隔了几天回来时

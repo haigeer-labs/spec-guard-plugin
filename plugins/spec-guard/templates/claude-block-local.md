@@ -1,7 +1,7 @@
 ## Agent Skills 集成约定
 
-> 由 `/setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
-> 保留 `<!-- BEGIN/END -->` 标记，`/setup-convention --replace` 靠它升级本块。
+> 由 `/spec-guard:setup-convention local` 生成。任务托管在**本地 todo.md**（Addy 原生路径）。
+> 保留 `<!-- BEGIN/END -->` 标记，`/spec-guard:setup-convention --replace` 靠它升级本块。
 
 - 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
 - **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、

@@ -177,7 +177,7 @@ ${STRAY} —— 但本项目既没有 CLAUDE.md 声明块，也没有 .agent/sta
 **spec-guard 的目录约定与链路检测在本项目上全程未生效**，\`/spec\` \`/plan\`
 走的是 agent-skills 默认落点：多模块产物会散在根上或互相覆盖。
 
-建议下一步: \`/setup-convention ${SUGGEST_MODE} --migrate --dry-run\` 先看会动哪些文件。
+建议下一步: \`/spec-guard:setup-convention ${SUGGEST_MODE} --migrate --dry-run\` 先看会动哪些文件。
 不打算在本项目用 spec-guard，就 \`touch .spec-guard-ignore\`，本提示即消失。"
 fi
 
@@ -294,13 +294,13 @@ if not d.get('ok') or d.get('syncedCount',0) < 1: raise SystemExit
 out=[]
 mis=d.get('missing') or []
 if mis:
-    out.append('能力图有 %d 个模块，其中 %d 个没落成 issue（%s）—— 能力图改过之后没重跑 /sync-map'
+    out.append('能力图有 %d 个模块，其中 %d 个没落成 issue（%s）—— 能力图改过之后没重跑 /spec-guard:sync-map'
                % (d['mapCount'], len(mis), ', '.join(mis)))
 if d.get('goalStale') is True:
-    out.append('能力图的「## 目标」段改过，Epic 正文里那份摘要还是旧的 —— /sync-map 刷新')
+    out.append('能力图的「## 目标」段改过，Epic 正文里那份摘要还是旧的 —— /spec-guard:sync-map 刷新')
 rs=d.get('rowsStale') or []
 if rs:
-    out.append('%s 的职责描述改过，对应 issue 正文里那份摘要还是旧的 —— /sync-map 刷新'
+    out.append('%s 的职责描述改过，对应 issue 正文里那份摘要还是旧的 —— /spec-guard:sync-map 刷新'
                % ('、'.join(rs)))
 print('\n'.join(out))
 " 2>/dev/null || true)
@@ -470,9 +470,9 @@ elif [ -z "$MODULE" ]; then
   PHASE="SPECED"
   broken "spec 已存在但没有 .agent/state.json —— 无从知道活跃模块是哪个"
   if [ "$TRACKER" = "github" ]; then
-    NEXT="/sync-map 把能力图和模块落成 issue"
+    NEXT="/spec-guard:sync-map 把能力图和模块落成 issue"
   else
-    NEXT="跑 /setup-convention 建出 .agent/state.json，并把 activeModule 写进去"
+    NEXT="跑 /spec-guard:setup-convention 建出 .agent/state.json，并把 activeModule 写进去"
   fi
 
 elif [ "$TRACKER" = "none" ]; then
@@ -530,7 +530,7 @@ elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then
   # （「连 state.json 都没有」由上面那条单独接住，所以这里 MODULE 必非空。）
   PHASE="SPECED"
   broken "activeModule=[$MODULE] 但 .agent/state.json 里没有它的 issue —— 链路在此断开"
-  NEXT="/sync-map 把能力图和模块落成 issue"
+  NEXT="/spec-guard:sync-map 把能力图和模块落成 issue"
 
 elif [ "$HAS_PLAN" = false ]; then
   PHASE="TRACKED"
@@ -544,16 +544,16 @@ elif [ "$GH_OK" = false ]; then
     NEXT="/test 验证 → 提交（message 带 Closes #<task-issue>），有 ${DIRTY} 处未提交改动"
   elif [ "${ON_MODULE_BRANCH}" = true ]; then
     PHASE="MODULE_BRANCH (gh 不可用，降级判定)"
-    NEXT="恢复 gh 后 /next 继续取任务；本分支已落 ${TASKS_DONE_HERE} 个 task"
+    NEXT="恢复 gh 后 /spec-guard:next 继续取任务；本分支已落 ${TASKS_DONE_HERE} 个 task"
   elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
     PHASE="BUILDING (gh 不可用，降级判定)"
-    NEXT="/test 验证 → /deliver 开 PR（有 $DIRTY 处未提交改动）"
+    NEXT="/test 验证 → /spec-guard:deliver 开 PR（有 $DIRTY 处未提交改动）"
   elif [ -n "$BRANCH_ISSUE" ]; then
     PHASE="TASK_READY (gh 不可用，降级判定)"
-    NEXT="/deliver 开 PR（Closes #${BRANCH_ISSUE}）"
+    NEXT="/spec-guard:deliver 开 PR（Closes #${BRANCH_ISSUE}）"
   else
     PHASE="PLANNED (gh 不可用，降级判定)"
-    NEXT="恢复 gh 后 /next；或手动指定要做的 issue"
+    NEXT="恢复 gh 后 /spec-guard:next；或手动指定要做的 issue"
   fi
 
 elif [ "$OPEN_TASKS" = "0" ] && [ "$TOTAL_TASKS" = "0" ]; then
@@ -572,7 +572,7 @@ elif [ "$OPEN_TASKS" = "0" ] && [ "$TOTAL_TASKS" = "0" ]; then
 
 elif [ "$OPEN_TASKS" = "0" ]; then
   PHASE="MODULE_DONE"
-  NEXT="/next 推进到下一个模块（[$MODULE] 已无未关闭任务）"
+  NEXT="/spec-guard:next 推进到下一个模块（[$MODULE] 已无未关闭任务）"
 
 elif [ "${ON_MODULE_BRANCH}" = true ] && [ "$DIRTY" -gt 0 ]; then
   PHASE="BUILDING (模块分支)"
@@ -581,11 +581,11 @@ elif [ "${ON_MODULE_BRANCH}" = true ] && [ "$DIRTY" -gt 0 ]; then
 elif [ "${ON_MODULE_BRANCH}" = true ] && [ "$OPEN_TASKS" != "?" ] \
      && [ "${TASKS_DONE_HERE}" -gt 0 ] && [ "${TASKS_DONE_HERE}" -ge "$OPEN_TASKS" ]; then
   PHASE="MODULE_READY"
-  NEXT="/deliver 开模块 PR —— [${MODULE}] 的 ${OPEN_TASKS} 个未关闭 task 在本分支都有对应 commit"
+  NEXT="/spec-guard:deliver 开模块 PR —— [${MODULE}] 的 ${OPEN_TASKS} 个未关闭 task 在本分支都有对应 commit"
 
 elif [ "${ON_MODULE_BRANCH}" = true ]; then
   PHASE="TASK_READY (模块分支)"
-  NEXT="/build auto 跑完模块剩下的 task（或 /next 逐条取）——**留在 [${BRANCH}] 上，不要每个 task 开 PR**（已落 ${TASKS_DONE_HERE}/${OPEN_TASKS}）"
+  NEXT="/build auto 跑完模块剩下的 task（或 /spec-guard:next 逐条取）——**留在 [${BRANCH}] 上，不要每个 task 开 PR**（已落 ${TASKS_DONE_HERE}/${OPEN_TASKS}）"
 
 elif [ -n "$ASSIGNED" ] && [ -z "$BRANCH_ISSUE" ]; then
   PHASE="TASK_CLAIMED"
@@ -594,15 +594,15 @@ elif [ -n "$ASSIGNED" ] && [ -z "$BRANCH_ISSUE" ]; then
 
 elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -gt 0 ]; then
   PHASE="BUILDING"
-  NEXT="/test 验证 → /deliver 开 PR（有 $DIRTY 处未提交改动）"
+  NEXT="/test 验证 → /spec-guard:deliver 开 PR（有 $DIRTY 处未提交改动）"
 
 elif [ -n "$BRANCH_ISSUE" ] && [ "$DIRTY" -eq 0 ]; then
   PHASE="TASK_READY"
-  NEXT="/deliver 开 PR（Closes #${BRANCH_ISSUE}）"
+  NEXT="/spec-guard:deliver 开 PR（Closes #${BRANCH_ISSUE}）"
 
 else
   PHASE="PLANNED"
-  NEXT="/next 取下一个任务"
+  NEXT="/spec-guard:next 取下一个任务"
 fi
 
 # ── 组装事实 ───────────────────────────────────────────────
@@ -678,7 +678,7 @@ spec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对�
 **本项目没有 CLAUDE.md 声明块，而 tracker 是「${TRACKER}」。**
 零足迹模式只对 github 模式成立：那边的细则在 \`spec-github-bridge\` skill 里，
 按需加载即可。**本地模式没有对应的 skill，目录约定除了声明块无处可放。**
-建议跑 \`/setup-convention local\` 把声明块写回去（13 行）。
+建议跑 \`/spec-guard:setup-convention local\` 把声明块写回去（13 行）。
 "
   fi
 fi

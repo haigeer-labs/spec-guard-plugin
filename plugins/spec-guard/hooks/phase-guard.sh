@@ -498,7 +498,7 @@ elif [ "$TRACKER" = "none" ]; then
 
 elif [ "$TRACKER" != "github" ]; then
   # 显式声明的非 GitHub tracker（gitlab / jira / linear …）。
-  # 本插件的任务层自动化只覆盖 github 和 none，这里只做到 plan 层 ——
+  # GitLab 有自己的 bridge；其他 tracker 只做到 plan 层。
   # 而关键是**不能给 GitHub 专属建议**。0.7.6 之前这里有两条都在发生：
   #   · 有条目号 → 落进 GH_OK=false 分支，报「gh 不可用，恢复 gh 后 /next」
   #     （gh 不是不可用，是跟这个项目无关，修好了也没用）
@@ -518,7 +518,11 @@ elif [ "$TRACKER" != "github" ]; then
     NEXT="/test 验证 → /review（有 ${DIRTY} 处未提交改动）"
   else
     PHASE="PLANNED (${TRACKER})"
-    NEXT="在 ${TRACKER} 里认领下一个任务后 /build —— 本插件的任务层自动化只覆盖 github 和 none"
+    if [ "$TRACKER" = gitlab ]; then
+      NEXT="加载 spec-gitlab-bridge，在 GitLab 中选择可执行 Issue 后 /build"
+    else
+      NEXT="在 ${TRACKER} 里认领下一个任务后 /build —— 本插件的任务层自动化只覆盖 github、gitlab 和 none"
+    fi
   fi
 
 elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE_ISSUE" ]; then

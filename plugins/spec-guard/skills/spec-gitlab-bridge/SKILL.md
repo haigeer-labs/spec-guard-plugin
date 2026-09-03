@@ -31,3 +31,9 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 ```
 
 始终在输出中标明 `relates_to` 是降级关联。未知 API 版本或 404 时停止并说明该能力不可用。
+
+## 选择下一个任务
+
+读取 `.agent/state.json` 的 `activeModule` 与对应的 `modules.<id>.issue`，再用
+`glab api 'projects/<project-id>/issues/<iid>'` 确认该 Issue 仍为 `opened`。打开时才进入
+`/build`；关闭、缺失或无法查询时停止并要求刷新 state。不要把 `relates_to` 当作依赖排序依据。

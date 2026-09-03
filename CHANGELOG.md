@@ -2,6 +2,12 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.31] - 2026-09-03
+
+### 修复
+
+- **最后模块交付后 initiative 不再悬空。** `/next` 的最终收口规则现在要求显式关闭 GitHub Epic，再写 completed 历史 checkpoint、归档产物并清空活跃模块；lifecycle hook 保持离线且不直接写 GitHub。
+
 ## [0.7.30] - 2026-09-03
 
 ### 修复

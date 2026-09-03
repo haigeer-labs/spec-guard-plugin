@@ -385,6 +385,12 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
 
 **如果当前模块没有可执行 task**：检查是否所有 task 都已关闭 → 若是，把该模块 issue 关闭，按 build order 推进 `activeModule`，写回 state.json。
 
+**如果最后一个模块也已关闭**：这不是普通的模块切换。先用 `gh issue close <initiative-issue>`
+关闭 Epic；确认成功后调用 `initiative-lifecycle.sh complete --project <project> --initiative <id>`，
+让它写入 completed checkpoint 并归档当前产物；最后把 `activeModule` 置为空并提交状态变更。
+不要把 `gh` 调用塞进 lifecycle hook：它必须能在离线环境安全运行，Epic 关闭是显式、不可逆的
+工作流操作。
+
 ---
 
 ## 归档的任务清单

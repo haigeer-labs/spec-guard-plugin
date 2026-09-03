@@ -14,6 +14,7 @@
 | 宿主 | 支持范围 | 约定与注意事项 |
 |---|---|---|
 | Claude Code | 完整支持：slash 命令、hook 与 bridge skill | 插件命令必须以 `/spec-guard:` 为前缀，例如 `/spec-guard:setup-convention`。|
+| Claude Desktop | MCPB 本地扩展：只读检查与同步预览 | 不执行 Claude Code slash 命令，也不提供写入工具；见 [Claude Desktop](docs/claude-desktop.md)。|
 | Codex | 共享 hook、检查器与 `spec-guard-ops` 显式操作 skill | 先启用插件、在 `/hooks` 审核并信任 hook，再由 skill 写入 `AGENTS.md`。Claude slash 命令不适用于 Codex。|
 
 Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件 hook。真实宿主 smoke
@@ -28,6 +29,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 | [docs/design.md](docs/design.md) | 需求与设计：五个缺口、核心决策、对象模型、状态机、已知限制 |
 | [docs/walkthrough.md](docs/walkthrough.md) | 端到端实跑记录：真实产物、真实输出，以及跑出来的那个 bug |
 | [docs/upstream-analysis.md](docs/upstream-analysis.md) | 上游源码分析：每条结论对应的源码行号 + 重新核对清单 |
+| [docs/claude-desktop.md](docs/claude-desktop.md) | Claude Desktop 的 MCPB 安装、工具权限与四端支持矩阵 |
 | [CLAUDE.md](CLAUDE.md) | 开发本插件的 agent 配置 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本记录 |

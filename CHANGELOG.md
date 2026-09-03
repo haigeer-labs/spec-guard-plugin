@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.50] - 2026-09-04
+
+- **新增 Claude Desktop MCPB 入口。** 以官方 MCP Bundle 分发只读 `phase`、验证、history
+  检查与 GitHub/GitLab/local `sync-map` 预览；桌面端不会执行任何本地或远端写入。
+- **四端权限模型已明确。** Claude Code CLI、Codex CLI 与 Codex 桌面端保留显式确认写入；
+  Claude Desktop 必须切换至其中之一执行写操作。
+
 ## [0.7.49] - 2026-09-04
 
 - **Codex GitLab `sync-map` 与 Claude 统一。** `spec-guard-ops` 直接调用确定性预览/

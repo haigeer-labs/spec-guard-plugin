@@ -9,8 +9,8 @@ spec-guard 检查和预览入口，不复制 tracker 规则，也不暴露写工
 
 ## Architecture Decisions
 
-- Python 标准库处理 newline-delimited JSON-RPC 2.0，避免为小型本地 server 引入 npm/PyPI
-  运行时与安装风险。
+- Claude Desktop 自带的 Node.js 标准库处理 newline-delimited JSON-RPC 2.0，避免为小型本地
+  server 引入 npm/PyPI 运行时与安装风险，并可打包为 MCPB。
 - server 从自身文件位置解析插件根；项目路径只接受调用参数中的绝对 Git 根，hook 仍是唯一
   业务规则来源。
 - MCP tool call 不等于远端授权：写意图使用 `write_operation` 返回确认边界；首期不注册任何
@@ -35,7 +35,7 @@ spec-guard 检查和预览入口，不复制 tracker 规则，也不暴露写工
 ### Phase 3: Distribution evidence
 
 3. [#74](https://github.com/yizhongkaimail-collab/spec-guard-plugin/issues/74) — 增加协议回归、
-   Claude Desktop 配置模板、安装文档与四端矩阵。
+   Claude Desktop MCPB manifest、安装文档与四端矩阵。
    - Verify: focused test、`scripts/validate.sh` 与 MCP Inspector/Claude Desktop 手动发现。
 
 ### Checkpoint: Complete

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SERVER="$ROOT/mcp/claude_desktop_server.py"
+SERVER="$ROOT/mcp/claude_desktop_server.mjs"
+MANIFEST="$ROOT/manifest.json"
 PROJECT="$(cd "$ROOT/../.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -30,7 +31,7 @@ ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 bad() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 
 run_server() {
-  env -u HOME -u XDG_STATE_HOME -u XDG_CONFIG_HOME python3 "$SERVER" >"$TMP/stdout" 2>"$TMP/stderr" <<EOF
+  env -u HOME -u XDG_STATE_HOME -u XDG_CONFIG_HOME node "$SERVER" >"$TMP/stdout" 2>"$TMP/stderr" <<EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"test","version":"1"},"capabilities":{}}}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
@@ -45,7 +46,7 @@ EOF
 run_preview_server() {
   local project="$1" output="$2"
   printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"sync_map_preview\",\"arguments\":{\"project\":\"$project\"}}}" |
-    GLAB_LOG="$TMP/glab.log" PATH="$TMP/bin:$PATH" python3 "$SERVER" >"$output"
+    GLAB_LOG="$TMP/glab.log" PATH="$TMP/bin:$PATH" node "$SERVER" >"$output"
 }
 
 echo "═══ Claude Desktop MCP 回归测试 ═══"
@@ -125,6 +126,27 @@ then
   ok "stdout contains JSON-RPC only"
 else
   bad "stdout contains JSON-RPC only"
+fi
+
+if python3 - "$MANIFEST" <<'PY'
+import json, sys
+manifest=json.load(open(sys.argv[1], encoding='utf-8'))
+assert manifest['manifest_version'] == '0.2'
+assert manifest['name'] == 'spec-guard'
+assert manifest['server'] == {
+  'type': 'node',
+  'entry_point': 'mcp/claude_desktop_server.mjs',
+  'mcp_config': {
+    'command': 'node',
+    'args': ['${__dirname}/mcp/claude_desktop_server.mjs'],
+    'env': {},
+  },
+}
+PY
+then
+  ok "Claude Desktop MCPB manifest is valid JSON"
+else
+  bad "Claude Desktop MCPB manifest is valid JSON"
 fi
 
 echo

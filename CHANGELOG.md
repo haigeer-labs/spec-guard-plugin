@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.48] - 2026-09-04
+
+- **GitLab `sync-map` 现为确定性安全入口。** 默认预览 Initiative 与模块 Issue；仅显式
+  `--confirm` 才创建远端 Issue 并写回 state。标准能力图的目标段与模块表已在真实 GitLab
+  仓库完成零写入预览验证。
+
 ## [0.7.46] - 2026-09-04
 
 - **修复 Claude tracker 命令缺少执行权限。** `sync-map`、`next` 与 `deliver` 显式声明

@@ -1,7 +1,7 @@
 # spec-guard
 
 给 [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) 补三样东西的 Claude Code / Codex 插件：
-**多模块 Spec 支持**、**GitHub Issue 打通**、**链路断裂检测**。
+**多模块 Spec 支持**、**GitHub / GitLab Issue 打通**、**链路断裂检测**。
 
 > **给 AI agent 的提示**：本 README 包含完整的手动安装步骤和需要写入 `CLAUDE.md`
 > 的原文。你可以直接照做，不必依赖 `/setup-convention` 命令。见
@@ -113,6 +113,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 | `git` | 必需 |
 | `bash` | 必需（Windows 需 WSL 或 Git Bash） |
 | `gh` | **≥ 2.94.0**，仅 github 模式 |
+| `glab` | 已认证且当前仓库 API 可读，仅 gitlab 模式 |
 | `agent-skills` | 本插件是它的补充，不是替代品 |
 
 ⚠️ **光看 `gh --version` 不够**。PATH 里可能有多个 `gh`，版本号来自新的、实际执行
@@ -126,7 +127,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 /plugin install spec-guard
 
 # 每个项目一次：落地约定（写进项目仓库并提交）
-/setup-convention github     # 或 local
+/setup-convention github     # 或 gitlab / local
 ```
 
 想先看会做什么：`/setup-convention github --dry-run`
@@ -199,6 +200,33 @@ mkdir -p spec tasks .agent
 </details>
 
 <details>
+<summary><b>GitLab 模式（点开复制）</b></summary>
+
+<!-- SYNC:claude-block-gitlab BEGIN -->
+````markdown
+<!-- BEGIN:agent-skills-convention -->
+## Agent Skills 集成约定
+
+> 由 `/setup-convention gitlab` 生成。**这里只留推导不出来的事实，「怎么做」在 `spec-gitlab-bridge` skill 里。**
+> 保留 `<!-- BEGIN/END -->` 标记（HTML 注释不进 context，是免费的），`/setup-convention --replace` 靠它升级本块。
+
+- 任务的事实源是 **GitLab Issues**。**不要创建任何 `todo.md`**
+- 能力图 `spec/CAPABILITY-MAP.md`，模块 spec `spec/<module-id>.md`（kebab-case，一次选定中途不改名）
+- **不要**在项目根建 `SPEC.md` / `SPEC-<module>.md` —— `/build` 只认根 `SPEC.md`、
+  `docs/SPEC.md`、`spec/` 三条路径，**只有第三条是通配的**
+- 计划文档 `tasks/<module-id>/plan.md`；活跃模块与 issue 号在 `.agent/state.json`
+- 分支是 `<type>/<module-id>`，**一个模块一条**，不是一个 task 一条
+
+**动 spec、拆任务、取任务、交付之前，先加载 `spec-gitlab-bridge` skill。**
+上面五条是「放哪里」，skill 才有「怎么做」：issue 落库、可用的 relates-to 关联、
+归档标记、模块级 MR 与合并策略。跳过它必然写出双真相源。
+<!-- END:agent-skills-convention -->
+````
+<!-- SYNC:claude-block-gitlab END -->
+
+</details>
+
+<details>
 <summary><b>本地模式（点开复制）</b></summary>
 
 <!-- SYNC:claude-block-local BEGIN -->
@@ -223,10 +251,10 @@ mkdir -p spec tasks .agent
 
 </details>
 
-**两种模式二选一，不要都写。** github 模式的任务在 issue 里，本地模式在
+**三种模式三选一，不要都写。** github / gitlab 模式的任务在对应平台的 issue 里，本地模式在
 `tasks/<module>/todo.md`。同时写会让 `/plan` 精神分裂。
 
-**「怎么做」不在这段里** —— 它在 `spec-github-bridge` skill 里，按需加载。
+**「怎么做」不在这段里** —— 它在当前 tracker 对应的 bridge skill 里，按需加载。
 声明块只放推导不出来的事实（路径 / tracker 类型 / 几条硬禁令）+ 一句触发指令。
 这是官方对 CLAUDE.md 的明确建议（多步过程应移进 skill 或 path-scoped rule），
 也是 0.7.0 把它从 106 行砍到 15 行的原因：官方建议 target under 200 lines，
@@ -300,14 +328,15 @@ git commit -m "chore: 落地 agent-skills 多 Spec 约定"
 
 | 命令 | 作用 |
 |---|---|
-| `/setup-convention [github\|local] [--dry-run]` | 落地约定（首次跑一次） |
+| `/setup-convention [github\|gitlab\|local] [--dry-run]` | 落地约定（首次跑一次） |
 | `/setup-convention … --replace` | 已装的声明块就地升级到当前模板（只动标记内） |
-| `/setup-convention … --no-claude-md` | 不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github 模式**） |
+| `/setup-convention … --no-claude-md` | Claude：不写声明块，hook 改由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
+| `/setup-convention … --no-instructions` | Codex：不写 `AGENTS.md` 声明块，仍由 `.agent/state.json` 激活（**仅 github / gitlab 模式**） |
 | `/setup-convention … --migrate` | 把根上的 `SPEC-<模块>.md` / 能力图迁进 `spec/`（不加只报告，不动文件） |
 | `/teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/phase` | 查看当前链路状态和断链项 |
 | `/verify-artifacts` | 校验已落地的产物是否符合约定 |
-| `/sync-map` | 能力图 → GitHub Issue 结构 |
+| `/sync-map` | 能力图 → 当前 tracker 的任务结构 |
 | `/next` | 取下一个可执行任务 |
 | `/deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
 
@@ -435,7 +464,7 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 
 ---
 
-## 三种 tracker 模式
+## 四种 tracker 模式
 
 判定顺序：`state.json` 的 `tracker` 字段 → git remote 域名推断 → `none`
 

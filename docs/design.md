@@ -142,10 +142,11 @@ issue 有没有？ → 确定
 | 模式 | 任务清单在哪 | 检测范围 |
 |---|---|---|
 | `github` | GitHub Issues | 完整（含任务层） |
+| `gitlab` | GitLab Issues | 完整（含任务层；平面 Issue，`relates_to` 仅作关联） |
 | `none` | `tasks/<module>/todo.md` | 完整（上游原生路径） |
-| `other` / `gitlab` / `jira` | 你自己的系统 | 只到 plan 层 |
+| `other` / `jira` | 你自己的系统 | 只到 plan 层 |
 
-**目录约定三种模式完全一样**，只有任务层落点不同。所以从 `none` 迁到 `github`，
+**目录约定四种模式完全一样**，只有任务层落点不同。所以从 `none` 迁到 `github` 或 `gitlab`，
 `spec/` 和 `plan.md` 一个字不用改。
 
 ### 决策 4：探测失败就降级
@@ -315,8 +316,9 @@ MODULE_DONE     模块无剩余 task                       → /next 推进模�
 
 ## 八、已知限制
 
-1. **任务层自动化只覆盖 `github` 和 `none`**。GitLab / Jira 需要写各自的
-   取任务命令等价实现。当前只检测到 plan 层。
+1. **任务层自动化覆盖 `github`、`gitlab` 和 `none`**。GitLab 使用平面 Issue 与
+   Merge Request；GitLab 15.3 的 `relates_to` 只表示关联，不代表父子或阻塞关系。
+   `jira` 等其他 tracker 仍只检测到 plan 层。
    > 0.7.7 之前这条限制的**表现**是错的：声明 `gitlab` / `jira` 的项目会落进
    > 「gh 不可用，恢复 gh 后 /next」的降级分支（`gh` 不是不可用，是无关），
    > 缺条目号时还会被建议 `/sync-map` —— 而那个命令会去 `gh` 建 GitHub issue。

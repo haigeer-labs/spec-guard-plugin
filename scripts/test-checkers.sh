@@ -193,6 +193,7 @@ done
 mkr() {  # $1=目录 $2=README 内嵌块要不要跟模板一致(same|drift)
   rm -rf "$1"; mkdir -p "$1/plugins/spec-guard/templates"
   printf '## 约定\n\n- 一行事实\n' > "$1/plugins/spec-guard/templates/claude-block-github.md"
+  printf '## 约定\n\n- GitLab 模式\n' > "$1/plugins/spec-guard/templates/claude-block-gitlab.md"
   printf '## 约定\n\n- 本地模式\n' > "$1/plugins/spec-guard/templates/claude-block-local.md"
   {
     echo "# README"; echo
@@ -204,6 +205,14 @@ mkr() {  # $1=目录 $2=README 内嵌块要不要跟模板一致(same|drift)
     echo "<!-- END:agent-skills-convention -->"
     echo '````'
     echo "<!-- SYNC:claude-block-github END -->"
+    echo
+    echo "<!-- SYNC:claude-block-gitlab BEGIN -->"
+    echo '````markdown'
+    echo "<!-- BEGIN:agent-skills-convention -->"
+    printf '## 约定\n\n- GitLab 模式\n'
+    echo "<!-- END:agent-skills-convention -->"
+    echo '````'
+    echo "<!-- SYNC:claude-block-gitlab END -->"
     echo
     echo "<!-- SYNC:claude-block-local BEGIN -->"
     echo '````markdown'
@@ -220,6 +229,7 @@ want fail "readme-sync: README 与模板分叉 → 报错" python3 "$ROOT/script
 want pass "readme-sync: 逐字节一致 → 放行"       python3 "$ROOT/scripts/check-readme-sync.py" "$TMP/rsgood"
 rm -rf "$TMP/rsmissing"; mkdir -p "$TMP/rsmissing/plugins/spec-guard/templates"
 printf 'x\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-github.md"
+printf 'z\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-gitlab.md"
 printf 'y\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-local.md"
 printf '# README\n没有 SYNC 标记\n' > "$TMP/rsmissing/README.md"
 want fail "readme-sync: README 里缺 SYNC 标记 → 报错" python3 "$ROOT/scripts/check-readme-sync.py" "$TMP/rsmissing"

@@ -6,11 +6,12 @@
 # 理由：写文件是幂等性和安全性要求高的操作，不能有非确定性。
 #
 # 用法:
-#   bash setup-convention.sh github [--dry-run] [--replace] [--no-claude-md]
-#   bash setup-convention.sh local  [--dry-run] [--replace] [--no-claude-md]
+#   bash setup-convention.sh github|gitlab|local [--dry-run] [--replace]
+#       [--no-claude-md|--no-instructions]
 #
 #   --replace       已存在的声明块就地升级到当前模板（只动 BEGIN/END 之间）
-#   --no-claude-md  完全不写声明块，hook 改由 .agent/state.json 激活
+#   --no-claude-md  Claude：完全不写 CLAUDE.md 声明块，hook 改由 .agent/state.json 激活
+#   --no-instructions Codex：完全不写 AGENTS.md 声明块
 #   --migrate       把散在根上的 SPEC-<mod>.md / 能力图迁进 spec/（不加只报告）
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
@@ -60,14 +61,14 @@ if [ "$HOST" = claude ] && [ "$NO_INSTRUCTIONS" = true ]; then
   exit 2
 fi
 
-# 零足迹模式靠 spec-github-bridge skill 承接细则，而本地模式**没有对应的 skill**。
+# 零足迹模式靠当前 tracker 的 bridge skill 承接细则，而本地模式**没有对应的 skill**。
 # 去掉声明块之后目录约定无处可放 —— 装了等于没装，还比没装更迷惑
 # （hook 会照常报状态，看着像在工作）。
 if [ "$MODE" = local ] && { [ "$NO_BLOCK" = true ] || [ "$NO_INSTRUCTIONS" = true ]; }; then
   echo "❌ local 模式不支持 --no-claude-md。"
-  echo "   零足迹模式是靠 spec-github-bridge skill 承接细则的，本地模式没有对应的 skill；"
+  echo "   零足迹模式是靠对应 tracker 的 bridge skill 承接细则的，本地模式没有对应的 skill；"
   echo "   去掉声明块之后目录约定无处可放，装了等于没装。"
-  echo "   → 要么用 github 模式，要么写声明块（本地模式的块只有 13 行）。"
+  echo "   → 要么用 github 或 gitlab 模式，要么写声明块（本地模式的块只有 13 行）。"
   exit 2
 fi
 
@@ -76,10 +77,10 @@ fi
 #   `mkdir -p spec tasks .agent` 和 CLAUDE.md 声明块会落进**子目录**，
 #   项目里于是有了两套约定，而 hook 只认根上那套 —— 装了等于没装，
 #   还多出一堆孤儿文件。写操作必须先把作用目录钉死。
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"
 [ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 ${TPL}）"; exit 1; }
@@ -154,6 +155,15 @@ except Exception:
       fi
       ;;
   esac
+elif [ "$MODE" = "gitlab" ]; then
+  if ! command -v glab >/dev/null 2>&1; then
+    bad "未安装 glab（gitlab 模式必需，或改用 local）"
+  else
+    glab auth status >/dev/null 2>&1 && echo "  ✅ glab 已认证" || bad "glab 未认证或 API 不可用（glab auth login）"
+    glab repo view >/dev/null 2>&1 && echo "  ✅ GitLab 仓库可访问" || bad "读不到当前 GitLab 仓库（检查 remote、认证和 API）"
+  fi
+  RM=$(git remote get-url origin 2>/dev/null || echo "")
+  [ -n "$RM" ] && echo "  ✅ GitLab remote: ${RM}" || echo "  ⚠️  无 origin 远端（glab 已验证当前仓库）"
 fi
 
 [ "$F" -eq 0 ] || { echo ""; echo "存在阻塞项，未做任何改动。"; exit 1; }

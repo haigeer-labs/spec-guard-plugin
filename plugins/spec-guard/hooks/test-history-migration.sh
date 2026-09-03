@@ -23,4 +23,4 @@ printf '# map\n' > "$TMP/current/spec/CAPABILITY-MAP.md"
 printf '{"initiative":{"title":"capability-history"}}' > "$TMP/current/.agent/state.json"
 python3 "$MIGRATION" import --confirm "$TMP/current" >/dev/null
 python3 "$HOOKDIR/capability-history.py" verify "$TMP/current/spec/CAPABILITY-HISTORY.json" "$TMP/current" >/dev/null
-[ "$(python3 "$HOOKDIR/capability-history.py" status "$TMP/current/spec/CAPABILITY-HISTORY.json" capability-history)" = created ]
+[ "$(python3 "$HOOKDIR/capability-history.py" status "$TMP/current/spec/CAPABILITY-HISTORY.json" capability-history)" = active ]

@@ -871,6 +871,24 @@ echo "═══ setup-convention 回归 ═══"
 SETUP="$HOOKDIR/setup-convention.sh"
 export CLAUDE_PLUGIN_ROOT="$PLUGDIR"
 
+# GitLab 初始化必须先阻止缺失 glab 的环境，不能先写 tracker=gitlab 再让后续命令失败。
+rm -rf "$TMP/gitlab-no-glab"; mkdir -p "$TMP/gitlab-no-glab"; cd "$TMP/gitlab-no-glab" || exit 1; git init -q 2>/dev/null
+if ! env PATH=/usr/bin:/bin CLAUDE_PLUGIN_ROOT="$PLUGDIR" /bin/bash "$SETUP" gitlab --host=claude >/dev/null 2>&1 \
+   && [ ! -e .agent/state.json ] && [ ! -e CLAUDE.md ]; then
+  printf '  ✅ GitLab 无 glab 时阻止初始化且不写项目文件\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ GitLab 无 glab 时仍初始化或留下项目文件\n'; FAIL=$((FAIL+1))
+fi
+
+# GitLab 正常路径使用无网络的 glab 桩；setup 只需要认证与当前仓库可读。
+GLAB_SETUP_BIN="$TMP/glab-setup-bin"; mkdir -p "$GLAB_SETUP_BIN"
+cat > "$GLAB_SETUP_BIN/glab" <<'STUB'
+#!/bin/bash
+case "$1:$2" in auth:status|repo:view) exit 0 ;; esac
+exit 1
+STUB
+chmod +x "$GLAB_SETUP_BIN/glab"
+
 rm -rf "$TMP/s"; mkdir -p "$TMP/s"; cd "$TMP/s" || exit 1; git init -q 2>/dev/null
 echo "# 原有内容" > CLAUDE.md
 bash "$SETUP" local --dry-run >/dev/null 2>&1
@@ -906,7 +924,7 @@ fi
 
 # GitLab 必须使用 GitLab tracker 与 GitLab bridge，不能误落本地 todo 流程。
 rm -rf "$TMP/codex-gitlab"; mkdir -p "$TMP/codex-gitlab"; cd "$TMP/codex-gitlab" || exit 1; git init -q 2>/dev/null
-bash "$SETUP" gitlab --host=codex >/dev/null 2>&1
+PATH="$GLAB_SETUP_BIN:$PATH" bash "$SETUP" gitlab --host=codex >/dev/null 2>&1
 if grep -q 'setup-convention gitlab' AGENTS.md \
    && grep -q 'spec-gitlab-bridge' AGENTS.md \
    && ! grep -q 'tasks/<module-id>/todo.md' AGENTS.md \
@@ -918,7 +936,7 @@ fi
 
 # Claude Code 也必须拥有同等的 GitLab 初始化路径，不能只支持 Codex。
 rm -rf "$TMP/claude-gitlab"; mkdir -p "$TMP/claude-gitlab"; cd "$TMP/claude-gitlab" || exit 1; git init -q 2>/dev/null
-bash "$SETUP" gitlab --host=claude >/dev/null 2>&1
+PATH="$GLAB_SETUP_BIN:$PATH" bash "$SETUP" gitlab --host=claude >/dev/null 2>&1
 if grep -q 'setup-convention gitlab' CLAUDE.md \
    && grep -q 'spec-gitlab-bridge' CLAUDE.md \
    && ! grep -q 'tasks/<module-id>/todo.md' CLAUDE.md \

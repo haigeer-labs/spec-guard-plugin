@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.41] - 2026-09-04
+
+### 修复
+
+- **GitLab 初始化现在先验证 `glab`。** 未安装、未认证或无法读取当前 GitLab 仓库时不再写入 `tracker=gitlab`，避免留下后续必然失败的半初始化状态。
+- **GitLab bridge 补齐完整工作流协议。** 明确 `sync-map`、任务落库、`next`、模块级 MR 交付、状态增量写回和 capability history 的安全顺序；`relates_to` 始终只作降级关联。
+- **文档、模板与插件简介三方一致。** README 提供 GitLab 手动模板、前置条件及 Codex 参数；同步检查现在覆盖 GitHub、GitLab 和本地模板。
+
 ## [0.7.40] - 2026-09-04
 
 ### 修复

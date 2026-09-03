@@ -29,7 +29,7 @@ if manifest.get("name") != "spec-guard":
     raise SystemExit("name 必须精确为 spec-guard")
 if manifest.get("version") != claude.get("version"):
     raise SystemExit("version 必须与 Claude manifest 一致")
-if manifest.get("description") != "多模块 Spec 目录约定、GitHub Issue 打通与链路检测。":
+if manifest.get("description") != "多模块 Spec 目录约定、GitHub / GitLab Issue 打通与链路检测。":
     raise SystemExit("description 必须精确为 Codex 适配器描述")
 if manifest.get("skills") != "./skills/":
     raise SystemExit("skills 必须精确为 ./skills/")

@@ -63,6 +63,23 @@ else
   bad "正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区"
 fi
 
+EXISTING_LEDGER_PROJECT="$TMP/existing-ledger-project"
+mkdir -p "$EXISTING_LEDGER_PROJECT/spec" "$EXISTING_LEDGER_PROJECT/.agent"
+printf '# Current map\n' > "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"activeModule":null,"modules":{}}\n' > "$EXISTING_LEDGER_PROJECT/.agent/state.json"
+EXISTING_CREATED="$TMP/existing-created.json"
+printf '%s\n' '{"id":"older-initiative","title":"Older initiative","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/older-initiative/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"2026-09-02T10:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/older-initiative/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}' > "$EXISTING_CREATED"
+python3 "$HISTORY" create "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-HISTORY.json" "$EXISTING_CREATED" >/dev/null 2>&1
+if "$LIFECYCLE" complete --project "$EXISTING_LEDGER_PROJECT" --initiative new-initiative >/dev/null 2>&1 \
+  && [ ! -f "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-MAP.md" ] \
+  && [ "$(python3 "$HISTORY" status "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-HISTORY.json" older-initiative)" = completed ] \
+  && [ "$(python3 "$HISTORY" status "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-HISTORY.json" new-initiative)" = completed ] \
+  && [ -f "$EXISTING_LEDGER_PROJECT/spec/history/new-initiative"/*/CAPABILITY-MAP.md ]; then
+  ok "正：已有其他 initiative 的账本可登记并完成新的 initiative"
+else
+  bad "正：已有其他 initiative 的账本可登记并完成新的 initiative"
+fi
+
 RESUME_PROJECT="$TMP/resume-project"
 RESUME_CHECKPOINT="20260904T090000Z-0002"
 mkdir -p "$RESUME_PROJECT/spec/history/payment-v2/$RESUME_CHECKPOINT" \

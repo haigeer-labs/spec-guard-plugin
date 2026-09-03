@@ -171,6 +171,21 @@ def create(ledger_path, initiative_path):
     write_atomic(ledger_path, {"schemaVersion": 1, "initiatives": [initiative]})
 
 
+def ensure(ledger_path, initiative_path):
+    with open(initiative_path, encoding="utf-8") as handle:
+        initiative = json.load(handle)
+    check_initiative(initiative)
+    if not os.path.exists(ledger_path):
+        write_atomic(ledger_path, {"schemaVersion": 1, "initiatives": [initiative]})
+        return
+    data = load(ledger_path)
+    if any(item["id"] == initiative["id"] for item in data["initiatives"]):
+        return
+    data["initiatives"].append(initiative)
+    validate_data(data)
+    write_atomic(ledger_path, data)
+
+
 def append(ledger_path, initiative_id, event_path):
     data = load(ledger_path)
     with open(event_path, encoding="utf-8") as handle:
@@ -252,14 +267,20 @@ def verify_checkpoint(data, root_path, initiative_id):
 
 
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "active", "checkpoint", "verify-checkpoint", "create", "append"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
         if argv[0] == "create":
             if len(argv) != 3:
                 return 2
             create(argv[1], argv[2])
+            print("ok")
+            return 0
+        if argv[0] == "ensure":
+            if len(argv) != 3:
+                return 2
+            ensure(argv[1], argv[2])
             print("ok")
             return 0
         if argv[0] == "append":

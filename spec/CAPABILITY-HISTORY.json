@@ -110,6 +110,166 @@
           }
         }
       ]
+    },
+    {
+      "id": "gitlab-tracker-support",
+      "title": "gitlab-tracker-support",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T153239Z-0001",
+            "map": {
+              "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/CAPABILITY-MAP.md",
+              "sha256": "95200b19c1126bd01a59328c6e780080c380e870bc561e35a1b14da273433355"
+            },
+            "state": {
+              "path": ".agent/history/gitlab-tracker-support/20260903T153239Z-0001/state.json",
+              "sha256": "394ecd8c225ce0754456be81bbeb35dfa7745638e0ae40c51970cc8a3cd5123a"
+            },
+            "modules": [
+              {
+                "id": "tracker-detection",
+                "responsibility": "tracker-detection",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 36,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-detection.md",
+                  "sha256": "38cdbb0e190181b9b2de6b53e0eb5bb42fa56f3f882831dd1e7b07032707daf0"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-detection/plan.md",
+                  "sha256": "1abc8c6102bbee85c924b5d04fdf5a6d6dfb0865a7197861cb45082e11cbc747"
+                }
+              },
+              {
+                "id": "gitlab-workflow",
+                "responsibility": "gitlab-workflow",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 37,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-workflow.md",
+                  "sha256": "268005341bfed0f42bcd8ba3d790fab8e10dad766c915ff9fb3ce132abbd95a5"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-workflow/plan.md",
+                  "sha256": "c1873e67d9f43bda8d863331dffc9c412e84ef8e5d9b9ce985a0901a5a8c26b1"
+                }
+              },
+              {
+                "id": "tracker-routing",
+                "responsibility": "tracker-routing",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 38,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-routing.md",
+                  "sha256": "e6815cd3c7dbe1698c2765d485ac8a5c14db3db1f86a454d8c6b116d04dc444e"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-routing/plan.md",
+                  "sha256": "bd1c8211df9ae1cba8bd7a9b72570b6454bff99197a40bf3ce2666d93ef9cd71"
+                }
+              },
+              {
+                "id": "gitlab-e2e",
+                "responsibility": "gitlab-e2e",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 39,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-e2e.md",
+                  "sha256": "5583c5053d0e72d98c9f316ab4b141f902035c215b196c1aad4d56727c013fa0"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-e2e/plan.md",
+                  "sha256": "15055327004ace2197f8ac555c3d45881e2092ea3e4e758e81716b99daae0925"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260903T153239Z-0001",
+            "map": {
+              "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/CAPABILITY-MAP.md",
+              "sha256": "95200b19c1126bd01a59328c6e780080c380e870bc561e35a1b14da273433355"
+            },
+            "state": {
+              "path": ".agent/history/gitlab-tracker-support/20260903T153239Z-0001/state.json",
+              "sha256": "394ecd8c225ce0754456be81bbeb35dfa7745638e0ae40c51970cc8a3cd5123a"
+            },
+            "modules": [
+              {
+                "id": "tracker-detection",
+                "responsibility": "tracker-detection",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 36,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-detection.md",
+                  "sha256": "38cdbb0e190181b9b2de6b53e0eb5bb42fa56f3f882831dd1e7b07032707daf0"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-detection/plan.md",
+                  "sha256": "1abc8c6102bbee85c924b5d04fdf5a6d6dfb0865a7197861cb45082e11cbc747"
+                }
+              },
+              {
+                "id": "gitlab-workflow",
+                "responsibility": "gitlab-workflow",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 37,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-workflow.md",
+                  "sha256": "268005341bfed0f42bcd8ba3d790fab8e10dad766c915ff9fb3ce132abbd95a5"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-workflow/plan.md",
+                  "sha256": "c1873e67d9f43bda8d863331dffc9c412e84ef8e5d9b9ce985a0901a5a8c26b1"
+                }
+              },
+              {
+                "id": "tracker-routing",
+                "responsibility": "tracker-routing",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 38,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-routing.md",
+                  "sha256": "e6815cd3c7dbe1698c2765d485ac8a5c14db3db1f86a454d8c6b116d04dc444e"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/tracker-routing/plan.md",
+                  "sha256": "bd1c8211df9ae1cba8bd7a9b72570b6454bff99197a40bf3ce2666d93ef9cd71"
+                }
+              },
+              {
+                "id": "gitlab-e2e",
+                "responsibility": "gitlab-e2e",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 39,
+                "spec": {
+                  "path": "spec/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-e2e.md",
+                  "sha256": "5583c5053d0e72d98c9f316ab4b141f902035c215b196c1aad4d56727c013fa0"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-tracker-support/20260903T153239Z-0001/gitlab-e2e/plan.md",
+                  "sha256": "15055327004ace2197f8ac555c3d45881e2092ea3e4e758e81716b99daae0925"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

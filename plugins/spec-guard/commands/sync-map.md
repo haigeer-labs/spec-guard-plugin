@@ -1,7 +1,7 @@
 ---
 description: 把评审通过的能力图落成 GitHub Issue 结构
 ---
-Invoke the spec-github-bridge skill，执行「操作一：能力图落库」。
+读取 `.agent/state.json.tracker` 后路由：`github` 调用 `spec-github-bridge`；`gitlab` 调用 `spec-gitlab-bridge`；`none` 不创建远端 Issue。
 
 前置：
 - spec/CAPABILITY-MAP.md 存在且评审记录已勾选

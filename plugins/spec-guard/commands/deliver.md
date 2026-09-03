@@ -19,4 +19,4 @@ description: 当前模块开 PR 并关联 issue
 覆盖齐了再 invoke code-review-and-quality 做五轴自查。
 有 Critical 级别发现时不要开 PR，先修。
 
-通过后 invoke spec-github-bridge 执行「操作四：交付」。
+通过后按 `.agent/state.json.tracker` 路由：GitHub 调用 `spec-github-bridge`，GitLab 调用 `spec-gitlab-bridge`，本地项目不调用远端交付命令。

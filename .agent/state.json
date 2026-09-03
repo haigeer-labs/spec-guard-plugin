@@ -1,0 +1,18 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "Native Subagent Parallel Preflight",
+    "issue": 80,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "4ca844aabee8"
+  },
+  "issueTypes": false,
+  "modules": {
+    "parallel-subagent-preflight": {
+      "issue": 81,
+      "rowDigest": "265e006d6a55"
+    }
+  },
+  "activeModule": "parallel-subagent-preflight",
+  "updatedAt": ""
+}

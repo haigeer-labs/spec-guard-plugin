@@ -591,6 +591,60 @@ else:
 fi
 
 echo ""
+echo "── F. GitLab 层 ──"
+if [ "${TRACKER}" != "gitlab" ]; then
+  skip "tracker=${TRACKER}，不涉及 GitLab"
+elif ! command -v glab >/dev/null 2>&1; then
+  skip "glab 未安装，跳过（不代表通过）"
+elif ! glab auth status >/dev/null 2>&1; then
+  skip "glab 未认证或 API 不可用，跳过（不代表通过）"
+else
+  GL_PROJECT=$(glab repo view --output json 2>/dev/null | python3 -c \
+    'import json,sys; print(json.load(sys.stdin).get("path_with_namespace", ""))' 2>/dev/null || echo "")
+  GL_PROJECT_ID=$(glab api "projects/${GL_PROJECT//\//%2F}" 2>/dev/null | python3 -c \
+    'import json,sys; print(json.load(sys.stdin).get("id", ""))' 2>/dev/null || echo "")
+  if [ -z "${GL_PROJECT}" ] || [ -z "${GL_PROJECT_ID}" ]; then
+    skip "读不到当前 GitLab 项目，跳过 Issue 映射校验（不代表通过）"
+  else
+    GL_ROWS=$(python3 -c '
+import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: raise SystemExit
+initiative=d.get("initiative",{}).get("issue")
+if isinstance(initiative, int) or (isinstance(initiative,str) and initiative.isdigit()): print("initiative\t%s" % initiative)
+for module, item in (d.get("modules") or {}).items():
+    issue=(item or {}).get("issue") if isinstance(item,dict) else None
+    if isinstance(issue, int) or (isinstance(issue,str) and issue.isdigit()): print("module:%s\t%s" % (module, issue))
+' "${STATE}" 2>/dev/null || true)
+    if [ -z "${GL_ROWS}" ]; then
+      skip "state.json 没有 GitLab initiative 或模块 Issue，跳过远端映射校验"
+    else
+      GL_COUNT=0; GL_UNREADABLE=false
+      while IFS="$(printf '\t')" read -r GL_KIND GL_IID; do
+        [ -n "${GL_IID}" ] || continue
+        GL_JSON=$(glab api "projects/${GL_PROJECT_ID}/issues/${GL_IID}" 2>/dev/null || echo "")
+        GL_STATE=$(printf '%s' "${GL_JSON}" | python3 -c \
+          'import json,sys; print(json.load(sys.stdin).get("state", ""))' 2>/dev/null || echo "")
+        if [ -z "${GL_STATE}" ]; then
+          skip "读不到 GitLab ${GL_KIND} Issue #${GL_IID}，跳过剩余映射校验（不代表通过）"
+          GL_UNREADABLE=true
+          break
+        fi
+        GL_COUNT=$((GL_COUNT + 1))
+        if [ "${GL_KIND}" = "module:${MODULE}" ] && [ "${GL_STATE}" != "opened" ]; then
+          warn "activeModule=${MODULE} 的 GitLab Issue #${GL_IID} 是 ${GL_STATE}，先刷新 state 再继续"
+        else
+          ok "GitLab ${GL_KIND} Issue #${GL_IID} 可读取（${GL_STATE}）"
+        fi
+      done <<EOF
+${GL_ROWS}
+EOF
+      [ "${GL_UNREADABLE}" = false ] && ok "GitLab state 记录的 ${GL_COUNT} 条 Issue 都可读取"
+    fi
+  fi
+fi
+
+echo ""
 echo "═══ ${P} 通过 / ${W} 警告 / ${F} 失败 ═══"
 if [ "${F}" -gt 0 ]; then
   echo ""

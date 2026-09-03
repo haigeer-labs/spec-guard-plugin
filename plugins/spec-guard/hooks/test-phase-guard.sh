@@ -903,11 +903,23 @@ rm -rf "$TMP/codex-gitlab"; mkdir -p "$TMP/codex-gitlab"; cd "$TMP/codex-gitlab"
 bash "$SETUP" gitlab --host=codex >/dev/null 2>&1
 if grep -q 'setup-convention gitlab' AGENTS.md \
    && grep -q 'spec-gitlab-bridge' AGENTS.md \
-   && ! grep -q 'todo.md' AGENTS.md \
+   && ! grep -q 'tasks/<module-id>/todo.md' AGENTS.md \
    && python3 -c 'import json,sys; sys.exit(0 if json.load(open(".agent/state.json")).get("tracker") == "gitlab" else 1)' 2>/dev/null; then
-  printf '  ✅ Codex GitLab 写 GitLab bridge 与 tracker，不写 todo.md\n'; PASS=$((PASS+1))
+  printf '  ✅ Codex GitLab 写 GitLab bridge 与 tracker，不写本地 todo 流程\n'; PASS=$((PASS+1))
 else
   printf '  ❌ Codex GitLab 初始化没有写正确 tracker/bridge\n'; FAIL=$((FAIL+1))
+fi
+
+# Claude Code 也必须拥有同等的 GitLab 初始化路径，不能只支持 Codex。
+rm -rf "$TMP/claude-gitlab"; mkdir -p "$TMP/claude-gitlab"; cd "$TMP/claude-gitlab" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" gitlab --host=claude >/dev/null 2>&1
+if grep -q 'setup-convention gitlab' CLAUDE.md \
+   && grep -q 'spec-gitlab-bridge' CLAUDE.md \
+   && ! grep -q 'tasks/<module-id>/todo.md' CLAUDE.md \
+   && python3 -c 'import json,sys; sys.exit(0 if json.load(open(".agent/state.json")).get("tracker") == "gitlab" else 1)' 2>/dev/null; then
+  printf '  ✅ Claude GitLab 写 GitLab bridge 与 tracker，不写本地 todo 流程\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Claude GitLab 初始化没有写正确 tracker/bridge\n'; FAIL=$((FAIL+1))
 fi
 
 # --replace 只能替换 Codex 标记内的内容。

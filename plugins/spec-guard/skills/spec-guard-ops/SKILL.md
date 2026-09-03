@@ -34,7 +34,7 @@ PROJECT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/setup-convention.sh" github --host=codex
 ```
 
-用户要求本地 tracker 时，将 `github` 改为 `local`。需要预览时加 `--dry-run`；已有
+用户要求 GitLab tracker 时，将 `github` 改为 `gitlab`；要求本地 tracker 时改为 `local`。需要预览时加 `--dry-run`；已有
 Codex 标记而要求升级时加 `--replace`。将脚本输出原样转述，成功后提醒提交 `AGENTS.md`、
 `.agent/state.json` 与新建目录。
 
@@ -108,15 +108,16 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/initiative-lifecycle.sh" <p
 
 ## `sync-map`
 
-加载 `spec-guard:spec-github-bridge`，并仅按该 skill 的“操作一：能力图落库”执行。
-它可能创建 GitHub issue，必须遵循其中的前置检查、确认与增量写回规则。
+先读取 `.agent/state.json` 的 `tracker`：`github` 加载 `spec-guard:spec-github-bridge`，
+`gitlab` 加载 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。只按对应 skill 的
+“能力图落库”操作执行；外部 tracker 可能创建 issue，必须遵循其中的前置检查、确认与增量写回规则。
 
 ## `next`
 
-加载 `spec-guard:spec-github-bridge`，并仅按该 skill 的“操作三：取下一个任务”执行。
-不要复制或自行改写 issue 筛选逻辑。
+按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
+`spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要复制或自行改写外部 issue 筛选逻辑。
 
 ## `deliver`
 
-加载 `spec-guard:spec-github-bridge`，并仅按该 skill 的“操作四：交付（模块级 PR）”执行。
-不要在此 skill 中复制 GitHub 或交付流程。
+按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
+`spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要在此 skill 中复制 GitHub、GitLab 或交付流程。

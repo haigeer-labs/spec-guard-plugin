@@ -1,6 +1,6 @@
 ---
 description: 在当前项目落地多 Spec 目录约定（首次使用本插件时跑一次）
-argument-hint: "[github|local] [--dry-run] [--replace] [--no-claude-md] [--migrate]"
+argument-hint: "[github|gitlab|local] [--dry-run] [--replace] [--no-claude-md] [--migrate]"
 allowed-tools: Bash
 ---
 
@@ -22,7 +22,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/setup-convention.sh" $ARGUMENTS
 | 开关 | 什么时候用 |
 |---|---|
 | `--replace` | 项目里已有声明块，要**就地升级**到当前模板。只动 `BEGIN`/`END` 之间，标记外一个字节不碰。**不加它时已存在的块原样跳过** |
-| `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活。**只对 github 模式可用** |
+| `--no-claude-md` | 完全不往 `CLAUDE.md` 写声明块。hook 改由 `.agent/state.json` 存在来激活。**只对 github 或 gitlab 模式可用** |
 | `--migrate` | 项目已经在没有约定的情况下跑过 `/spec`，`SPEC-<模块>.md` 和能力图散在根上，要迁进 `spec/`。**不加它时只报告不动文件**；目标已存在一律不覆盖并以非零退出 |
 
 `--no-claude-md` 是给 `CLAUDE.md` 已经接近 200 行上限的项目用的（官方建议

@@ -16,6 +16,7 @@ python3 "$MIGRATION" preview "$TMP/legacy" | python3 -c 'import json,sys; assert
 rm -f "$TMP/legacy/spec/CAPABILITY-HISTORY.json"
 python3 "$MIGRATION" import --confirm "$TMP/legacy" >/dev/null
 python3 "$HOOKDIR/capability-history.py" verify "$TMP/legacy/spec/CAPABILITY-HISTORY.json" "$TMP/legacy" >/dev/null
+test -f "$TMP/legacy/spec/CAPABILITY-MAP.md" || exit 1
 
 mkdir -p "$TMP/current/.agent" "$TMP/current/spec"
 printf '# map\n' > "$TMP/current/spec/CAPABILITY-MAP.md"

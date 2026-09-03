@@ -70,9 +70,14 @@ def main(argv):
             print("migration refused", file=sys.stderr)
             return 1
         record = {"id": initiative_id, "title": title, "events": [{"type": "created", "at": "imported", "checkpoint": {"id": checkpoint, "map": {"path": "spec/history/%s/%s/CAPABILITY-MAP.md" % (initiative_id, checkpoint), "sha256": digest}, "modules": []}}]}
+        canonical_map = os.path.join(project, "spec", "CAPABILITY-MAP.md")
+        copied_canonical_map = False
         try:
             os.makedirs(destination)
             shutil.copyfile(map_path, os.path.join(destination, "CAPABILITY-MAP.md"))
+            if map_path != canonical_map and not os.path.exists(canonical_map):
+                shutil.copyfile(map_path, canonical_map)
+                copied_canonical_map = True
             descriptor, event_path = tempfile.mkstemp(prefix=".history-migration-", dir=project)
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 json.dump(record, handle)
@@ -83,6 +88,8 @@ def main(argv):
             return 0
         except (OSError, subprocess.CalledProcessError):
             shutil.rmtree(destination, ignore_errors=True)
+            if copied_canonical_map:
+                os.unlink(canonical_map)
             return 1
     else:
         print("usage: history-migration.py preview <project> | import --confirm <project>", file=sys.stderr)

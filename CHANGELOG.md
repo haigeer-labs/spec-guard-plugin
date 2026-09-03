@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.42] - 2026-09-04
+
+### 修复
+
+- **`/verify-artifacts` 现检查 GitLab 的本地映射一致性。** 能力图指纹、模块 Issue 映射和 `plan.md` 的远端 Issue 索引不再仅限 GitHub；不支持远端映射的 tracker 仍明确跳过。
+
 ## [0.7.41] - 2026-09-04
 
 ### 修复

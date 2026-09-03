@@ -241,8 +241,8 @@ echo "── A2. 能力图 ↔ 投影的指纹 ──"
 DIGEST_PY="${SELF_DIR}/hooks/spec-digest.py"
 if [ ! -f "${MAP}" ] || [ ! -f "${STATE}" ]; then
   skip "缺能力图或 state.json，跳过"
-elif [ "${TRACKER}" != "github" ]; then
-  skip "tracker=${TRACKER}，指纹只由 /sync-map 写（GitHub 专属）"
+elif [ "${TRACKER}" != "github" ] && [ "${TRACKER}" != "gitlab" ]; then
+  skip "tracker=${TRACKER}，当前 tracker 不写远端映射指纹"
 elif [ ! -f "${DIGEST_PY}" ]; then
   skip "找不到 spec-digest.py，跳过（不代表通过）"
 else
@@ -346,7 +346,7 @@ elif [ ! -f "tasks/${MODULE}/plan.md" ]; then
   warn "tasks/${MODULE}/plan.md 不存在 —— /plan 还没跑"
 else
   PLAN="tasks/${MODULE}/plan.md"
-  if [ "${TRACKER}" = "github" ]; then
+  if [ "${TRACKER}" = "github" ] || [ "${TRACKER}" = "gitlab" ]; then
     if grep -qE '^\s*- \[[ x]\]' "${PLAN}"; then
       bad "${PLAN} 里有 checkbox —— tracker 模式下 Task List 应是 issue 编号索引，不是 checklist"
     else

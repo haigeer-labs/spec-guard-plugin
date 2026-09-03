@@ -898,6 +898,18 @@ else
   printf '  ❌ Codex 安装没有使用 AGENTS.md 专属块\n'; FAIL=$((FAIL+1))
 fi
 
+# GitLab 必须使用 GitLab tracker 与 GitLab bridge，不能误落本地 todo 流程。
+rm -rf "$TMP/codex-gitlab"; mkdir -p "$TMP/codex-gitlab"; cd "$TMP/codex-gitlab" || exit 1; git init -q 2>/dev/null
+bash "$SETUP" gitlab --host=codex >/dev/null 2>&1
+if grep -q 'setup-convention gitlab' AGENTS.md \
+   && grep -q 'spec-gitlab-bridge' AGENTS.md \
+   && ! grep -q 'todo.md' AGENTS.md \
+   && python3 -c 'import json,sys; sys.exit(0 if json.load(open(".agent/state.json")).get("tracker") == "gitlab" else 1)' 2>/dev/null; then
+  printf '  ✅ Codex GitLab 写 GitLab bridge 与 tracker，不写 todo.md\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ Codex GitLab 初始化没有写正确 tracker/bridge\n'; FAIL=$((FAIL+1))
+fi
+
 # --replace 只能替换 Codex 标记内的内容。
 rm -rf "$TMP/codex-replace"; mkdir -p "$TMP/codex-replace"; cd "$TMP/codex-replace" || exit 1; git init -q 2>/dev/null
 printf '# 标记外开头\n' > AGENTS.md

@@ -28,8 +28,9 @@
 """
 import hashlib
 import json
-import re
 import sys
+
+from capability_map import parse_map as parse_capability_map
 
 DIGEST_LEN = 12  # sha256 前 12 位十六进制。碰撞概率与「有人手改 state.json」同量级
 
@@ -38,63 +39,17 @@ def _h(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:DIGEST_LEN]
 
 
-def _norm_lines(lines):
-    """行尾空白剥掉、首尾空行去掉，再用 \\n 拼。
-
-    只归一「肉眼看不见」的差异（CRLF、行尾空格、段落前后的空行）。
-    实质内容改一个字就必须变——这条检测的全部意义在于抓到那种改动。
-    """
-    out = [ln.rstrip() for ln in lines]
-    while out and not out[0]:
-        out.pop(0)
-    while out and not out[-1]:
-        out.pop()
-    return "\n".join(out)
-
-
 def parse_map(path):
     """解析能力图。返回 (rows, goal_text)。
 
     rows: [(module_id, normalized_row_text), ...]，按文件里的顺序
     goal_text: `## 目标` 一节的正文；没有这一节时为 None
     """
-    with open(path, encoding="utf-8") as f:
-        raw = f.read().splitlines()
-
-    rows = []
-    for line in raw:
-        if not line.lstrip().startswith("|"):
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) < 2:
-            continue
-        first = cells[0]
-        # 跳过表头和 |---|---| 分隔行
-        if not first or first.lower() == "module id" or set(first) <= set("-: "):
-            continue
-        mid = first.strip("`")
-        # 整行参与 digest（不只是 id）——职责或依赖改了也要能看出来。
-        # 这同时补上了「删一个 + 加一个」和改名的盲区：只数个数看不出来。
-        rows.append((mid, "|".join([mid] + cells[1:])))
-
-    # `## 目标` 一节，读到下一个同级标题为止。
-    # 没有这一节 → None → 目标段的指纹判定整个跳过（老能力图没这一节）。
-    goal = None
-    collecting = False
-    buf = []
-    for line in raw:
-        if re.match(r"^##\s", line):
-            if collecting:
-                break
-            if re.match(r"^##\s*(目标|Goal)\s*$", line.strip()):
-                collecting = True
-            continue
-        if collecting:
-            buf.append(line)
-    if collecting:
-        goal = _norm_lines(buf)
-
-    return rows, goal
+    # 历史能力图不一定有 Build order；digest 只需稳定复现既有行与目标段语义，
+    # 因此使用共享解析器的兼容模式，而新的并行分析器使用严格模式。
+    parsed = parse_capability_map(path, validate_graph=False)
+    rows = [(row.module_id, row.normalized_row) for row in parsed.rows]
+    return rows, parsed.goal
 
 
 def compute(path):

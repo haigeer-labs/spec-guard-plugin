@@ -341,6 +341,9 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 | `/spec-guard:teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/spec-guard:phase` | 查看当前链路状态和断链项 |
 | `/spec-guard:verify-artifacts` | 校验已落地的产物是否符合约定 |
+| `/spec-guard:parallel-readiness` | 只读分析能力图中的并行候选；默认不联网，`--refresh` 须经确认且仍不等于安全并行 |
+| `/spec-guard:parallel-safety-gate` | 审查显式路径/API/资源边界；仅 `manual-parallel-eligible`，不自动执行 |
+| `/spec-guard:parallel-guidance` | 为可人工并行模块生成 worker 命名与汇合清单；不自动创建或回收 |
 | `/spec-guard:sync-map` | 能力图 → 当前 tracker 的任务结构 |
 | `/spec-guard:next` | 取下一个可执行任务 |
 | `/spec-guard:deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
@@ -357,6 +360,11 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 
 Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `lifecycle`
 操作；Claude 使用相同的 hook 脚本。这样两个宿主保持一致的只读和确认语义。
+
+`parallel-readiness` 在两个宿主中都是显式调用的只读分析，不挂在对话 hook 上。它只会
+标出同一依赖层的 `candidate-only` 模块组；用户明确确认联网刷新后才可用 `--refresh`
+验证默认分支的新鲜度。候选组仍需后续安全审查，插件不会自动创建或回收 worktree、任务
+或子代理。
 
 ### 典型流程
 

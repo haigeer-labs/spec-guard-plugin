@@ -84,6 +84,51 @@ python3 "$ROOT/hooks/history-migration.py" import --confirm "$PROJECT"
 
 不要自行写入或修改旧 spec、plan、state 与 Git 历史。
 
+## `parallel-readiness`
+
+这是只读的并行开发候选分析：它只根据能力图依赖层和精确的默认分支 SHA 给出
+`candidate-only` 组，**不等于安全可并行**，也不会创建 worktree、分支、宿主子任务、
+Issue 或更改 `.agent/state.json`、`/next`、生命周期和 hook。
+
+默认使用本地已知的远端跟踪快照（报告会标明新鲜度未验证）：
+
+```bash
+python3 "$ROOT/hooks/parallel-readiness.py" --project "$PROJECT"
+```
+
+只有用户明确要求最新远端默认分支，且已完成用户确认允许联网刷新后，才追加
+`--refresh`：
+
+```bash
+python3 "$ROOT/hooks/parallel-readiness.py" --project "$PROJECT" --refresh
+```
+
+刷新失败时报告失败；不要回退成“最新”结论。无论哪种结果，都提示用户下一步需由
+parallel-safety-gate 审查路径、接口、迁移、配置和测试资源冲突。
+
+## `parallel-safety-gate`
+
+这是显式、只读的安全门；`manual-parallel-eligible` 不会自动创建或回收任何 worktree、
+任务、分支、Issue 或子代理，也不改 state、`/next` 或 hook：
+
+```bash
+python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
+```
+
+只有用户明确要求并确认联网刷新后才追加 `--refresh`。缺失边界声明或任意冲突必须报告
+`needs-review`/`sequential-required`，不得推荐自动并行。
+
+## `parallel-guidance`
+
+只为 `manual-parallel-eligible` 输出人工 worker 命名与汇合清单，不创建、管理或回收
+worktree、任务、分支或 Issue：
+
+```bash
+python3 "$ROOT/hooks/parallel-guidance.py" --project "$PROJECT"
+```
+
+用户明确确认联网刷新后才追加 `--refresh`；其余结果仅说明为何应人工审查或串行。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.45] - 2026-09-04
+
+- **修复 Claude tracker 命令可能静默结束。** `/spec-guard:sync-map`、`next` 与
+  `deliver` 现在明确要求加载对应 GitHub/GitLab bridge、执行指定操作，并在远端写入前
+  列出影响和请求确认，不能只复述路由规则。
+
 ## [0.7.44] - 2026-09-04
 
 - **修复 Claude Code 的插件命令入口。** Claude 当前版本会将插件命令注册为

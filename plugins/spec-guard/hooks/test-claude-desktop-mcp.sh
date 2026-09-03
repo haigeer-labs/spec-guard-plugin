@@ -7,9 +7,21 @@ PROJECT="$(cd "$ROOT/../.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 TEST_PROJECT="$TMP/project"
+LOCAL_PROJECT="$TMP/local-project"
+GITLAB_PROJECT="$TMP/gitlab-project"
 mkdir -p "$TEST_PROJECT/.agent"
 git -C "$TEST_PROJECT" init -q
 printf '%s\n' '{"tracker":"github","initiative":{"title":"","issue":null,"map":"spec/CAPABILITY-MAP.md"},"issueTypes":false,"modules":{},"activeModule":"","updatedAt":""}' >"$TEST_PROJECT/.agent/state.json"
+mkdir -p "$TEST_PROJECT/spec"
+printf '%s\n' '# Capability Map: Test Preview' '' '## 目标' '' '验证 MCP 预览不会创建 Issue。' '' '## 模块' '' '| Module id | Responsibility | Depends on |' '| --- | --- | --- |' '| preview-module | 输出待创建模块 | — |' '' 'Build order: preview-module' '' '---' '' '## 评审记录' '' '- [x] 模块边界确认' '- [x] 依赖方向单向无环' '- [x] module id 已定稿' '- [x] 构建顺序符合依赖拓扑' >"$TEST_PROJECT/spec/CAPABILITY-MAP.md"
+mkdir -p "$LOCAL_PROJECT/.agent" "$GITLAB_PROJECT/.agent" "$GITLAB_PROJECT/spec" "$TMP/bin"
+git -C "$LOCAL_PROJECT" init -q
+git -C "$GITLAB_PROJECT" init -q
+printf '%s\n' '{"tracker":"none","initiative":{"title":"","issue":null,"map":"spec/CAPABILITY-MAP.md"},"issueTypes":false,"modules":{},"activeModule":"","updatedAt":""}' >"$LOCAL_PROJECT/.agent/state.json"
+printf '%s\n' '{"tracker":"gitlab","initiative":{"title":"","issue":null,"map":"spec/CAPABILITY-MAP.md"},"issueTypes":false,"modules":{},"activeModule":"","updatedAt":""}' >"$GITLAB_PROJECT/.agent/state.json"
+cp "$TEST_PROJECT/spec/CAPABILITY-MAP.md" "$GITLAB_PROJECT/spec/CAPABILITY-MAP.md"
+printf '%s\n' '#!/usr/bin/env python3' 'import os, sys' 'args = sys.argv[1:]' 'with open(os.environ["GLAB_LOG"], "a", encoding="utf-8") as log: log.write(" ".join(args) + "\\n")' 'if args[:1] == ["repo"]: print(__import__("json").dumps({"path_with_namespace": "test/project"}))' 'if args[:1] == ["api"]: print(__import__("json").dumps({"id": 1}))' >"$TMP/bin/glab"
+chmod +x "$TMP/bin/glab"
 
 PASS=0
 FAIL=0
@@ -26,7 +38,14 @@ run_server() {
 {"jsonrpc":"2.0","id":4,"method":"unknown/method","params":{}}
 {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"phase","arguments":{"project":"$TEST_PROJECT"}}}
 {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"verify_history","arguments":{"project":"$PROJECT"}}}
+{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"sync_map_preview","arguments":{"project":"$TEST_PROJECT"}}}
 EOF
+}
+
+run_preview_server() {
+  local project="$1" output="$2"
+  printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"sync_map_preview\",\"arguments\":{\"project\":\"$project\"}}}" |
+    GLAB_LOG="$TMP/glab.log" PATH="$TMP/bin:$PATH" python3 "$SERVER" >"$output"
 }
 
 echo "═══ Claude Desktop MCP 回归测试 ═══"
@@ -40,7 +59,7 @@ fi
 if python3 - "$TMP/stdout" <<'PY'
 import json, sys
 lines=[json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
-assert [line['id'] for line in lines] == [1, 2, 3, 4, 5, 6]
+assert [line['id'] for line in lines] == [1, 2, 3, 4, 5, 6, 7]
 assert lines[0]['result']['protocolVersion'] == '2025-06-18'
 assert lines[0]['result']['capabilities'] == {'tools': {}}
 assert [tool['name'] for tool in lines[1]['result']['tools']] == [
@@ -53,6 +72,10 @@ assert lines[4]['result']['isError'] is False
 assert 'hookSpecificOutput' in lines[4]['result']['content'][0]['text']
 assert lines[5]['result']['isError'] is False
 assert '历史证据校验通过' in lines[5]['result']['content'][0]['text']
+assert lines[6]['result']['isError'] is False
+assert 'Initiative: Test Preview' in lines[6]['result']['content'][0]['text']
+assert 'preview-module' in lines[6]['result']['content'][0]['text']
+assert 'No local or remote writes were performed.' in lines[6]['result']['content'][0]['text']
 PY
 then
   ok "protocol, safe write response, and read-only hook tools"
@@ -64,6 +87,33 @@ if test ! -e "$TEST_PROJECT/.local"; then
   ok "hooks do not create local state inside the project"
 else
   bad "hooks do not create local state inside the project"
+fi
+
+run_preview_server "$LOCAL_PROJECT" "$TMP/local-preview"
+if python3 - "$TMP/local-preview" <<'PY'
+import json, sys
+result=json.loads(open(sys.argv[1], encoding='utf-8').read())['result']
+assert result['isError'] is False
+assert 'Local tracker' in result['content'][0]['text']
+PY
+then
+  ok "local tracker preview has no remote path"
+else
+  bad "local tracker preview has no remote path"
+fi
+
+run_preview_server "$GITLAB_PROJECT" "$TMP/gitlab-preview"
+if python3 - "$TMP/gitlab-preview" "$TMP/glab.log" <<'PY'
+import json, sys
+result=json.loads(open(sys.argv[1], encoding='utf-8').read())['result']
+assert result['isError'] is False
+assert '将同步 initiative: Test Preview' in result['content'][0]['text']
+assert '-X POST' not in open(sys.argv[2], encoding='utf-8').read()
+PY
+then
+  ok "GitLab preview uses the deterministic no-write script"
+else
+  bad "GitLab preview uses the deterministic no-write script"
 fi
 
 if python3 - "$TMP/stdout" <<'PY'

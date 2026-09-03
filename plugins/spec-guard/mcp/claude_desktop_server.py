@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -73,6 +74,45 @@ def run_hook(project: Path, name: str, *args: str) -> dict[str, Any]:
     return text_result(output, is_error=completed.returncode != 0)
 
 
+def github_sync_preview(project: Path) -> dict[str, Any]:
+    map_path = project / "spec" / "CAPABILITY-MAP.md"
+    if not map_path.is_file():
+        return text_result("spec/CAPABILITY-MAP.md is required for sync preview.", is_error=True)
+    text = map_path.read_text(encoding="utf-8")
+    if re.search(r"- \[ \]", text):
+        return text_result("Capability Map review is incomplete; preview stopped.", is_error=True)
+    title = re.search(r"^# Capability Map:\s*(.+)$", text, re.MULTILINE)
+    section = re.search(r"^## 模块\s*\n\n(.+?)(?=\n\nBuild order:|\n---|\Z)", text, re.MULTILINE | re.DOTALL)
+    if not title or not section:
+        return text_result("Capability Map must contain a title and module table.", is_error=True)
+    modules = []
+    for row in (line for line in section.group(1).splitlines() if line.startswith("|")):
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        if len(cells) >= 2 and cells[0] not in {"Module id", "---"} and not cells[0].startswith("example-"):
+            modules.append((cells[0], cells[1]))
+    if not modules:
+        return text_result("Capability Map has no real modules.", is_error=True)
+    lines = [f"Initiative: {title.group(1).strip()}", "GitHub projection preview:"]
+    lines.extend(f"- Module: {module_id} — {responsibility}" for module_id, responsibility in modules)
+    lines.append("No local or remote writes were performed.")
+    return text_result("\n".join(lines))
+
+
+def sync_map_preview(project: Path) -> dict[str, Any]:
+    state_path = project / ".agent" / "state.json"
+    try:
+        tracker = json.loads(state_path.read_text(encoding="utf-8")).get("tracker")
+    except (OSError, ValueError, TypeError):
+        return text_result("A valid .agent/state.json is required for sync preview.", is_error=True)
+    if tracker == "github":
+        return github_sync_preview(project)
+    if tracker == "gitlab":
+        return run_hook(project, "sync-map-gitlab.sh")
+    if tracker in {"none", "local"}:
+        return text_result("Local tracker: no remote synchronization is available. No writes were performed.")
+    return text_result(f"Unsupported tracker: {tracker!r}", is_error=True)
+
+
 def call_tool(name: Any, arguments: Any) -> dict[str, Any]:
     arguments = arguments if isinstance(arguments, dict) else {}
     if name == "write_operation":
@@ -88,7 +128,7 @@ def call_tool(name: Any, arguments: Any) -> dict[str, Any]:
     if name == "verify_history":
         return run_hook(project, "verify-history.sh", str(project))
     if name == "sync_map_preview":
-        return text_result("sync_map_preview is not implemented yet.", is_error=True)
+        return sync_map_preview(project)
     return text_result(f"Unknown tool: {name}", is_error=True)
 
 

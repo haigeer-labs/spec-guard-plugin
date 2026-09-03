@@ -13,3 +13,6 @@ printf '%s' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert
 mkdir -p "$TMP/legacy/spec"
 : > "$TMP/legacy/spec/CAPABILITY-HISTORY.json"
 python3 "$MIGRATION" preview "$TMP/legacy" | python3 -c 'import json,sys; assert json.load(sys.stdin)["conflicts"]'
+rm -f "$TMP/legacy/spec/CAPABILITY-HISTORY.json"
+python3 "$MIGRATION" import --confirm "$TMP/legacy" >/dev/null
+python3 "$HOOKDIR/capability-history.py" verify "$TMP/legacy/spec/CAPABILITY-HISTORY.json" "$TMP/legacy" >/dev/null

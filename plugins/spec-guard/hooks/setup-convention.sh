@@ -34,7 +34,7 @@ for a in "$@"; do
     --migrate)      MIGRATE=true ;;
   esac
 done
-case "$MODE" in github|local) ;; *) echo "模式必须是 github 或 local"; exit 2 ;; esac
+case "$MODE" in github|gitlab|local) ;; *) echo "模式必须是 github、gitlab 或 local"; exit 2 ;; esac
 
 case "$HOST" in
   claude)
@@ -229,7 +229,7 @@ if [ -n "${PAIRS}" ]; then
 fi
 
 # 指令文件：追加，绝不覆盖标记之外的任何内容
-SRC="$TPL/${TEMPLATE_PREFIX}-block-$( [ "$MODE" = github ] && echo github || echo local ).md"
+SRC="$TPL/${TEMPLATE_PREFIX}-block-${MODE}.md"
 if [ "$NO_BLOCK" = true ]; then
   skip "${INSTRUCTIONS} 声明块（--no-claude-md）—— 改由 .agent/state.json 激活 hook"
 elif [ "$NO_INSTRUCTIONS" = true ]; then
@@ -280,7 +280,7 @@ elif [ -f .agent/state.json.disabled ]; then
 import json,sys
 try: print(json.load(open('.agent/state.json.disabled')).get('tracker') or '')
 except Exception: print('')" 2>/dev/null)
-  WANT=$( [ "$MODE" = github ] && echo github || echo none )
+  WANT=$( [ "$MODE" = github ] && echo github || { [ "$MODE" = gitlab ] && echo gitlab || echo none; } )
   if [ "${OLDT}" = "${WANT}" ]; then
     NMOD=$(python3 -c "
 import json
@@ -302,7 +302,7 @@ except Exception: print(0)" 2>/dev/null)
     esac
   fi
 else
-  T=$( [ "$MODE" = github ] && echo github || echo none )
+  T=$( [ "$MODE" = github ] && echo github || { [ "$MODE" = gitlab ] && echo gitlab || echo none; } )
   # issueTypes: true=可用（加 --type）  false=不可用（省略 --type，靠层级区分）
   ITJ=$( [ "$ISSUE_TYPES" = true ] && echo true || echo false )
   if [ "$DRY" = false ]; then

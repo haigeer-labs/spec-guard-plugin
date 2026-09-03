@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.46] - 2026-09-04
+
+- **修复 Claude tracker 命令缺少执行权限。** `sync-map`、`next` 与 `deliver` 显式声明
+  `Bash`、`Read`、`Write`，使 bridge 规则可实际读取产物、调用 tracker CLI 和写回 state。
+
 ## [0.7.45] - 2026-09-04
 
 - **修复 Claude tracker 命令可能静默结束。** `/spec-guard:sync-map`、`next` 与

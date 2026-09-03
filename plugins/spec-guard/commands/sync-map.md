@@ -1,5 +1,6 @@
 ---
 description: 把评审通过的能力图落成当前 tracker 的任务结构
+allowed-tools: Bash, Read, Write
 ---
 立即读取 `.agent/state.json` 的 `tracker`，并**加载对应 bridge skill 后完整执行其「操作一：sync-map」**：
 

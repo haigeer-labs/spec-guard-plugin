@@ -1,5 +1,6 @@
 ---
 description: 从当前 tracker 取下一个可执行任务并开始实现
+allowed-tools: Bash, Read, Write
 ---
 立即读取 `.agent/state.json` 的 `tracker`，加载对应 bridge skill，并完整执行其「操作三：next」：`github` 使用 `spec-github-bridge`，`gitlab` 使用 `spec-gitlab-bridge`，`none` 使用本地任务流程。不要只复述路由规则或静默结束。
 取到任务后接 /build。

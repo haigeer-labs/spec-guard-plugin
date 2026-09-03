@@ -154,10 +154,11 @@ want fail "command-names: 命名空间里的不存在命令 → 报错" \
 if grep -q '加载对应 bridge skill 后完整执行其「操作一：sync-map」' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
    && grep -q '不要只复述路由规则或静默结束' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
    && grep -q '完整执行其「操作三：next」' "$ROOT/plugins/spec-guard/commands/next.md" \
-   && grep -q '完整执行其「操作四：deliver」' "$ROOT/plugins/spec-guard/commands/deliver.md"; then
+   && grep -q '完整执行其「操作四：deliver」' "$ROOT/plugins/spec-guard/commands/deliver.md" \
+   && grep -q 'allowed-tools: Bash, Read, Write' "$ROOT/plugins/spec-guard/commands/sync-map.md"; then
   printf '  ✅ tracker 路由命令强制加载 bridge 并禁止静默结束\n'; PASS=$((PASS+1))
 else
-  printf '  ❌ tracker 路由命令可能只复述规则后静默结束\n'; FAIL=$((FAIL+1))
+  printf '  ❌ tracker 路由命令缺少执行协议或所需工具权限\n'; FAIL=$((FAIL+1))
 fi
 
 # 它自己声明「不查 hooks/test-*.sh」—— 这条豁免也要有用例，

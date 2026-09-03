@@ -1,5 +1,6 @@
 ---
 description: 当前模块交付到当前 tracker
+allowed-tools: Bash, Read, Write
 ---
 交付粒度是**模块**，不是单个 task。模块完成校验、默认分支解析与远端交付命令由所选 bridge 定义；不要在此处调用另一 tracker 的 CLI。
 

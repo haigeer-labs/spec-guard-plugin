@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.35] - 2026-09-03
+
+- 新增 `setup-convention gitlab --host=codex`，可在 GitLab 项目初始化 Codex 约定。
+
 ## [0.7.34] - 2026-09-03
 
 - 新增 GitLab tracker 自动探测、GitLab bridge 与非交互安全保护。

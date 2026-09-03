@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.37] - 2026-09-03
+
+### 新增
+
+- **GitLab 初始化覆盖 Claude Code 与 Codex。** `setup-convention gitlab` 现在会为两种宿主写入 GitLab Issues 事实源与 `spec-gitlab-bridge`，不再只支持 Codex。
+- **tracker 路由一致化。** Codex 运维 skill、命令提示和禁用 state 恢复提示现在统一覆盖 GitHub、GitLab 与本地模式。
+
+### 修复
+
+- **已有历史台账的新 initiative 可正常归档。** lifecycle 会先将缺失的 initiative 原子登记到已有 ledger，再追加终态 checkpoint；不会再留下未登记的归档目录。
+
+### 验证
+
+- 在自建 GitLab 15.3 项目实测 Issues、Merge Requests、SSH Git 操作和 `relates_to` 关联；平台缺少原生父子/阻塞语义时明确降级，不伪造依赖关系。
+- 完整校验通过；Claude Code 与 Codex 的 GitLab 初始化回归均通过。
+
 ## [0.7.36] - 2026-09-03
 
 - 修复 GitLab 初始化后的下一步提示，改为 GitLab Issues 与 GitLab bridge 流程。

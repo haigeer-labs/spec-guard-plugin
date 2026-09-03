@@ -32,6 +32,13 @@ def default_base(project):
     return ref, sha
 
 
+def refreshed_base(project):
+    ref, _ = default_base(project)
+    branch = ref.split("/", 1)[1]
+    git(project, "fetch", "--quiet", "origin", branch)
+    return default_base(project)
+
+
 def candidate_groups(parsed):
     rows = dict((row.module_id, row) for row in parsed.rows)
     layers = {}
@@ -55,15 +62,17 @@ def candidate_groups(parsed):
     ]
 
 
-def report(project):
+def report(project, refresh=False):
     map_path = os.path.join(project, "spec", "CAPABILITY-MAP.md")
     parsed = parse_map(map_path)
-    ref, sha = default_base(project)
+    ref, sha = refreshed_base(project) if refresh else default_base(project)
     return {
         "ok": True,
-        "base": {"ref": ref, "sha": sha, "fresh": False},
+        "base": {"ref": ref, "sha": sha, "fresh": refresh},
         "candidateGroups": candidate_groups(parsed),
-        "warnings": ["尚未验证远端新鲜度；传 --refresh 后才可称为最新主线。"],
+        "warnings": [] if refresh else [
+            "尚未验证远端新鲜度；传 --refresh 后才可称为最新主线。"
+        ],
     }
 
 
@@ -72,7 +81,7 @@ def text_report(data):
     lines = [
         "并行开发候选分析（不是安全并行判定）",
         "基线: %s @ %s" % (base["ref"], base["sha"]),
-        "新鲜度: 未验证",
+        "新鲜度: 已验证" if base["fresh"] else "新鲜度: 未验证",
     ]
     if data["candidateGroups"]:
         lines.append("候选组:")
@@ -92,11 +101,8 @@ def main(argv):
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args(argv)
-    if args.refresh:
-        parser.error("--refresh 将在后续 freshness 任务中实现")
-
     try:
-        data = report(os.path.abspath(args.project))
+        data = report(os.path.abspath(args.project), refresh=args.refresh)
     except (MapError, OSError, RuntimeError) as error:
         print("parallel-readiness: %s" % error, file=sys.stderr)
         return 1

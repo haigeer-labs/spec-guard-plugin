@@ -150,6 +150,50 @@ assert report["candidateGroups"] == [{
 assert any("尚未验证远端新鲜度" in warning for warning in report["warnings"]), report
 after = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 assert after == before
+assert subprocess.check_output(
+    ["git", "-C", project, "rev-parse", "origin/trunk"], text=True
+).strip() == before
+PY
+
+git clone -q "$WORK/remote.git" "$WORK/publisher"
+git -C "$WORK/publisher" config user.email test@example.invalid
+git -C "$WORK/publisher" config user.name test
+printf 'remote advance\n' > "$WORK/publisher/README.md"
+git -C "$WORK/publisher" add README.md
+git -C "$WORK/publisher" commit -qm "advance remote"
+git -C "$WORK/publisher" push -q origin trunk
+
+python3 - "$ROOT/hooks/parallel-readiness.py" "$WORK/project" <<'PY'
+import json
+import subprocess
+import sys
+
+script, project = sys.argv[1:]
+head_before = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+remote_before = subprocess.check_output(
+    ["git", "-C", project, "rev-parse", "origin/trunk"], text=True
+).strip()
+published = subprocess.check_output(
+    ["git", "-C", project + "/../publisher", "rev-parse", "HEAD"], text=True
+).strip()
+result = subprocess.run(
+    ["python3", script, "--project", project, "--refresh", "--format", "json"],
+    check=True, capture_output=True, text=True,
+)
+report = json.loads(result.stdout)
+assert remote_before != published
+assert report["base"] == {"ref": "origin/trunk", "sha": published, "fresh": True}, report
+assert not report["warnings"], report
+assert subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip() == head_before
+
+subprocess.run(["git", "-C", project, "remote", "set-url", "origin", project + "/../missing.git"], check=True)
+failed = subprocess.run(
+    ["python3", script, "--project", project, "--refresh", "--format", "json"],
+    capture_output=True, text=True,
+)
+assert failed.returncode != 0
+assert not failed.stdout.strip(), failed.stdout
+assert "parallel-readiness:" in failed.stderr, failed.stderr
 PY
 
 printf 'parallel-readiness regression passed\n'

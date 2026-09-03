@@ -132,15 +132,44 @@ except Exception:
 " "$1" 2>/dev/null
 }
 
+# 远端 host 解析与 phase-guard.sh 保持相同。
+remote_host() {  # $1=remote url
+  local h="$1"
+  h="${h#*://}"; h="${h#*@}"; h="${h%%/*}"; h="${h%%:*}"
+  printf '%s\n' "$h"
+}
+
 # 远端是不是 GitHub —— **只看 host 段**，与 phase-guard.sh 里那份逐字相同。
 #   写 `*github.*` 会漏掉 SSH host 别名：`git@github-collab:o/r.git` 里
 #   `github` 后面跟的是 `-` 不是 `.`。反过来松成 `*github*` 又会把
 #   `gitlab.com/me/github-tools.git` 误判成 GitHub —— 那是仓库名不是宿主。
 #   **两个 hook 共用的判据，改一处必须改另一处，两边都要加用例。**
 is_github_remote() {  # $1=remote url
-  local h="$1"
-  h="${h#*://}"; h="${h#*@}"; h="${h%%/*}"; h="${h%%:*}"
+  local h
+  h=$(remote_host "$1")
   case "$h" in *github*) return 0 ;; *) return 1 ;; esac
+}
+
+# GitLab.com 可从 host 无歧义判定；自建实例必须由 glab 的当前仓库查询确认，
+# 不按 host 是否包含 gitlab 猜测。探测失败保持安全的本地回退。
+is_gitlab_remote() {  # $1=remote url
+  local h pid waited rc
+  h=$(remote_host "$1")
+  case "$h" in gitlab.com|*.gitlab.com) return 0 ;; esac
+  command -v glab >/dev/null 2>&1 || return 1
+  glab repo view >/dev/null 2>&1 &
+  pid=$!; waited=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$waited" -ge 2 ]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  wait "$pid"; rc=$?
+  return "$rc"
 }
 
 # ── tracker 判定（与 phase-guard 同一套顺序）────────────────
@@ -149,7 +178,8 @@ if [ -z "${TRACKER}" ]; then
   R=$(git remote get-url origin 2>/dev/null || echo "")
   if [ -z "${R}" ]; then TRACKER="none"
   elif is_github_remote "${R}"; then TRACKER="github"
-  else TRACKER="other"; fi
+  elif is_gitlab_remote "${R}"; then TRACKER="gitlab"
+  else TRACKER="none"; fi
 fi
 MODULE=$(jread "${STATE}" "d.get('activeModule')")
 EPIC=$(jread "${STATE}" "d.get('initiative',{}).get('issue')")

@@ -172,7 +172,21 @@ has "非 GitHub tracker 跳过 GitHub 层" "不涉及 GitHub"
 base; map identity; touch spec/identity.md
 rm -f .agent/state.json
 git remote add origin https://gitlab.com/a/b.git 2>/dev/null
-has "无 state.json 时按 remote 推断" "tracker=other"
+has "GitLab.com remote 自动识别 GitLab" "tracker=gitlab"
+
+base; map identity; touch spec/identity.md
+rm -f .agent/state.json
+git remote add origin git@mgit.lgroup.co:hqdf/web/x9-live-player.git 2>/dev/null
+mkdir -p "$TMP/glab-bin"
+cat > "$TMP/glab-bin/glab" <<'STUB'
+#!/bin/bash
+[ "$1" = repo ] && [ "$2" = view ] && exit 0
+exit 1
+STUB
+chmod +x "$TMP/glab-bin/glab"
+OLD_GLAB_PATH="$PATH"; export PATH="$TMP/glab-bin:$PATH"
+has "自建 GitLab 由 glab 确认" "tracker=gitlab"
+export PATH="$OLD_GLAB_PATH"
 
 # ── 未启用约定：退出码 2，不做任何判断 ──
 rm -rf "${TMP}/off"; mkdir -p "${TMP}/off"; echo "# 普通项目" > "${TMP}/off/CLAUDE.md"

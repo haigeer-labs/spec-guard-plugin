@@ -68,6 +68,22 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/verify-artifacts.sh"
 
 无账本时报告“未验证”；orphan 或篡改证据时报告失败，不自动删除任何文件。
 
+## `history-migration`
+
+迁移预览是只读操作：
+
+```bash
+python3 "$ROOT/hooks/history-migration.py" preview "$PROJECT"
+```
+
+执行导入前，必须说明它会创建新的历史 checkpoint 与账本，并取得用户明确确认；确认后才调用：
+
+```bash
+python3 "$ROOT/hooks/history-migration.py" import --confirm "$PROJECT"
+```
+
+不要自行写入或修改旧 spec、plan、state 与 Git 历史。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

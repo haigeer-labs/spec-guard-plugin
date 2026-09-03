@@ -136,7 +136,7 @@ import sys
 ops = open(sys.argv[1], encoding="utf-8").read()
 bridge = open(sys.argv[2], encoding="utf-8").read()
 
-for operation in ("setup", "phase", "verify", "teardown", "lifecycle", "sync-map", "next", "deliver"):
+for operation in ("setup", "phase", "verify", "verify-history", "history-migration", "teardown", "lifecycle", "sync-map", "next", "deliver"):
     if ops.count(f"`{operation}`") != 1:
         raise SystemExit(f"操作 {operation} 必须恰好声明一次")
 
@@ -160,6 +160,8 @@ if '确认' not in ops:
     raise SystemExit("teardown 未要求用户确认")
 if 'initiative-lifecycle.sh' not in ops or 'lifecycle' not in ops:
     raise SystemExit("lifecycle 未调用共享入口")
+if 'verify-history.sh' not in ops or 'history-migration.py' not in ops:
+    raise SystemExit("历史操作未调用共享入口")
 for operation in ("sync-map", "next", "deliver"):
     if f"`{operation}`" not in ops or "spec-github-bridge" not in ops:
         raise SystemExit(f"{operation} 未委派给 spec-github-bridge")

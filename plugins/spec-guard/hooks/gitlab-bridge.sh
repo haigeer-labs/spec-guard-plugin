@@ -5,9 +5,21 @@ set -euo pipefail
 ACTION=${1:-}; shift || true
 case "$ACTION" in issue|relate|mr) ;; *) echo 'usage: gitlab-bridge.sh <issue|relate|mr> ...' >&2; exit 2;; esac
 command -v glab >/dev/null || { echo 'glab 未安装' >&2; exit 1; }
-glab repo view >/dev/null
 case "$ACTION" in
-  issue)  [ "$#" -gt 0 ] && glab issue create "$@" || { echo 'issue 需要显式参数' >&2; exit 2; } ;;
-  relate) [ "$#" -gt 0 ] && glab api -X POST "$@" || { echo 'relate 需要 API 参数' >&2; exit 2; } ;;
-  mr)     [ "$#" -gt 0 ] && glab mr create "$@" || { echo 'mr 需要显式参数' >&2; exit 2; } ;;
+  issue)
+    [ "$#" -eq 6 ] && [ "$1" = --repo ] && [ "$3" = --title ] && [ "$5" = --description-file ] \
+      || { echo 'issue 仅接受 --repo --title --description-file' >&2; exit 2; }
+    glab repo view >/dev/null; glab issue create "$@"
+    ;;
+  relate)
+    [ "$#" -eq 3 ] || { echo 'relate 需要 project-id source-iid target-iid' >&2; exit 2; }
+    case "$1:$2:$3" in *[!0-9:]*|*::*|:*) echo 'relate 参数必须是数字' >&2; exit 2;; esac
+    glab repo view >/dev/null; glab api -X POST "projects/$1/issues/$2/links" -f "target_project_id=$1" -f "target_issue_iid=$3"
+    ;;
+  mr)
+    [ "$#" -eq 8 ] && [ "$1" = --repo ] && [ "$3" = --source-branch ] \
+      && [ "$5" = --target-branch ] && [ "$7" = --title ] \
+      || { echo 'mr 仅接受 --repo --source-branch --target-branch --title' >&2; exit 2; }
+    glab repo view >/dev/null; glab mr create "$@"
+    ;;
 esac

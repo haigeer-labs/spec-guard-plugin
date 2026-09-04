@@ -1,0 +1,34 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "Worktree Parallel Execution",
+    "issue": 94,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "454231878d13"
+  },
+  "issueTypes": false,
+  "modules": {
+    "parallel-execution-ledger": {
+      "issue": 95,
+      "rowDigest": "b2639abd5342"
+    },
+    "parallel-worktree-runtime": {
+      "issue": 96,
+      "rowDigest": "d8ef7c0baeba"
+    },
+    "parallel-cli-execution": {
+      "issue": 97,
+      "rowDigest": "b9c5df4f45d2"
+    },
+    "parallel-workflow-integration": {
+      "issue": 98,
+      "rowDigest": "dc3b6b35e31b"
+    },
+    "desktop-worker-registration": {
+      "issue": 99,
+      "rowDigest": "3b0519f1b834"
+    }
+  },
+  "activeModule": "parallel-execution-ledger",
+  "updatedAt": "2026-09-04T15:28:08Z"
+}

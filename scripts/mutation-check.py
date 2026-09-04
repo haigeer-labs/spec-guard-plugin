@@ -17,6 +17,9 @@ H = os.path.join(ROOT, "plugins/spec-guard/hooks")
 PG, VA = os.path.join(H, "phase-guard.sh"), os.path.join(H, "verify-artifacts.sh")
 DG = os.path.join(H, "spec-digest.py")   # 指纹算法：两个 hook 和 /sync-map 共用的那一份
 TPG, TVA = os.path.join(H, "test-phase-guard.sh"), os.path.join(H, "test-verify-artifacts.sh")
+PE = os.path.join(H, "parallel-execution.py")
+PL = os.path.join(H, "parallel_execution_lib.py")
+TPE = os.path.join(H, "test-parallel-execution-ledger.sh")
 
 # ── 安全闸：这个工具**在工作区就地改文件** ────────────────────
 #   实测踩过：它在后台跑的时候，另一边跑测试读到的是被注入变异的
@@ -43,7 +46,7 @@ if os.path.exists(LOCK):
          "     它会就地改 hooks/ 里的文件，两个实例同时跑必然互相污染。\n"
          "     确认没在跑就删掉 %s" % (pid, LOCK))
 
-TARGETS = [PG, VA, DG]
+TARGETS = [PG, VA, DG, PE, PL]
 # **只列真脏的那个。** 把三个全列出来是误导性报错 —— 读的人会去看两个
 # 根本没动过的文件。管得太宽的判据和管得太窄的一样是缺陷（lenses A3）。
 _dirty = [t for t in TARGETS if subprocess.run(
@@ -158,10 +161,22 @@ M = [
   ("重复 Epic：读不到 open issue 列表时发绿灯而不是 skip", VA, TVA,
    '''    skip "读不到 open issue 列表（网络或权限），跳过重复 Epic 比对（不代表通过）"''',
    '''    ok "没有与 Epic #${EPIC} 同名的其他 open issue"''', "killed"),
+  ("parallel run：跳过 safety report base SHA 校验", PE, TPE,
+   '''    if base_sha != head:''',
+   '''    if False:''', "killed"),
+  ("parallel claim：原子 mkdir 退化为可重入创建", PL, TPE,
+   '''        os.mkdir(lease_path)''',
+   '''        os.makedirs(lease_path, exist_ok=True)''', "killed"),
+  ("parallel status：损坏 lease 被误报为 available", PL, TPE,
+   '''        return {"moduleId": module_id, "state": "unknown", "reason": str(error)}''',
+   '''        return {"moduleId": module_id, "state": "available", "reason": str(error)}''', "killed"),
 ]
 def green(suite):
     r = subprocess.run(["/bin/bash", suite], capture_output=True, text=True)
-    return r.returncode == 0 and " 0 失败" in r.stdout
+    markers = {
+        TPE: "parallel-execution-ledger regression passed",
+    }
+    return r.returncode == 0 and markers.get(suite, " 0 失败") in r.stdout
 
 
 # 基线：没变异的时候套件必须是绿的。

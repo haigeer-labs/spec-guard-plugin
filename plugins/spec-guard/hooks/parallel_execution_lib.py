@@ -125,8 +125,7 @@ def load_json(path, label):
 def write_json_exclusive(path, value):
     """原子创建 JSON 文件；存在时返回 False，绝不覆盖已有 provenance。"""
     parent = os.path.dirname(path)
-    if not os.path.isdir(parent):
-        os.makedirs(parent)
+    os.makedirs(parent, exist_ok=True)
     payload = (json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
     try:
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

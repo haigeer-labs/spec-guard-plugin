@@ -18,6 +18,10 @@ class LedgerError(Exception):
     """账本输入或本地 Git 身份无法安全验证。"""
 
 
+class ClaimConflict(LedgerError):
+    """另一个 worker 已原子领取相同模块。"""
+
+
 def _git(project, *args):
     result = subprocess.run(
         ["git", "-C", project] + list(args),
@@ -126,3 +130,33 @@ def write_json_exclusive(path, value):
     with os.fdopen(descriptor, "wb") as handle:
         handle.write(payload)
     return True
+
+
+def claim_lease(root, run, module_id):
+    """用目录创建的原子性领取单个模块，并生成其 worker manifest。"""
+    validate_module_id(module_id)
+    validate_record(run, ("schemaVersion", "runId", "baseSha", "modules"))
+    modules = run.get("modules")
+    if not isinstance(modules, list) or module_id not in [item.get("id") for item in modules if isinstance(item, dict)]:
+        raise LedgerError("module 不属于该 run")
+    lease_root = os.path.join(root, "leases", run["runId"])
+    os.makedirs(lease_root, exist_ok=True)
+    lease_path = os.path.join(lease_root, "module-" + module_id)
+    try:
+        os.mkdir(lease_path)
+    except OSError as error:
+        if error.errno == 17:
+            raise ClaimConflict("module 已被其他 worker 领取: %s" % module_id)
+        raise LedgerError("无法创建 module lease: %s" % error)
+    manifest = {
+        "schemaVersion": SCHEMA_VERSION,
+        "runId": run["runId"],
+        "workerId": "%s-%s-1" % (run["runId"][:12], module_id),
+        "moduleId": module_id,
+        "baseSha": run["baseSha"],
+        "leasePath": lease_path,
+    }
+    manifest_path = os.path.join(lease_path, "manifest.json")
+    if not write_json_exclusive(manifest_path, manifest):
+        raise LedgerError("新建 lease 缺少唯一 manifest")
+    return manifest_path, manifest

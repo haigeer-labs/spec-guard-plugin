@@ -126,6 +126,25 @@ stale_command = command[:]
 stale_command[stale_command.index(project + "/eligible.json")] = project + "/stale.json"
 stale = subprocess.run(stale_command, capture_output=True, text=True)
 assert stale.returncode != 0 and "base SHA" in stale.stderr, stale.stderr
+
+claim = ["python3", script, "claim-module", "--project", project, "--run", run["runId"], "--module", "alpha", "--format", "json"]
+left = subprocess.Popen(claim, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+right = subprocess.Popen(claim, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+outcomes = [process.communicate() + (process.returncode,) for process in (left, right)]
+assert all(stdout.strip() for stdout, stderr, code in outcomes), outcomes
+successes = [json.loads(stdout) for stdout, stderr, code in outcomes if code == 0]
+conflicts = [json.loads(stdout) for stdout, stderr, code in outcomes if code != 0]
+assert len(successes) == 1 and len(conflicts) == 1, outcomes
+assert conflicts[0]["code"] == "CONFLICT", conflicts
+manifest = successes[0]["manifest"]
+assert manifest["runId"] == run["runId"] and manifest["moduleId"] == "alpha", manifest
+assert manifest["baseSha"] == run["baseSha"] and os.path.isfile(successes[0]["path"]), successes[0]
+
+beta = claim[:]
+beta[beta.index("alpha")] = "beta"
+beta_result = subprocess.run(beta, capture_output=True, text=True)
+assert beta_result.returncode == 0, beta_result.stderr
+assert json.loads(beta_result.stdout)["manifest"]["moduleId"] == "beta"
 PY
 
 printf 'parallel-execution-ledger regression passed\n'

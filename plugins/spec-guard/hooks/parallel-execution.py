@@ -9,7 +9,9 @@ import os
 import sys
 
 from parallel_execution_lib import (
+    ClaimConflict,
     LedgerError,
+    claim_lease,
     current_head,
     ledger_root,
     load_json,
@@ -82,6 +84,14 @@ def create_run(project, safety_report_path):
     return {"ok": True, "created": created, "path": path, "run": record}
 
 
+def claim_module(project, run_id_value, module_id):
+    project = os.path.abspath(project)
+    path = os.path.join(ledger_root(project), "runs", run_id_value + ".json")
+    run = load_json(path, "run")
+    manifest_path, manifest = claim_lease(ledger_root(project), run, module_id)
+    return {"ok": True, "path": manifest_path, "manifest": manifest}
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -89,17 +99,32 @@ def main(argv):
     create.add_argument("--project", default=".")
     create.add_argument("--safety-report", required=True)
     create.add_argument("--format", choices=("text", "json"), default="text")
+    claim = subcommands.add_parser("claim-module")
+    claim.add_argument("--project", default=".")
+    claim.add_argument("--run", required=True)
+    claim.add_argument("--module", required=True)
+    claim.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
     try:
-        result = create_run(args.project, args.safety_report)
+        if args.command == "create-run":
+            result = create_run(args.project, args.safety_report)
+        else:
+            result = claim_module(args.project, args.run, args.module)
+    except ClaimConflict as error:
+        result = {"ok": False, "code": "CONFLICT", "message": str(error)}
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        return 1
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-execution: %s" % error, file=sys.stderr)
         return 1
     if args.format == "json":
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     else:
-        state = "已创建" if result["created"] else "已复用"
-        print("%s run %s" % (state, result["run"]["runId"]))
+        if args.command == "create-run":
+            state = "已创建" if result["created"] else "已复用"
+            print("%s run %s" % (state, result["run"]["runId"]))
+        else:
+            print("已领取 module %s" % result["manifest"]["moduleId"])
     return 0
 
 

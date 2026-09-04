@@ -21,7 +21,7 @@ import sys
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
 
-from parallel_worktree_lib import LedgerError, provision, validate_worker_manifest, worker_path  # noqa: F401
+from parallel_worktree_lib import LedgerError, provision, validate_worker_manifest, verify_worker, worker_path  # noqa: F401
 
 head = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 common = subprocess.check_output(["git", "-C", project, "rev-parse", "--git-common-dir"], text=True).strip()
@@ -55,12 +55,19 @@ assert created["worktreePath"] == manifest["worktreePath"], created
 assert os.path.isdir(created["worktreePath"]), created
 assert subprocess.check_output(["git", "-C", created["worktreePath"], "rev-parse", "HEAD"], text=True).strip() == head
 assert subprocess.check_output(["git", "-C", created["worktreePath"], "branch", "--show-current"], text=True).strip() == manifest["branch"]
+healthy = verify_worker(project, created)
+assert healthy["ok"] is True and healthy["state"] == "ready", healthy
 try:
     provision(project, manifest)
 except LedgerError:
     pass
 else:
     raise AssertionError("duplicate worker provision accepted")
+
+with open(created["worktreePath"] + "/README.md", "a", encoding="utf-8") as handle:
+    handle.write("worker dirty\n")
+dirty_worker = verify_worker(project, created)
+assert dirty_worker["ok"] is False and dirty_worker["state"] == "unknown", dirty_worker
 
 with open(project + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("dirty\n")

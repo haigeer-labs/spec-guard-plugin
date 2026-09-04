@@ -72,3 +72,28 @@ def provision(project, manifest):
     except LedgerError:
         raise
     return manifest
+
+
+def verify_worker(project, manifest):
+    """只读验证已创建的 worker；任何无法证明的状态均阻断启动。"""
+    try:
+        project = os.path.abspath(project)
+        manifest = validate_worker_manifest(project, manifest)
+        target = manifest["worktreePath"]
+        if not os.path.isdir(target):
+            raise LedgerError("worker worktree 不存在")
+        common = _git(target, "rev-parse", "--git-common-dir")
+        if not os.path.isabs(common):
+            common = os.path.abspath(os.path.join(target, common))
+        if os.path.realpath(common) != os.path.realpath(manifest["gitCommonDir"]):
+            raise LedgerError("worker worktree common-dir 不匹配")
+        if _git(target, "rev-parse", "HEAD") != manifest["baseSha"]:
+            raise LedgerError("worker worktree HEAD 不匹配")
+        if _git(target, "branch", "--show-current") != manifest["branch"]:
+            raise LedgerError("worker worktree branch 不匹配")
+        if _git(target, "status", "--porcelain"):
+            raise LedgerError("worker worktree 不干净")
+    except LedgerError as error:
+        return {"ok": False, "state": "unknown", "reason": str(error)}
+    return {"ok": True, "state": "ready", "workerId": manifest["workerId"],
+            "worktreePath": manifest["worktreePath"]}

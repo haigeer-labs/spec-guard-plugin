@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import re
+import subprocess
 
 from parallel_execution_lib import LedgerError, current_head, ledger_root, validate_module_id, validate_record
 
@@ -40,4 +41,34 @@ def validate_worker_manifest(project, manifest):
         raise LedgerError("worker 基线与当前 HEAD 不一致")
     if manifest["branch"] != "spec-guard/" + worker_id:
         raise LedgerError("worker branch 不匹配")
+    return manifest
+
+
+def _git(project, *args):
+    result = subprocess.run(["git", "-C", project] + list(args), stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True)
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise LedgerError(detail or "git 命令失败")
+    return result.stdout.strip()
+
+
+def provision(project, manifest):
+    """创建 controller-owned linked worktree；失败时不返回可启动 worker。"""
+    project = os.path.abspath(project)
+    manifest = validate_worker_manifest(project, manifest)
+    if _git(project, "status", "--porcelain"):
+        raise LedgerError("源 worktree 不干净")
+    target = manifest["worktreePath"]
+    if os.path.lexists(target):
+        raise LedgerError("worker worktree 已存在")
+    if subprocess.run(["git", "-C", project, "show-ref", "--verify", "--quiet",
+                       "refs/heads/" + manifest["branch"]]).returncode == 0:
+        raise LedgerError("worker branch 已存在")
+    try:
+        _git(project, "worktree", "add", "-b", manifest["branch"], target, manifest["baseSha"])
+        if _git(target, "rev-parse", "HEAD") != manifest["baseSha"] or _git(target, "branch", "--show-current") != manifest["branch"]:
+            raise LedgerError("新 worktree Git 元数据不匹配")
+    except LedgerError:
+        raise
     return manifest

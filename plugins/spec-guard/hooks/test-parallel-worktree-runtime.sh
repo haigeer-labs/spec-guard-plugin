@@ -21,7 +21,7 @@ import sys
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
 
-from parallel_worktree_lib import LedgerError, validate_worker_manifest, worker_path  # noqa: F401
+from parallel_worktree_lib import LedgerError, provision, validate_worker_manifest, worker_path  # noqa: F401
 
 head = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 common = subprocess.check_output(["git", "-C", project, "rev-parse", "--git-common-dir"], text=True).strip()
@@ -49,6 +49,30 @@ for field, value in (("owner", "host"), ("gitCommonDir", common + "-other"),
         pass
     else:
         raise AssertionError("invalid manifest accepted: %s" % field)
+
+created = provision(project, manifest)
+assert created["worktreePath"] == manifest["worktreePath"], created
+assert os.path.isdir(created["worktreePath"]), created
+assert subprocess.check_output(["git", "-C", created["worktreePath"], "rev-parse", "HEAD"], text=True).strip() == head
+assert subprocess.check_output(["git", "-C", created["worktreePath"], "branch", "--show-current"], text=True).strip() == manifest["branch"]
+try:
+    provision(project, manifest)
+except LedgerError:
+    pass
+else:
+    raise AssertionError("duplicate worker provision accepted")
+
+with open(project + "/README.md", "a", encoding="utf-8") as handle:
+    handle.write("dirty\n")
+dirty = dict(manifest, workerId="b" * 12 + "-alpha-1")
+dirty["worktreePath"] = worker_path(project, dirty["workerId"])
+dirty["branch"] = "spec-guard/" + dirty["workerId"]
+try:
+    provision(project, dirty)
+except LedgerError:
+    pass
+else:
+    raise AssertionError("dirty source worktree accepted")
 PY
 
 printf 'parallel-worktree-runtime regression passed\n'

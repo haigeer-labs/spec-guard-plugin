@@ -518,6 +518,76 @@
           }
         }
       ]
+    },
+    {
+      "id": "gitlab-workflow-hardening",
+      "title": "gitlab-workflow-hardening",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260904T013109Z-0001",
+            "map": {
+              "path": "spec/history/gitlab-workflow-hardening/20260904T013109Z-0001/CAPABILITY-MAP.md",
+              "sha256": "2ad36638306f31cd61b9073b07b1e6452d065902ee28fca9cb9317ecf8c3c597"
+            },
+            "state": {
+              "path": ".agent/history/gitlab-workflow-hardening/20260904T013109Z-0001/state.json",
+              "sha256": "d00b65ae4f524295ba8e9837dbd4dea02acbf26a68b5b748aab09e2b9ead5413"
+            },
+            "modules": [
+              {
+                "id": "gitlab-workflow-hardening",
+                "responsibility": "gitlab-workflow-hardening",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 91,
+                "spec": {
+                  "path": "spec/history/gitlab-workflow-hardening/20260904T013109Z-0001/gitlab-workflow-hardening.md",
+                  "sha256": "e2f858bd767e430814a4372c434c3c79ac05316f56d9f6a174e20c869b0f501a"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-workflow-hardening/20260904T013109Z-0001/gitlab-workflow-hardening/plan.md",
+                  "sha256": "68b0b5da561eb4f25031bdf363fa1df348e016acb8beb266ff88ad6e600b22fb"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260904T013109Z-0001",
+            "map": {
+              "path": "spec/history/gitlab-workflow-hardening/20260904T013109Z-0001/CAPABILITY-MAP.md",
+              "sha256": "2ad36638306f31cd61b9073b07b1e6452d065902ee28fca9cb9317ecf8c3c597"
+            },
+            "state": {
+              "path": ".agent/history/gitlab-workflow-hardening/20260904T013109Z-0001/state.json",
+              "sha256": "d00b65ae4f524295ba8e9837dbd4dea02acbf26a68b5b748aab09e2b9ead5413"
+            },
+            "modules": [
+              {
+                "id": "gitlab-workflow-hardening",
+                "responsibility": "gitlab-workflow-hardening",
+                "dependsOn": [],
+                "status": "in-progress",
+                "issue": 91,
+                "spec": {
+                  "path": "spec/history/gitlab-workflow-hardening/20260904T013109Z-0001/gitlab-workflow-hardening.md",
+                  "sha256": "e2f858bd767e430814a4372c434c3c79ac05316f56d9f6a174e20c869b0f501a"
+                },
+                "plan": {
+                  "path": "tasks/history/gitlab-workflow-hardening/20260904T013109Z-0001/gitlab-workflow-hardening/plan.md",
+                  "sha256": "68b0b5da561eb4f25031bdf363fa1df348e016acb8beb266ff88ad6e600b22fb"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

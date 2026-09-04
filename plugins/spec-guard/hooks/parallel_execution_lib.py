@@ -2,16 +2,19 @@
 """Worktree 并行执行账本的身份、路径和记录校验基元。"""
 from __future__ import print_function
 
+import getpass
 import hashlib
 import json
 import os
 import re
 import subprocess
+import time
 
 
 SCHEMA_VERSION = 1
 MODULE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
+RUN_ID = re.compile(r"^[0-9a-f]{64}$")
 
 
 class LedgerError(Exception):
@@ -81,6 +84,11 @@ def validate_module_id(module_id):
         raise LedgerError("module id 必须是 kebab-case")
 
 
+def validate_run_id(value):
+    if not isinstance(value, str) or not RUN_ID.match(value):
+        raise LedgerError("runId 无效")
+
+
 def validate_record(record, required_fields):
     """验证所有 ledger JSON 记录共享的最小不可变字段。"""
     if not isinstance(record, dict):
@@ -90,8 +98,7 @@ def validate_record(record, required_fields):
     for field in required_fields:
         if field not in record:
             raise LedgerError("账本记录缺少字段: %s" % field)
-    if not isinstance(record.get("runId"), str) or not re.match(r"^[0-9a-f]{64}$", record["runId"]):
-        raise LedgerError("runId 无效")
+    validate_run_id(record.get("runId"))
     if not isinstance(record.get("baseSha"), str) or not SHA40.match(record["baseSha"]):
         raise LedgerError("base SHA 无效")
 
@@ -135,9 +142,7 @@ def write_json_exclusive(path, value):
 def claim_lease(root, run, module_id):
     """用目录创建的原子性领取单个模块，并生成其 worker manifest。"""
     validate_module_id(module_id)
-    validate_record(run, ("schemaVersion", "runId", "baseSha", "modules"))
-    modules = run.get("modules")
-    if not isinstance(modules, list) or module_id not in [item.get("id") for item in modules if isinstance(item, dict)]:
+    if module_id not in run_modules(run):
         raise LedgerError("module 不属于该 run")
     lease_root = os.path.join(root, "leases", run["runId"])
     os.makedirs(lease_root, exist_ok=True)
@@ -148,6 +153,7 @@ def claim_lease(root, run, module_id):
         if error.errno == 17:
             raise ClaimConflict("module 已被其他 worker 领取: %s" % module_id)
         raise LedgerError("无法创建 module lease: %s" % error)
+    now = time.time()
     manifest = {
         "schemaVersion": SCHEMA_VERSION,
         "runId": run["runId"],
@@ -155,8 +161,49 @@ def claim_lease(root, run, module_id):
         "moduleId": module_id,
         "baseSha": run["baseSha"],
         "leasePath": lease_path,
+        "owner": getpass.getuser(),
+        "createdAt": now,
+        "renewedAt": now,
+        "status": "active",
     }
     manifest_path = os.path.join(lease_path, "manifest.json")
     if not write_json_exclusive(manifest_path, manifest):
         raise LedgerError("新建 lease 缺少唯一 manifest")
     return manifest_path, manifest
+
+
+def run_modules(run):
+    validate_record(run, ("schemaVersion", "runId", "baseSha", "modules"))
+    modules = run.get("modules")
+    if not isinstance(modules, list) or not modules:
+        raise LedgerError("run modules 无效")
+    module_ids = []
+    for item in modules:
+        if not isinstance(item, dict) or not isinstance(item.get("rowDigest"), str) or not item["rowDigest"]:
+            raise LedgerError("run module 无效")
+        validate_module_id(item.get("id"))
+        module_ids.append(item["id"])
+    if len(set(module_ids)) != len(module_ids):
+        raise LedgerError("run modules 重复")
+    return module_ids
+
+
+def lease_status(root, run, module_id):
+    """只读地将 lease 映射为可安全使用的状态。"""
+    lease_path = os.path.join(root, "leases", run["runId"], "module-" + module_id)
+    if not os.path.lexists(lease_path):
+        return {"moduleId": module_id, "state": "available"}
+    manifest_path = os.path.join(lease_path, "manifest.json")
+    try:
+        manifest = load_json(manifest_path, "lease manifest")
+        validate_record(manifest, ("schemaVersion", "runId", "baseSha", "moduleId", "workerId", "owner", "createdAt", "renewedAt", "status"))
+        if (manifest["runId"] != run["runId"] or manifest["baseSha"] != run["baseSha"] or
+                manifest["moduleId"] != module_id or not isinstance(manifest["workerId"], str) or
+                not manifest["workerId"] or not isinstance(manifest["owner"], str) or not manifest["owner"] or
+                not isinstance(manifest["createdAt"], (int, float)) or not isinstance(manifest["renewedAt"], (int, float))):
+            raise LedgerError("lease manifest 身份无效")
+        if manifest["status"] != "active":
+            raise LedgerError("lease 状态不可用: %s" % manifest["status"])
+    except LedgerError as error:
+        return {"moduleId": module_id, "state": "unknown", "reason": str(error)}
+    return {"moduleId": module_id, "state": "claimed", "workerId": manifest["workerId"]}

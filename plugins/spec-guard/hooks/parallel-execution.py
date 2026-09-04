@@ -14,11 +14,14 @@ from parallel_execution_lib import (
     claim_lease,
     current_head,
     ledger_root,
+    lease_status,
     load_json,
     origin_remote,
     run_id,
     validate_record,
+    validate_run_id,
     write_json_exclusive,
+    run_modules,
 )
 
 
@@ -86,10 +89,25 @@ def create_run(project, safety_report_path):
 
 def claim_module(project, run_id_value, module_id):
     project = os.path.abspath(project)
+    validate_run_id(run_id_value)
     path = os.path.join(ledger_root(project), "runs", run_id_value + ".json")
     run = load_json(path, "run")
     manifest_path, manifest = claim_lease(ledger_root(project), run, module_id)
     return {"ok": True, "path": manifest_path, "manifest": manifest}
+
+
+def status_run(project, run_id_value):
+    project = os.path.abspath(project)
+    try:
+        validate_run_id(run_id_value)
+        root = ledger_root(project)
+        run = load_json(os.path.join(root, "runs", run_id_value + ".json"), "run")
+        modules = run_modules(run)
+    except LedgerError as error:
+        return {"ok": False, "runId": run_id_value, "state": "unknown", "reason": str(error), "modules": []}
+    states = [lease_status(root, run, module_id) for module_id in modules]
+    return {"ok": all(item["state"] != "unknown" for item in states), "runId": run["runId"],
+            "baseSha": run["baseSha"], "modules": states}
 
 
 def main(argv):
@@ -104,12 +122,18 @@ def main(argv):
     claim.add_argument("--run", required=True)
     claim.add_argument("--module", required=True)
     claim.add_argument("--format", choices=("text", "json"), default="text")
+    status = subcommands.add_parser("status")
+    status.add_argument("--project", default=".")
+    status.add_argument("--run", required=True)
+    status.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
     try:
         if args.command == "create-run":
             result = create_run(args.project, args.safety_report)
-        else:
+        elif args.command == "claim-module":
             result = claim_module(args.project, args.run, args.module)
+        else:
+            result = status_run(args.project, args.run)
     except ClaimConflict as error:
         result = {"ok": False, "code": "CONFLICT", "message": str(error)}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
@@ -123,8 +147,14 @@ def main(argv):
         if args.command == "create-run":
             state = "已创建" if result["created"] else "已复用"
             print("%s run %s" % (state, result["run"]["runId"]))
-        else:
+        elif args.command == "claim-module":
             print("已领取 module %s" % result["manifest"]["moduleId"])
+        elif result.get("state") == "unknown":
+            print("run %s: unknown (%s)" % (result["runId"], result["reason"]))
+        else:
+            for item in result["modules"]:
+                detail = " (%s)" % item["reason"] if "reason" in item else ""
+                print("%s: %s%s" % (item["moduleId"], item["state"], detail))
     return 0
 
 

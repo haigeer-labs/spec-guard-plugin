@@ -145,6 +145,41 @@ beta[beta.index("alpha")] = "beta"
 beta_result = subprocess.run(beta, capture_output=True, text=True)
 assert beta_result.returncode == 0, beta_result.stderr
 assert json.loads(beta_result.stdout)["manifest"]["moduleId"] == "beta"
+
+status_command = ["python3", script, "status", "--project", project, "--run", run["runId"], "--format", "json"]
+healthy = subprocess.run(status_command, capture_output=True, text=True)
+assert healthy.returncode == 0, healthy.stderr
+healthy_status = json.loads(healthy.stdout)
+assert healthy_status["ok"] is True, healthy_status
+assert [item["state"] for item in healthy_status["modules"]] == ["claimed", "claimed"], healthy_status
+human_status = subprocess.run(status_command[:-2], capture_output=True, text=True)
+assert human_status.returncode == 0 and "alpha: claimed" in human_status.stdout, human_status
+
+alpha_path = successes[0]["path"]
+with open(alpha_path, encoding="utf-8") as handle:
+    expired_manifest = json.load(handle)
+expired_manifest["status"] = "expired"
+with open(alpha_path, "w", encoding="utf-8") as handle:
+    json.dump(expired_manifest, handle)
+expired_before = (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns)
+expired = subprocess.run(status_command, capture_output=True, text=True)
+assert expired.returncode == 0, expired.stderr
+assert json.loads(expired.stdout)["modules"][0]["state"] == "unknown", expired.stdout
+assert (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns) == expired_before
+
+beta_path = json.loads(beta_result.stdout)["path"]
+with open(beta_path, "w", encoding="utf-8") as handle:
+    handle.write("{")
+malformed_before = (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns)
+malformed = subprocess.run(status_command, capture_output=True, text=True)
+assert malformed.returncode == 0, malformed.stderr
+assert json.loads(malformed.stdout)["modules"][1]["state"] == "unknown", malformed.stdout
+assert (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns) == malformed_before
+
+os.unlink(alpha_path)
+interrupted = subprocess.run(status_command, capture_output=True, text=True)
+assert interrupted.returncode == 0, interrupted.stderr
+assert json.loads(interrupted.stdout)["modules"][0]["state"] == "unknown", interrupted.stdout
 PY
 
 printf 'parallel-execution-ledger regression passed\n'

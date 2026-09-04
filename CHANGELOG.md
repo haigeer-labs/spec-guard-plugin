@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.0] - 2026-09-04
+
+### 新增
+
+- **并行开发就绪度与只读子代理预检。** 能力图可识别无依赖候选、边界冲突与
+  build order 歧义；在用户确认后，可由 Codex 原生子代理并行进行只读预检。
+  它不会自动创建 worktree、分支或并行写入，结论由父任务汇总后再由用户决定实施方式。
+
+### 修复
+
+- **GitLab `sync-map` 的状态写回稳定化。** Initiative 标题与 Issue IID 立即写回
+  state，模块映射不再覆盖 `activeModule`，完成后始终按能力图 Build order 选取首个模块。
+- **GitLab 15.3 合并短暂 422 的安全重试。** 首次失败后仅在 MR 仍开启、
+  `can_be_merged` 且无冲突时重试一次；其他失败保持中止，不绕过保护。
+
+### 验证
+
+- 在真实 GitLab 15.3 项目完成 Issue/MR、`relates_to` 降级关联、状态同步、
+  合并重试与清理的端到端验证；完整本地校验通过。
+
 ## [0.7.51] - 2026-09-04
 
 - **修复已归档项目的 phase 误报。** 当合法 capability history 证明所有 Initiative

@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -89,3 +90,39 @@ def validate_record(record, required_fields):
         raise LedgerError("runId 无效")
     if not isinstance(record.get("baseSha"), str) or not SHA40.match(record["baseSha"]):
         raise LedgerError("base SHA 无效")
+
+
+def current_head(project):
+    head = _git(os.path.abspath(project), "rev-parse", "HEAD")
+    if not SHA40.match(head):
+        raise LedgerError("当前 HEAD 不是完整 commit SHA")
+    return head
+
+
+def origin_remote(project):
+    return _git(os.path.abspath(project), "remote", "get-url", "origin")
+
+
+def load_json(path, label):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as error:
+        raise LedgerError("%s 无法读取: %s" % (label, error))
+
+
+def write_json_exclusive(path, value):
+    """原子创建 JSON 文件；存在时返回 False，绝不覆盖已有 provenance。"""
+    parent = os.path.dirname(path)
+    if not os.path.isdir(parent):
+        os.makedirs(parent)
+    payload = (json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except OSError as error:
+        if error.errno == 17:
+            return False
+        raise LedgerError("无法创建账本记录: %s" % error)
+    with os.fdopen(descriptor, "wb") as handle:
+        handle.write(payload)
+    return True

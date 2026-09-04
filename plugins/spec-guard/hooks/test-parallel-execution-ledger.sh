@@ -64,4 +64,68 @@ for record in ({}, {"schemaVersion": 2, "runId": "x", "baseSha": "a" * 40}, dict
         raise AssertionError("invalid record accepted: %r" % record)
 PY
 
+mkdir -p "$WORK/project/spec"
+cat > "$WORK/project/spec/CAPABILITY-MAP.md" <<'EOF'
+# Capability Map: test
+
+## 目标
+
+验证 run 创建。
+
+## 模块
+
+| Module id | Responsibility | Depends on |
+|---|---|---|
+| alpha | A | — |
+| beta | B | — |
+
+Build order: alpha → beta
+EOF
+git -C "$WORK/project" add spec/CAPABILITY-MAP.md
+git -C "$WORK/project" commit -qm map
+git -C "$WORK/project" remote add origin git@github.com:owner/repo.git
+
+python3 - "$WORK/project" <<'PY'
+import json
+import subprocess
+import sys
+
+project = sys.argv[1]
+base = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+for name, sha in (("eligible", base), ("stale", "b" * 40)):
+    with open(project + "/" + name + ".json", "w", encoding="utf-8") as handle:
+        json.dump({"ok": True, "base": {"sha": sha}, "groups": [{
+            "modules": ["alpha", "beta"],
+            "classification": "manual-parallel-eligible",
+        }]}, handle)
+PY
+
+python3 - "$ROOT/hooks/parallel-execution.py" "$WORK/project" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+script, project = sys.argv[1:]
+command = ["python3", script, "create-run", "--project", project, "--safety-report", project + "/eligible.json", "--format", "json"]
+first = subprocess.run(command, capture_output=True, text=True)
+assert first.returncode == 0, first.stderr
+created = json.loads(first.stdout)
+assert created["created"] is True, created
+run = created["run"]
+assert run["baseSha"] == subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+assert [module["id"] for module in run["modules"]] == ["alpha", "beta"], run
+assert os.path.isfile(created["path"]), created
+
+second = subprocess.run(command, capture_output=True, text=True)
+assert second.returncode == 0, second.stderr
+again = json.loads(second.stdout)
+assert again["created"] is False and again["run"]["runId"] == run["runId"], again
+
+stale_command = command[:]
+stale_command[stale_command.index(project + "/eligible.json")] = project + "/stale.json"
+stale = subprocess.run(stale_command, capture_output=True, text=True)
+assert stale.returncode != 0 and "base SHA" in stale.stderr, stale.stderr
+PY
+
 printf 'parallel-execution-ledger regression passed\n'

@@ -12,7 +12,7 @@ bad() { printf '  ❌ %s\n' "$1"; FAIL=$((FAIL+1)); }
 
 PROJECT="$TMP/project"
 mkdir -p "$PROJECT/spec" "$PROJECT/tasks/payment-api" "$PROJECT/tasks/ledger" "$PROJECT/.agent"
-printf '# Capability Map: Payment\n\n## 目标\n\npay\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| payment-api | API | — |\n' > "$PROJECT/spec/CAPABILITY-MAP.md"
+printf '# Capability Map: Payment\n\n## 目标\n\npay\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| payment-api | API | — |\n| ledger | Ledger entries | payment-api |\n' > "$PROJECT/spec/CAPABILITY-MAP.md"
 printf '# Spec\n' > "$PROJECT/spec/payment-api.md"
 printf '# Ledger\n' > "$PROJECT/spec/ledger.md"
 printf '# Plan\n' > "$PROJECT/tasks/payment-api/plan.md"
@@ -39,7 +39,20 @@ if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative p
   && [ -f "$PROJECT/spec/history/payment-v2"/*/ledger.md ] \
   && [ -f "$PROJECT/tasks/history/payment-v2"/*/payment-api/plan.md ] \
   && [ -f "$PROJECT/tasks/history/payment-v2"/*/ledger/plan.md ] \
-  && [ -f "$PROJECT/.agent/history/payment-v2"/*/state.json ]; then
+  && [ -f "$PROJECT/.agent/history/payment-v2"/*/state.json ] \
+  && python3 - "$PROJECT/spec/CAPABILITY-HISTORY.json" <<'PY'
+import json
+import sys
+
+ledger = json.load(open(sys.argv[1], encoding="utf-8"))
+modules = ledger["initiatives"][0]["events"][-1]["checkpoint"]["modules"]
+assert [(module["id"], module["responsibility"], module["dependsOn"], module["status"])
+        for module in modules] == [
+    ("payment-api", "API", [], "unknown"),
+    ("ledger", "Ledger entries", ["payment-api"], "unknown"),
+]
+PY
+then
   ok "正：账本不存在时 pause 自动建账并归档当前工作区"
 else
   bad "正：账本不存在时 pause 自动建账并归档当前工作区"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-python3 - "$ROOT/commands/parallel-execute.md" "$ROOT/commands/parallel-status.md" <<'PY'
+python3 - "$ROOT/commands/parallel-execute.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-integrate.md" <<'PY'
 import sys
 
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -31,6 +31,22 @@ for path in ("next.md", "deliver.md"):
     for required in ("spec-guard/<worker-id>", "parallel-worktree.py verify", "moduleId",
                      "不得继续执行下面的 canonical", "activeModule"):
         assert required in command, (path, required)
+
+integrate = open(sys.argv[3], encoding="utf-8").read()
+for required in (
+    "每次只处理一个 module",
+    "本次明确确认",
+    "parallel-execution.py\" status",
+    "parallel-worktree.py\" verify",
+    "parallel-cli.py\" inspect",
+    "get(\"state\") != \"completed\"",
+    "git -C \"$PROJECT\" merge-base --is-ancestor \"$BASE_SHA\" \"$BRANCH\"",
+    "git -C \"$PROJECT\" merge --no-ff \"$BRANCH\"",
+    "base SHA 与当前默认分支 HEAD 不一致",
+):
+    assert required in integrate, required
+for forbidden in ("while IFS= read", " create-run", " provision", " reclaim", "\" start"):
+    assert forbidden not in integrate, forbidden
 PY
 
 printf 'parallel-workflow-integration regression passed\n'

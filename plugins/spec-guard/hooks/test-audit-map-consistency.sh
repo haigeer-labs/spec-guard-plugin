@@ -4,6 +4,7 @@ set -euo pipefail
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
 PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" <<'PY'
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -192,6 +193,78 @@ Protect old digests.
                 self.assertEqual(result["rowsStale"], rows_stale)
                 self.assertEqual(state.read_bytes(), original_state)
                 self.assertEqual(self.path.read_bytes(), before)
+
+
+class GitlabMapInput(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="sg-gitlab-map-")
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.project = self.root / "project with spaces"
+        (self.project / "spec").mkdir(parents=True)
+        (self.project / ".agent").mkdir()
+        self.state = self.project / ".agent/state.json"
+        self.state.write_text(json.dumps({"tracker": "gitlab", "initiative": {}, "modules": {}, "activeModule": ""}))
+        self.path = self.project / "spec/CAPABILITY-MAP.md"
+        self.log = self.root / "calls.jsonl"
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        stub = self.bin / "glab"
+        stub.write_text("#!" + sys.executable + "\n" + '''import json, os, pathlib, sys
+args = sys.argv[1:]
+log = pathlib.Path(os.environ["GLAB_CALL_LOG"])
+with log.open("a") as handle:
+    handle.write(json.dumps(args) + "\\n")
+if args == ["auth", "status"]:
+    pass
+elif args == ["repo", "view", "--output", "json"]:
+    print(json.dumps({"path_with_namespace": "test/project"}))
+elif args == ["api", "projects/test%2Fproject"]:
+    print(json.dumps({"id": 1}))
+elif args[:3] == ["api", "-X", "POST"] and args[3] == "projects/1/issues":
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    print(json.dumps({"iid": sum("POST" in call for call in calls)}))
+else:
+    raise SystemExit("Unexpected glab call: " + repr(args))
+''')
+        stub.chmod(0o755)
+
+    def run_sync(self, order=ORDER, table=TABLE, confirm=False):
+        self.path.write_text("# Capability Map: Input test\n\n## 目标\n\nTest sync.\n\n## 模块\n\n" +
+                             table + "\nBuild order: " + order + "\n\n## 评审记录\n\n- [x] Reviewed\n")
+        before = {str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}
+        result = subprocess.run(["/bin/bash", str(hooks / "sync-map-gitlab.sh"), *(["--confirm"] if confirm else [])],
+                                env=dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"],
+                                         CLAUDE_PROJECT_DIR=str(self.project), GLAB_CALL_LOG=str(self.log)),
+                                capture_output=True, text=True)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+        return result, calls, before
+
+    def test_parallel_preview_is_ordered_and_read_only(self):
+        result, calls, before = self.run_sync()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        names = [line.split(": ", 1)[1].split(" — ", 1)[0] for line in result.stdout.splitlines() if "模块: " in line]
+        self.assertEqual(names, ["identity", "billing", "notifications", "reporting"])
+        self.assertFalse(any("POST" in call for call in calls), calls)
+        self.assertEqual({str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}, before)
+
+    def test_invalid_graph_stops_confirm_before_writes(self):
+        table = TABLE.replace("Payments | identity", "Payments | reporting")
+        result, calls, before = self.run_sync(order="identity → billing → notifications → reporting", table=table, confirm=True)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertFalse(any("POST" in call for call in calls), calls)
+        self.assertEqual(self.state.read_bytes(), before[".agent/state.json"])
+
+    def test_confirm_consumes_declared_order_not_table_order(self):
+        result, calls, _ = self.run_sync(order="identity → notifications, billing → reporting", confirm=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        posts = [call for call in calls if "POST" in call]
+        titles = [next(arg[6:] for arg in call if arg.startswith("title=")) for call in posts]
+        self.assertEqual(titles, ["Input test", "identity", "notifications", "billing", "reporting"])
+        state = json.loads(self.state.read_text())
+        self.assertEqual(state["activeModule"], "identity")
+        self.assertEqual(state["modules"]["notifications"]["issue"], 3)
+        self.assertEqual(len(posts), 5)  # 不创建额外组内关系或额外任务。
 
 
 unittest.main(verbosity=2)

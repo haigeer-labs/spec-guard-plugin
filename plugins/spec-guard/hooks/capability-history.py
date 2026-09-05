@@ -135,16 +135,34 @@ def check_correction(correction, initiatives):
     if not isinstance(checkpoint_id, str) or not CHECKPOINT_ID.fullmatch(checkpoint_id):
         fail("invalid correction checkpoint id")
     module_id = correction.get("moduleId")
-    if module_id is not None and (not isinstance(module_id, str) or not ID.fullmatch(module_id)):
-        fail("invalid correction module id")
-    if correction.get("field") not in {"responsibility", "dependsOn", "status", "event.at"}:
+    field = correction.get("field")
+    if field not in {"responsibility", "dependsOn", "status", "event.at"}:
         fail("invalid correction field")
+    if field == "event.at":
+        if module_id is not None:
+            fail("event time correction must not name a module")
+    elif not isinstance(module_id, str) or not ID.fullmatch(module_id):
+        fail("module correction requires a valid module id")
     if not AUDIT_TIME.fullmatch(correction.get("auditedAt", "")):
         fail("invalid correction audit time")
     if not isinstance(correction.get("auditReportSha256"), str) or not SHA256.fullmatch(correction["auditReportSha256"]):
         fail("invalid correction audit report digest")
     if "before" not in correction or "after" not in correction:
         fail("correction before and after are required")
+    if field == "responsibility":
+        if not all(isinstance(correction[key], str) and correction[key].strip()
+                   for key in ("before", "after")):
+            fail("responsibility correction values are invalid")
+    elif field == "dependsOn":
+        if any(not isinstance(correction[key], list) or
+               any(not isinstance(item, str) or not ID.fullmatch(item) for item in correction[key])
+               for key in ("before", "after")):
+            fail("dependency correction values are invalid")
+    elif field == "status":
+        if correction["before"] not in MODULE_STATUS or correction["after"] != "unknown":
+            fail("status correction must retain unknown")
+    elif not isinstance(correction["before"], str) or correction["after"] != "unknown":
+        fail("event time correction must retain unknown")
     sources = correction.get("sources")
     if not isinstance(sources, list) or not sources:
         fail("correction sources are required")
@@ -381,7 +399,8 @@ def audit(data, root_path):
             if event.get("at"):
                 report(initiative, event_index, checkpoint, "event.at",
                        "timestamp-unverified",
-                       "ledger event time has no recorded source evidence")
+                       "ledger event time has no recorded source evidence",
+                       expected="unknown", actual=event["at"])
 
     counts = {}
     for finding in findings:
@@ -425,8 +444,6 @@ def append_correction(ledger_path, audit_path, correction_path):
              if isinstance(source, dict) and source.get("kind") == "audit-finding"}
     if finding["code"] not in codes:
         fail("correction source does not cite audit finding")
-    if correction["field"] == "status" and correction["after"] != "unknown":
-        fail("status correction must retain unknown")
     corrections = data.setdefault("corrections", [])
     if correction in corrections:
         fail("correction already recorded")

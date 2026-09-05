@@ -357,11 +357,13 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 `spec/CAPABILITY-MAP.md` 与 `.agent/state.json` 的既有契约。
 
 - **校验历史**：`verify-history.sh` 是只读操作；没有账本时报告“未验证”，不会把旧项目当作失败。
+- **语义审计**：`capability-history.py audit <ledger> <project>` 只读比对 checkpoint map 与账本主张；没有可采信来源的状态或时间报告为 `unknown`，不会猜测或写入。
+- **历史补正**：`capability-history.py correct --confirm <ledger> <audit-report> <correction>` 仅在明确确认后追加带审计报告哈希、来源、原值、修正值和审计时间的 `history-correction` 记录；绝不重写 checkpoint。
 - **迁移预览**：`history-migration.py preview <project>` 只列出旧根目录证据和冲突，不写文件。
 - **迁移导入**：`history-migration.py import --confirm <project>` 必须经用户确认；它创建新的 checkpoint 与账本，但绝不修改旧 spec、plan、state 或 Git 历史。
 - **暂停、恢复与终态**：通过共享 lifecycle 入口执行；真实操作先要求确认，`--dry-run` 仅预览。
 
-Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `lifecycle`
+Codex 使用 `spec-guard-ops` 的 `verify-history`、`audit-history`、`correct-history`、`history-migration` 与 `lifecycle`
 操作；Claude 使用相同的 hook 脚本。这样两个宿主保持一致的只读和确认语义。
 
 `parallel-readiness` 在两个宿主中都是显式调用的只读分析，不挂在对话 hook 上。它只会

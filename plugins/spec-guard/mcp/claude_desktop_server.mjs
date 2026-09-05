@@ -13,6 +13,7 @@ const tools = [
   ["phase", "Read the current Spec Guard phase for a project."],
   ["verify", "Read-only validation of Spec Guard artifacts."],
   ["verify_history", "Read-only validation of capability history evidence."],
+  ["audit_history", "Read-only semantic audit of capability history claims."],
   ["sync_map_preview", "Preview tracker synchronization without writes."],
   ["write_operation", "Explain why a write operation needs explicit CLI or Codex confirmation."],
 ].map(([name, description]) => ({
@@ -101,6 +102,18 @@ function syncMapPreview(project) {
   }
 }
 
+function auditHistory(project) {
+  const ledger = join(project, "spec", "CAPABILITY-HISTORY.json");
+  if (!existsSync(ledger)) return textResult("未验证：没有 capability history ledger");
+  const result = spawnSync("python3", [join(root, "hooks", "capability-history.py"), "audit", ledger, project], {
+    cwd: project,
+    encoding: "utf8",
+  });
+  if (result.error) return textResult(`Could not run history audit: ${result.error.message}`, true);
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim() || "(no output)";
+  return textResult(output, result.status !== 0);
+}
+
 function callTool(name, arguments_) {
   const args = arguments_ && typeof arguments_ === "object" ? arguments_ : {};
   if (name === "write_operation") return textResult(`${args.operation ?? "requested operation"}: this MCP server will not execute writes. Use Claude Code or Codex and give explicit confirmation.`, true);
@@ -109,6 +122,7 @@ function callTool(name, arguments_) {
   if (name === "phase") return runHook(project, "phase-guard.sh");
   if (name === "verify") return runHook(project, "verify-artifacts.sh");
   if (name === "verify_history") return runHook(project, "verify-history.sh", project);
+  if (name === "audit_history") return auditHistory(project);
   if (name === "sync_map_preview") return syncMapPreview(project);
   return textResult(`Unknown tool: ${name}`, true);
 }

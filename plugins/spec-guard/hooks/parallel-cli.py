@@ -10,7 +10,8 @@ import time
 import sys
 
 from parallel_cli_adapters import command_for, run_worker
-from parallel_execution_lib import LedgerError, ledger_root, validate_record, write_json_exclusive
+from parallel_execution_lib import (LedgerError, ledger_root, load_json, validate_record,
+                                    write_json_exclusive)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
 
@@ -33,6 +34,16 @@ def _validate_process_record(record):
         raise LedgerError("worker process command 无效")
     if not isinstance(record["startedAt"], (int, float)):
         raise LedgerError("worker process startedAt 无效")
+    if record["state"] == "started":
+        if "finishedAt" in record or "returncode" in record:
+            raise LedgerError("started worker process 不应有终态")
+    else:
+        if not isinstance(record.get("finishedAt"), (int, float)):
+            raise LedgerError("worker process finishedAt 无效")
+    if record["state"] in ("completed", "failed") and type(record.get("returncode")) is not int:
+        raise LedgerError("worker process returncode 无效")
+    if record["state"] == "unknown" and not isinstance(record.get("reason"), str):
+        raise LedgerError("unknown worker process 缺少原因")
 
 
 def _replace_record(path, record):
@@ -87,6 +98,31 @@ def start_worker(project, worker_id, host):
     return record
 
 
+def inspect_worker(project, worker_id):
+    """只读检查已记录的 worker；任何无法证明的状态都显式降为 unknown。"""
+    project = os.path.abspath(project)
+    try:
+        manifest = load_worker_manifest(project, worker_id)
+        record = load_json(process_record_path(project, worker_id), "worker process record")
+        _validate_process_record(record)
+        for field in ("runId", "baseSha", "workerId", "moduleId", "worktreePath"):
+            if record[field] != manifest[field]:
+                raise LedgerError("worker process 与 manifest 身份不匹配")
+        executable = {"codex-cli": "codex", "claude-cli": "claude"}[record["host"]]
+        if record["command"] != command_for(record["host"], manifest["worktreePath"], executable):
+            raise LedgerError("worker process command 不匹配")
+        if record["state"] == "started":
+            return {"ok": False, "workerId": worker_id, "state": "unknown",
+                    "reason": "worker process 未写入终态"}
+        if record["state"] == "unknown":
+            return {"ok": False, "workerId": worker_id, "state": "unknown",
+                    "reason": record["reason"]}
+    except (LedgerError, OSError, ValueError, KeyError) as error:
+        return {"ok": False, "workerId": worker_id, "state": "unknown", "reason": str(error)}
+    return {"ok": True, "workerId": worker_id, "state": record["state"],
+            "returncode": record["returncode"]}
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -95,16 +131,24 @@ def main(argv):
     start.add_argument("--worker", required=True)
     start.add_argument("--host", required=True, choices=("codex-cli", "claude-cli"))
     start.add_argument("--format", choices=("text", "json"), default="text")
+    inspect = commands.add_parser("inspect")
+    inspect.add_argument("--project", default=".")
+    inspect.add_argument("--worker", required=True)
+    inspect.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
     try:
-        result = start_worker(args.project, args.worker, args.host)
+        if args.command == "start":
+            result = start_worker(args.project, args.worker, args.host)
+        else:
+            result = inspect_worker(args.project, args.worker)
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-cli: %s" % error, file=sys.stderr)
         return 1
     if args.format == "json":
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     else:
-        print("%s: %s" % (result["workerId"], result["state"]))
+        detail = " (%s)" % result["reason"] if result.get("reason") else ""
+        print("%s: %s%s" % (result["workerId"], result["state"], detail))
     return 0
 
 

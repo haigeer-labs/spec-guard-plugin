@@ -76,14 +76,16 @@ printf 'target run=%s worker=%s module=%s branch=%s base=%s condition=%s\n' \
 确保结果不变；然后只调用受控 runtime 的一个操作：
 
 ```bash
-# CONDITION 必须是阶段一刚得到的 merged 或经用户明确 discard 的 unmerged。
-if [ "$CONDITION" = "merged" ]; then
+# MODE 不可默认；仅在本次确认后由操作方显式设置。
+# merged：MODE=merged；unmerged：用户明确 discard 后才可 MODE=discard。
+MODE="${MODE:-}"
+if [ "$CONDITION" = "merged" ] && [ "$MODE" = "merged" ]; then
   python3 "${CLAUDE_PLUGIN_ROOT}/hooks/parallel-worktree.py" reclaim --project "$PROJECT" --worker "$WORKER" --merged --format json
-elif [ "$CONDITION" = "unmerged" ]; then
-  # 仅在用户明确 discard 这个 worker 后设置此分支。
+elif [ "$CONDITION" = "unmerged" ] && [ "$MODE" = "discard" ]; then
+  # 仅在用户明确 discard 这个 worker 后设置 MODE=discard。
   python3 "${CLAUDE_PLUGIN_ROOT}/hooks/parallel-worktree.py" reclaim --project "$PROJECT" --worker "$WORKER" --confirm --format json
 else
-  echo "未知回收条件" >&2
+  echo "回收条件或确认模式无效" >&2
   exit 1
 fi
 ```

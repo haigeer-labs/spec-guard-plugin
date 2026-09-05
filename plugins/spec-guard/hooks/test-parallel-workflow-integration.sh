@@ -57,6 +57,8 @@ for required in (
     "merge-base --is-ancestor",
     "--merged",
     "--confirm",
+    "MODE=discard",
+    "MODE=merged",
     "明确 discard",
 ):
     assert required in reclaim, required

@@ -20,6 +20,8 @@ TPG, TVA = os.path.join(H, "test-phase-guard.sh"), os.path.join(H, "test-verify-
 PE = os.path.join(H, "parallel-execution.py")
 PL = os.path.join(H, "parallel_execution_lib.py")
 TPE = os.path.join(H, "test-parallel-execution-ledger.sh")
+PWL = os.path.join(H, "parallel_worktree_lib.py")
+TPW = os.path.join(H, "test-parallel-worktree-runtime.sh")
 
 # ── 安全闸：这个工具**在工作区就地改文件** ────────────────────
 #   实测踩过：它在后台跑的时候，另一边跑测试读到的是被注入变异的
@@ -46,7 +48,7 @@ if os.path.exists(LOCK):
          "     它会就地改 hooks/ 里的文件，两个实例同时跑必然互相污染。\n"
          "     确认没在跑就删掉 %s" % (pid, LOCK))
 
-TARGETS = [PG, VA, DG, PE, PL]
+TARGETS = [PG, VA, DG, PE, PL, PWL]
 # **只列真脏的那个。** 把三个全列出来是误导性报错 —— 读的人会去看两个
 # 根本没动过的文件。管得太宽的判据和管得太窄的一样是缺陷（lenses A3）。
 _dirty = [t for t in TARGETS if subprocess.run(
@@ -170,11 +172,21 @@ M = [
   ("parallel status：损坏 lease 被误报为 available", PL, TPE,
    '''        return {"moduleId": module_id, "state": "unknown", "reason": str(error)}''',
    '''        return {"moduleId": module_id, "state": "available", "reason": str(error)}''', "killed"),
+  ("parallel worktree：owner 校验被绕过", PWL, TPW,
+   '''    if manifest["owner"] != "spec-guard":''',
+   '''    if False:''', "killed"),
+  ("parallel worktree：脏源 worktree 被允许 provision", PWL, TPW,
+   '''    if _git(project, "status", "--porcelain"):''',
+   '''    if False:''', "killed"),
+  ("parallel worktree：未确认 discard 被允许 reclaim", PWL, TPW,
+   '''    if not merged and not confirm:''',
+   '''    if False:''', "killed"),
 ]
 def green(suite):
     r = subprocess.run(["/bin/bash", suite], capture_output=True, text=True)
     markers = {
         TPE: "parallel-execution-ledger regression passed",
+        TPW: "parallel-worktree-runtime regression passed",
     }
     return r.returncode == 0 and markers.get(suite, " 0 失败") in r.stdout
 

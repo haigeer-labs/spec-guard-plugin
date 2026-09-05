@@ -5,6 +5,7 @@ import json
 import importlib.util
 import os
 import re
+import unicodedata
 
 
 FIELDS = ("paths", "publicInterfaces", "migrations", "globalConfig", "testResources")
@@ -26,9 +27,13 @@ def _block_after_heading(text):
 
 
 def _path(value):
-    if (not value or value.startswith("/") or ".." in value.split("/") or
-            "*" in value or "?" in value):
+    if (not isinstance(value, str) or not value or value != value.strip() or
+            value.startswith("/") or re.match(r"^[A-Za-z]:", value) or
+            "\\" in value or ".." in value.split("/") or
+            any(char in value for char in "*?[]{}") or
+            any(unicodedata.category(char) in ("Cc", "Cf") for char in value)):
         raise BoundaryError("paths 必须是无通配符的仓库相对路径: %s" % value)
+    return "/".join(part for part in value.split("/") if part not in ("", ".")) or "."
 
 
 def parse_boundary(path):
@@ -37,6 +42,10 @@ def parse_boundary(path):
             data = json.loads(_block_after_heading(handle.read()))
         except json.JSONDecodeError as error:
             raise BoundaryError("Parallel Boundary JSON 无效: %s" % error)
+    return _validate_boundary(data)
+
+
+def _validate_boundary(data):
     if not isinstance(data, dict) or set(data) != set(FIELDS):
         raise BoundaryError("Parallel Boundary 必须且只能包含五个必填字段")
     result = {}
@@ -44,7 +53,8 @@ def parse_boundary(path):
         values = data[field]
         if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
             raise BoundaryError("%s 必须是字符串数组" % field)
-        values = sorted(set(value.strip() for value in values))
+        # paths 保留原声明，先验证再规范化；不能 strip 掩盖歧义。
+        values = sorted(set(values if field == "paths" else (value.strip() for value in values)))
         if any(not value for value in values):
             raise BoundaryError("%s 不能有空值" % field)
         result[field] = values
@@ -54,32 +64,45 @@ def parse_boundary(path):
 
 
 def _paths_overlap(left, right):
-    return left == right or left.startswith(right + "/") or right.startswith(left + "/")
+    left = () if left == "." else tuple(left.split("/"))
+    right = () if right == "." else tuple(right.split("/"))
+    return left[:len(right)] == right or right[:len(left)] == left
 
 
 def classify_group(boundaries):
     """以最保守的规则分类一个 readiness 候选组。"""
-    modules = sorted(boundaries)
-    missing = [module for module in modules if not isinstance(boundaries[module], dict) or
-               set(boundaries[module]) != set(FIELDS)]
-    if missing:
+    if (not isinstance(boundaries, dict) or len(boundaries) < 2 or
+            any(not isinstance(module, str) or not module for module in boundaries)):
         return {"classification": "needs-review", "evidence": [
-            {"category": "missing-boundary", "modules": missing}
-        ]}
+            {"category": "invalid-group", "reason": "需要至少两个有名称的模块边界"}
+        ], "pathDeclarations": {}}
 
-    evidence = []
+    valid, declarations, uncertain, evidence = {}, {}, [], []
+    for module in sorted(boundaries):
+        try:
+            valid[module] = _validate_boundary(boundaries[module])
+        except BoundaryError as error:
+            uncertain.append({"category": "invalid-boundary", "modules": [module], "reason": str(error)})
+            continue
+        declarations[module] = [{"raw": value, "normalized": _path(value)} for value in valid[module]["paths"]]
+        if not declarations[module]:
+            uncertain.append({"category": "empty-paths", "modules": [module], "reason": "没有声明实际写入路径"})
+
+    modules = sorted(valid)
     for module in modules:
-        boundary = boundaries[module]
+        boundary = valid[module]
         for category in ("migrations", "globalConfig", "testResources"):
             if boundary[category]:
                 evidence.append({"category": category, "modules": [module],
                                  "values": sorted(boundary[category])})
 
     for index, left_module in enumerate(modules):
-        left = boundaries[left_module]
+        left = valid[left_module]
         for right_module in modules[index + 1:]:
-            right = boundaries[right_module]
-            paths = sorted({"%s|%s" % (a, b) for a in left["paths"] for b in right["paths"]
+            right = valid[right_module]
+            paths = sorted({"%s|%s" % (a, b)
+                            for a in (item["normalized"] for item in declarations[left_module])
+                            for b in (item["normalized"] for item in declarations[right_module])
                             if _paths_overlap(a, b)})
             if paths:
                 evidence.append({"category": "paths", "modules": [left_module, right_module],
@@ -89,9 +112,8 @@ def classify_group(boundaries):
                 evidence.append({"category": "publicInterfaces",
                                  "modules": [left_module, right_module], "values": interfaces})
 
-    return {"classification": "sequential-required", "evidence": evidence} if evidence else {
-        "classification": "manual-parallel-eligible", "evidence": []
-    }
+    classification = "sequential-required" if evidence else "needs-review" if uncertain else "manual-parallel-eligible"
+    return {"classification": classification, "evidence": evidence + uncertain, "pathDeclarations": declarations}
 
 
 def readiness_report(project, refresh=False):

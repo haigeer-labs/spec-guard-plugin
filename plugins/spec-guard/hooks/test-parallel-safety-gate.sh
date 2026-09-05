@@ -70,7 +70,8 @@ eligible = classify_group({
     "alpha": dict(empty, paths=["src/alpha.py"]),
     "beta": dict(empty, paths=["src/beta.py"]),
 })
-assert eligible == {"classification": "manual-parallel-eligible", "evidence": []}, eligible
+assert eligible["classification"] == "manual-parallel-eligible" and eligible["evidence"] == [], eligible
+assert eligible["pathDeclarations"]["alpha"] == [{"raw": "src/alpha.py", "normalized": "src/alpha.py"}], eligible
 for field, left, right in (
     ("paths", ["src"], ["src/beta.py"]),
     ("publicInterfaces", ["api.v1"], ["api.v1"]),

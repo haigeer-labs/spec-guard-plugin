@@ -16,6 +16,7 @@ import unittest
 hooks = Path(sys.argv.pop())
 sys.path.insert(0, str(hooks))
 from capability_map import MapError, parse_map
+from parallel_safety_gate import BoundaryError, FIELDS, classify_group, parse_boundary
 
 TABLE = """| Module id | Responsibility | Depends on |
 |---|---|---|
@@ -330,6 +331,59 @@ class DesktopMapPreview(unittest.TestCase):
         result = self.preview()
         self.assertIs(result["isError"], False, result)
         self.assertIn("未写入任何远端或本地状态", result["content"][0]["text"])
+
+
+class LexicalBoundaries(unittest.TestCase):
+    def boundary(self, paths):
+        return dict({field: [] for field in FIELDS}, paths=paths)
+
+    def test_component_overlap_and_raw_evidence(self):
+        for left in ("src/", "./src", "src//", "src/./", ".", "./"):
+            with self.subTest(left=left):
+                result = classify_group({"alpha": self.boundary([left]),
+                                         "beta": self.boundary(["src/file.py"])})
+                self.assertEqual(result["classification"], "sequential-required", result)
+                self.assertTrue(any(e["category"] == "paths" for e in result["evidence"]))
+                self.assertEqual(result["pathDeclarations"]["alpha"], [{"raw": left,
+                                 "normalized": "." if left in (".", "./") else "src"}])
+        result = classify_group({"alpha": self.boundary(["./src//file.py"]),
+                                 "beta": self.boundary(["src/file.py"])})
+        self.assertEqual(result["classification"], "sequential-required", result)
+
+    def test_distinct_components_are_not_parent_paths(self):
+        result = classify_group({"alpha": self.boundary(["src/"]), "beta": self.boundary(["src-old/file.py"])})
+        self.assertEqual(result["classification"], "manual-parallel-eligible", result)
+
+    def test_file_and_direct_input_share_validation(self):
+        bad_paths = ["", " ", " src", "src ", "..", "src/../out", "/tmp/a", "C:/temp", "C:temp",
+                     "//server/share", "src\\file", "*.py", "src/?", "src/[ab]", "src/\x00x", "src/\nx", "src/\x7fx"]
+        invalid = [self.boundary([path]) for path in bad_paths]
+        invalid += [dict(self.boundary(["src/a"]), **{field: value})
+                    for field in FIELDS for value in (None, "src", [1], {}, [""])]
+        invalid += [None, [], {}, dict(self.boundary([]), unexpected=[])]
+        with tempfile.TemporaryDirectory(prefix="sg-boundary-") as temp:
+            path = Path(temp) / "module.md"
+            for boundary in invalid:
+                with self.subTest(boundary=boundary):
+                    path.write_text("## Parallel Boundary\n```json\n" + json.dumps(boundary) + "\n```\n")
+                    with self.assertRaises(BoundaryError):
+                        parse_boundary(path)
+                    result = classify_group({"alpha": boundary, "beta": self.boundary(["other/file.py"])})
+                    self.assertEqual(result["classification"], "needs-review", result)
+                    self.assertTrue(result["evidence"])
+            path.write_text("## Parallel Boundary\n```json\n" + json.dumps(self.boundary(["./src//"])) + "\n```\n")
+            self.assertEqual(parse_boundary(path)["paths"], ["./src//"])
+
+    def test_empty_boundaries_and_mixed_conflicts(self):
+        for boundaries in ({}, {"alpha": self.boundary([]), "beta": self.boundary([])}):
+            self.assertEqual(classify_group(boundaries)["classification"], "needs-review")
+        for field in ("migrations", "globalConfig", "testResources", "publicInterfaces"):
+            result = classify_group({"alpha": dict(self.boundary(["src/a"]), **{field: ["shared"]}),
+                                     "beta": dict(self.boundary(["src/b"]), **{field: ["shared"]}),
+                                     "unknown": None})
+            self.assertEqual(result["classification"], "sequential-required", result)
+            self.assertTrue(any(e["category"] == field for e in result["evidence"]))
+            self.assertTrue(any(e["category"] == "invalid-boundary" for e in result["evidence"]))
 
 
 class ReadinessDependencyLayers(unittest.TestCase):

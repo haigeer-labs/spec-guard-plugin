@@ -5,6 +5,19 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+python3 - "$ROOT/commands/parallel-register-worker.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-reclaim.md" <<'PY'
+import sys
+
+register = open(sys.argv[1], encoding="utf-8").read()
+for required in ("本次明确确认", "parallel-desktop-register.py\" register", "--host-worker-id", "--cwd",
+                 "codex-desktop", "claude-desktop"):
+    assert required in register, required
+status = open(sys.argv[2], encoding="utf-8").read()
+assert "owner=host" in status and "宿主可回收" in status
+reclaim = open(sys.argv[3], encoding="utf-8").read()
+assert "owner=host" in reclaim and "不得调用" in reclaim
+PY
+
 git init -q "$WORK/project"
 git -C "$WORK/project" config user.email test@example.invalid
 git -C "$WORK/project" config user.name test

@@ -7,6 +7,10 @@ allowed-tools: Bash, Read
 这是只读命令。它**绝不**创建 run、lease、worktree、branch、CLI worker，也不重试、汇合或回收
 unknown worker。
 
+若 worker manifest 的 `owner=host`，先展示其 host、hostWorkerId、cwd、branch 与“宿主可回收”状态；
+不要把它交给 controller-owned `parallel-worktree.py verify` 或 `parallel-cli.py inspect`，也不要把缺少
+controller process record 误报成可自动处置的 unknown。
+
 `$ARGUMENTS` 必须是一个 run ID。先输出 ledger 汇总，再对每个已领取 worker 依次输出 runtime
 校验与 CLI process 状态：
 
@@ -22,6 +26,19 @@ for module in json.load(sys.stdin).get("modules", []):
     if module.get("state") == "claimed":
         print(module["workerId"])
 ' | while IFS= read -r WORKER; do
+  OWNER="$(python3 - "$PROJECT" "$WORKER" "${CLAUDE_PLUGIN_ROOT}/hooks" <<'PY'
+import json, os, sys
+project, worker, hooks = sys.argv[1:]
+sys.path.insert(0, hooks)
+from parallel_execution_lib import ledger_root
+manifest = json.load(open(os.path.join(ledger_root(project), "workers", worker + ".json"), encoding="utf-8"))
+print(manifest.get("owner", "unknown"))
+PY
+  )"
+  if [ "$OWNER" = "host" ]; then
+    echo "== worker $WORKER host-owned：宿主可回收 =="
+    continue
+  fi
   echo "== worker $WORKER runtime =="
   python3 "${CLAUDE_PLUGIN_ROOT}/hooks/parallel-worktree.py" verify --project "$PROJECT" --worker "$WORKER" --format json || true
   echo "== worker $WORKER process =="

@@ -1,8 +1,8 @@
 {
   "tracker": "github",
   "issueTypes": false,
-  "activeModule": "audit-safety-containment",
-  "updatedAt": "2026-09-05T07:01:18.773Z",
+  "activeModule": "audit-map-consistency",
+  "updatedAt": "2026-09-05T09:04:46Z",
   "initiative": {
     "title": "Spec Guard 整体审计整改与收尾",
     "issue": 138,

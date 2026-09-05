@@ -6,12 +6,17 @@ confirm=false
 [ "${1:-}" = "--confirm" ] && { confirm=true; shift; }
 [ "$#" -eq 0 ] || { echo 'usage: sync-map-gitlab.sh [--confirm]' >&2; exit 2; }
 
+hooks="$(cd "$(dirname "$0")" && pwd)"
 project="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$project"
 command -v glab >/dev/null || { echo '❌ glab 未安装'; exit 1; }
 glab auth status >/dev/null || { echo '❌ glab 未认证'; exit 1; }
 
-plan=$(python3 - <<'PY'
+parsed=$(python3 "$hooks/capability-map.py" spec/CAPABILITY-MAP.md) || {
+  printf '%s\n' "$parsed" >&2
+  exit 1
+}
+plan=$(python3 - "$parsed" <<'PY'
 import json, pathlib, re, sys
 p=pathlib.Path('spec/CAPABILITY-MAP.md')
 s=pathlib.Path('.agent/state.json')
@@ -22,19 +27,14 @@ text=p.read_text()
 if re.search(r'- \[ \]', text): raise SystemExit('❌ 能力图评审记录尚未全部勾选')
 title=re.search(r'^# Capability Map:\s*(.+)$', text, re.M)
 goal=re.search(r'^## (?:目标|Goal)\s*\n\n(.+?)(?=\n## |\Z)', text, re.M|re.S)
-section=re.search(r'^## 模块\s*\n\n(.+?)(?=\n\nBuild order:|\n---|\Z)', text, re.M|re.S)
-if not title or not goal or not section: raise SystemExit('❌ 能力图缺少标题、目标或模块表')
-mods=[]
-rows=[line for line in section.group(1).splitlines() if line.startswith('|')]
-for row in rows[2:]:
-    cells=[x.strip() for x in row.strip('|').split('|')]
-    if len(cells)>=2 and not cells[0].startswith('example-'): mods.append({'id':cells[0], 'responsibility':cells[1]})
-if not mods: raise SystemExit('❌ 能力图没有真实模块')
-order_line=re.search(r'^Build order:\s*(.+)$', text, re.M|re.I)
-if not order_line: raise SystemExit('❌ 能力图缺少 Build order')
-order=[item.strip().strip('`') for item in re.split(r'\s*(?:→|->)\s*', order_line.group(1).strip())]
+if not title or not goal: raise SystemExit('❌ 能力图缺少标题或目标')
+parsed=json.loads(sys.argv[1])
+if not parsed.get('ok'): raise SystemExit('❌ 能力图严格校验未通过')
+mods=parsed['modules']
+if not mods or any(item['id'].startswith('example-') for item in mods):
+    raise SystemExit('❌ 能力图没有真实模块或仍含占位模块')
+order=parsed['order']
 by_id={item['id']: item for item in mods}
-if len(order)!=len(mods) or set(order)!=set(by_id): raise SystemExit('❌ Build order 必须恰好包含每个模块一次')
 print(json.dumps({'title':title.group(1).strip(),'goal':goal.group(1).strip(),'modules':[by_id[item] for item in order]},ensure_ascii=False))
 PY
 )

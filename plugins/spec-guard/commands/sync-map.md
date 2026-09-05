@@ -2,16 +2,23 @@
 description: 把评审通过的能力图落成当前 tracker 的任务结构
 allowed-tools: Bash, Read, Write
 ---
-立即读取 `.agent/state.json` 的 `tracker`。GitLab 使用确定性脚本，不依赖模型转述 bridge：
+先区分新建/补充与仅刷新旧摘要；仅刷新时直接加载相应 bridge 的刷新规则，不运行下面的新建/补充入口。
+新建/补充时读取 `.agent/state.json` 的 `tracker`。GitLab 使用确定性脚本，不依赖模型转述 bridge：
 
 ```bash
 tracker=$(python3 -c 'import json; print(json.load(open(".agent/state.json")).get("tracker", ""))')
-if [ "$tracker" = gitlab ]; then
+if [ "$tracker" = github ]; then
+  python3 "${CLAUDE_PLUGIN_ROOT}/hooks/capability-map.py" spec/CAPABILITY-MAP.md || exit "$?"
+elif [ "$tracker" = gitlab ]; then
   bash "${CLAUDE_PLUGIN_ROOT}/hooks/sync-map-gitlab.sh" $ARGUMENTS
 fi
 ```
 
 不带参数时脚本只列出将创建的 Issue；用户确认后以 `--confirm` 重跑才会写入。
+
+上面的 GitHub 前置用于新建/补充：严格解析失败或当前安装包缺少解析器时停止，不继续创建。
+使用严格结果的 `order` 排序、`modules[].dependsOn` 建依赖；digest 的 `order` 是表格行序。
+若用户只要求刷新旧摘要，直接按 bridge 的刷新规则处理，不运行新建/补充流程，也不迁移旧快照。
 
 其他 tracker 的路由：
 

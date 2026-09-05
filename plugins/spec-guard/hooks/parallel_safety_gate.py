@@ -5,6 +5,8 @@ import json
 import importlib.util
 import os
 import re
+import stat
+import unicodedata
 
 
 FIELDS = ("paths", "publicInterfaces", "migrations", "globalConfig", "testResources")
@@ -26,9 +28,13 @@ def _block_after_heading(text):
 
 
 def _path(value):
-    if (not value or value.startswith("/") or ".." in value.split("/") or
-            "*" in value or "?" in value):
+    if (not isinstance(value, str) or not value or value != value.strip() or
+            value.startswith("/") or re.match(r"^[A-Za-z]:", value) or
+            "\\" in value or ".." in value.split("/") or
+            any(char in value for char in "*?[]{}") or
+            any(unicodedata.category(char) in ("Cc", "Cf") for char in value)):
         raise BoundaryError("paths 必须是无通配符的仓库相对路径: %s" % value)
+    return "/".join(part for part in value.split("/") if part not in ("", ".")) or "."
 
 
 def parse_boundary(path):
@@ -37,6 +43,10 @@ def parse_boundary(path):
             data = json.loads(_block_after_heading(handle.read()))
         except json.JSONDecodeError as error:
             raise BoundaryError("Parallel Boundary JSON 无效: %s" % error)
+    return _validate_boundary(data)
+
+
+def _validate_boundary(data):
     if not isinstance(data, dict) or set(data) != set(FIELDS):
         raise BoundaryError("Parallel Boundary 必须且只能包含五个必填字段")
     result = {}
@@ -44,7 +54,8 @@ def parse_boundary(path):
         values = data[field]
         if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
             raise BoundaryError("%s 必须是字符串数组" % field)
-        values = sorted(set(value.strip() for value in values))
+        # paths 保留原声明，先验证再规范化；不能 strip 掩盖歧义。
+        values = sorted(set(values if field == "paths" else (value.strip() for value in values)))
         if any(not value for value in values):
             raise BoundaryError("%s 不能有空值" % field)
         result[field] = values
@@ -54,44 +65,111 @@ def parse_boundary(path):
 
 
 def _paths_overlap(left, right):
-    return left == right or left.startswith(right + "/") or right.startswith(left + "/")
+    left = () if left == "." else tuple(left.split("/"))
+    right = () if right == "." else tuple(right.split("/"))
+    return left[:len(right)] == right or right[:len(left)] == left
 
 
-def classify_group(boundaries):
+def _alias(value):
+    return unicodedata.normalize("NFC", value).casefold()
+
+
+def _physical_path(project, path):
+    """只读元数据；逐级持有目录 fd，声明中的链接不会被跟随。"""
+    descriptor = None
+    try:
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+            return {"status": "needs-review", "reason": "平台不支持不跟随链接的目录检查"}
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        descriptor = os.open(os.path.realpath(project), flags)
+        parts = [] if path == "." else path.split("/")
+        for index, part in enumerate(parts):
+            aliases = [name for name in os.listdir(descriptor) if name != part and _alias(name) == _alias(part)]
+            if aliases:
+                return {"status": "needs-review", "reason": "目录组件存在大小写或 Unicode 别名: %s" % part}
+            try:
+                metadata = os.stat(part, dir_fd=descriptor, follow_symlinks=False)
+            except FileNotFoundError:
+                return {"status": "not-created", "reason": "路径尚未创建，仅完成词法检查"}
+            if stat.S_ISLNK(metadata.st_mode):
+                return {"status": "needs-review", "reason": "路径包含符号链接，未跟随目标: %s" % part}
+            if not stat.S_ISREG(metadata.st_mode) and not stat.S_ISDIR(metadata.st_mode):
+                return {"status": "needs-review", "reason": "路径组件不是普通文件或目录: %s" % part}
+            if index < len(parts) - 1:
+                child = os.open(part, flags, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = child
+        return {"status": "checked", "reason": "当前已有组件未发现链接或别名；不保证后续写入时状态不变"}
+    except (OSError, TypeError, ValueError, NotImplementedError) as error:
+        return {"status": "needs-review", "reason": "无法验证物理路径: %s" % error}
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def classify_group(boundaries, project=None):
     """以最保守的规则分类一个 readiness 候选组。"""
-    modules = sorted(boundaries)
-    missing = [module for module in modules if not isinstance(boundaries[module], dict) or
-               set(boundaries[module]) != set(FIELDS)]
-    if missing:
+    if (not isinstance(boundaries, dict) or len(boundaries) < 2 or
+            any(not isinstance(module, str) or not module for module in boundaries)):
         return {"classification": "needs-review", "evidence": [
-            {"category": "missing-boundary", "modules": missing}
-        ]}
+            {"category": "invalid-group", "reason": "需要至少两个有名称的模块边界"}
+        ], "pathDeclarations": {}}
 
-    evidence = []
+    valid, declarations, uncertain, evidence = {}, {}, [], []
+    for module in sorted(boundaries):
+        try:
+            valid[module] = _validate_boundary(boundaries[module])
+        except BoundaryError as error:
+            uncertain.append({"category": "invalid-boundary", "modules": [module], "reason": str(error)})
+            continue
+        declarations[module] = [{"raw": value, "normalized": _path(value)} for value in valid[module]["paths"]]
+        if not declarations[module]:
+            uncertain.append({"category": "empty-paths", "modules": [module], "reason": "没有声明实际写入路径"})
+        if project is not None:
+            for item in declarations[module]:
+                item["physical"] = _physical_path(project, item["normalized"])
+                if item["physical"]["status"] == "needs-review":
+                    uncertain.append({"category": "physical-path", "modules": [module],
+                                      "path": item["raw"], "reason": item["physical"]["reason"]})
+
+    if project is None:
+        uncertain.append({"category": "physical-context", "modules": sorted(valid),
+                          "reason": "缺少项目上下文，未进行物理路径检查"})
+
+    modules = sorted(valid)
     for module in modules:
-        boundary = boundaries[module]
+        boundary = valid[module]
         for category in ("migrations", "globalConfig", "testResources"):
             if boundary[category]:
                 evidence.append({"category": category, "modules": [module],
                                  "values": sorted(boundary[category])})
 
     for index, left_module in enumerate(modules):
-        left = boundaries[left_module]
+        left = valid[left_module]
         for right_module in modules[index + 1:]:
-            right = boundaries[right_module]
-            paths = sorted({"%s|%s" % (a, b) for a in left["paths"] for b in right["paths"]
+            right = valid[right_module]
+            paths = sorted({"%s|%s" % (a, b)
+                            for a in (item["normalized"] for item in declarations[left_module])
+                            for b in (item["normalized"] for item in declarations[right_module])
                             if _paths_overlap(a, b)})
             if paths:
                 evidence.append({"category": "paths", "modules": [left_module, right_module],
                                  "values": paths})
+            aliases = sorted({"%s|%s" % (a["raw"], b["raw"])
+                              for a in declarations[left_module] for b in declarations[right_module]
+                              if not _paths_overlap(a["normalized"], b["normalized"]) and
+                              _paths_overlap(_alias(a["normalized"]), _alias(b["normalized"]))})
+            if aliases:
+                uncertain.append({"category": "path-alias", "modules": [left_module, right_module],
+                                  "values": aliases, "reason": "大小写或 Unicode 规范化后可能重叠，不能证明路径互异"})
             interfaces = sorted(set(left["publicInterfaces"]) & set(right["publicInterfaces"]))
             if interfaces:
                 evidence.append({"category": "publicInterfaces",
                                  "modules": [left_module, right_module], "values": interfaces})
 
-    return {"classification": "sequential-required", "evidence": evidence} if evidence else {
-        "classification": "manual-parallel-eligible", "evidence": []
-    }
+    classification = "sequential-required" if evidence else "needs-review" if uncertain else "manual-parallel-eligible"
+    return {"classification": classification, "evidence": evidence + uncertain, "pathDeclarations": declarations,
+            "scopeNotice": "仅检查声明与当前路径元数据，不证明物理隔离、未来写入范围或运行时资源安全。"}
 
 
 def readiness_report(project, refresh=False):
@@ -106,14 +184,31 @@ def gate_report(project, refresh=False):
     readiness = readiness_report(project, refresh=refresh)
     results = []
     for group in readiness["candidateGroups"]:
-        boundaries = {}
+        boundaries, errors = {}, {}
         for module_id in group["modules"]:
             try:
                 boundaries[module_id] = parse_boundary(
                     os.path.join(project, "spec", module_id + ".md")
                 )
-            except (BoundaryError, OSError):
+            except (BoundaryError, OSError, UnicodeError) as error:
                 boundaries[module_id] = None
-        results.append(dict(group, **classify_group(boundaries)))
+                errors[module_id] = str(error)
+        result = classify_group(boundaries, project=project)
+        for item in result["evidence"]:
+            if item["category"] == "invalid-boundary" and item["modules"][0] in errors:
+                item["reason"] = errors[item["modules"][0]]
+        results.append(dict(group, **result))
     return {"ok": True, "base": readiness["base"], "groups": results,
-            "warnings": readiness["warnings"]}
+            "warnings": readiness["warnings"], "notice": readiness.get("notice", "")}
+
+
+def group_text(group):
+    """安全门与人工指引使用同一份可追溯诊断，不把空 worker 列表当成无结果。"""
+    lines = ["- layer %s: %s [%s]" % (group["layer"], ", ".join(group["modules"]), group["classification"])]
+    if group.get("scopeNotice"):
+        lines.append("  " + group["scopeNotice"])
+    for module, paths in sorted(group.get("pathDeclarations", {}).items()):
+        lines.append("  %s 路径: %s" % (module, json.dumps(paths, ensure_ascii=False, sort_keys=True)))
+    for item in group.get("evidence", []):
+        lines.append("  证据: " + json.dumps(item, ensure_ascii=False, sort_keys=True))
+    return "\n".join(lines)

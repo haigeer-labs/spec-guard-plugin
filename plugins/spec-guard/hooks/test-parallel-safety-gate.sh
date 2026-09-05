@@ -69,8 +69,10 @@ empty = {"paths": [], "publicInterfaces": [], "migrations": [], "globalConfig": 
 eligible = classify_group({
     "alpha": dict(empty, paths=["src/alpha.py"]),
     "beta": dict(empty, paths=["src/beta.py"]),
-})
-assert eligible == {"classification": "manual-parallel-eligible", "evidence": []}, eligible
+}, project=work)
+assert eligible["classification"] == "manual-parallel-eligible" and eligible["evidence"] == [], eligible
+assert eligible["pathDeclarations"]["alpha"][0]["normalized"] == "src/alpha.py", eligible
+assert eligible["pathDeclarations"]["alpha"][0]["physical"]["status"] == "not-created", eligible
 for field, left, right in (
     ("paths", ["src"], ["src/beta.py"]),
     ("publicInterfaces", ["api.v1"], ["api.v1"]),

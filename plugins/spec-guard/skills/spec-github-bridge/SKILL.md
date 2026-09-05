@@ -93,6 +93,26 @@ GitHub 的 `--add-blocked-by` 边（被执行的那份）。别造第三份。
 **输入**：`spec/CAPABILITY-MAP.md` 已经过人工评审
 **输出**：Epic issue + N 个模块 issue + 依赖关系 + `.agent/state.json`（含指纹）
 
+### 创建前的严格图校验
+
+新建或补充 Issue 前先运行只读解析入口。将本轮 hook 的 `spec-digest:` 绝对路径原样赋给
+`SPEC_GUARD_DIGEST`；没有这条事实时停止，不猜安装路径。解析器必须来自同一安装包：
+
+```bash
+: "${SPEC_GUARD_DIGEST:?请先读取本轮 hook 的 spec-digest 路径}"
+parser="$(dirname "$SPEC_GUARD_DIGEST")/capability-map.py"
+[ -f "$parser" ] || { echo '当前插件缺少严格图解析器，请升级插件并在新会话重试。' >&2; exit 1; }
+python3 "$parser" spec/CAPABILITY-MAP.md || exit "$?"
+```
+
+只有退出 0 且 `ok:true` 才可使用结果；失败不得继续创建或自行解析兜底。
+该结果的 `orderGroups` 表示声明组，`order` 表示按组展开的稳定创建顺序；
+模块职责来自 `modules`，依赖边只来自其中的 `dependsOn`（能力图 Depends on 列），
+不从相邻位置或组内顺序生成阻塞边。不并发创建 Issue，不以格式合法代替用户的写入确认。
+
+下节 digest 的 `compute.order` **仍是表格行序，不是构建顺序**；它只用于旧摘要兼容，
+不能取代严格校验。只刷新旧 Issue 摘要时沿用原摘要/标记边界规则，不强制迁移旧无 Build order 快照。
+
 ### 一致性模型（这一节决定了下面每一步为什么这么写）
 
     spec/CAPABILITY-MAP.md   唯一事实源
@@ -140,7 +160,7 @@ issue 正文没法看），而是**给复制留指纹**：写投影的同时把�
 
 ### 步骤
 
-1. 解析能力图的模块表和 build order
+1. 通过上面的严格图校验，使用其 `modules`、`orderGroups` 和 `order`，不要自行拆箭头/逗号
 2. 创建 Epic（`issueTypes: false` 时去掉 `--type Feature` 这一行）。
    正文分两段：**指针**（永不过期）+ **标记块内的摘要**（会过期，靠指纹兜住）：
 

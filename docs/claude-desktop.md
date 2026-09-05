@@ -38,6 +38,11 @@ settings → Install Extension…** 后选取。安装页面会展示工具与�
 登记与 teardown 没有 MCP 工具入口。普通串行写入请在 Claude Code CLI、Codex CLI 或 Codex 桌面版中明确说明影响范围
 并确认后执行；实验性并行写操作（包括 Desktop 登记）已暂停，切换宿主也不能重新开启。
 
+GitHub 预览与 GitLab 确定性入口都先调用同一严格能力图解析器。并列 Build order 只提供
+稳定展示顺序；依赖仍只取 `Depends on`。图无效、Python 不可用、子进程非零或返回坏 JSON 时，
+预览直接返回错误，绝不会退回旧正则解析或报告成功。该保证来自本地协议回归，不等同于 Desktop
+原生 UI E2E。
+
 ## 四端功能矩阵
 
 | 宿主 | 接入方式 | 只读检查/预览 | 本地或远端写入 |
@@ -58,6 +63,10 @@ PARALLEL_WRITES_DISABLED 拒绝入口；目前尚未发布，旧安装不会自�
 
 Claude Code 桌面会话与本页的 Claude Desktop MCPB 是不同接入方式。MCPB 仍只暴露上表的检查和预览工具，
 没有并行状态或执行工具；本轮源码回归不等于两个桌面产品的原生 UI 验收。
+
+只读并行诊断若在其他宿主调用，也只会产出 `candidate-only`、`needs-review`、
+`sequential-required` 或有限的 `manual-parallel-eligible` 声明结论。它不验证真实代码改动、
+测试服务、端口或运行资源的隔离；链接、别名、权限或平台不确定时必须人工审查。
 
 ### 升级与旧会话
 

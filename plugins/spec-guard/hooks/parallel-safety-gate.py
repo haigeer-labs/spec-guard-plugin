@@ -4,7 +4,8 @@ import json
 import os
 import sys
 
-from parallel_safety_gate import BoundaryError, gate_report
+from capability_map import MapError
+from parallel_safety_gate import BoundaryError, gate_report, group_text
 
 
 def main(argv):
@@ -15,7 +16,7 @@ def main(argv):
     args = parser.parse_args(argv)
     try:
         report = gate_report(os.path.abspath(args.project), refresh=args.refresh)
-    except (BoundaryError, OSError, RuntimeError) as error:
+    except (MapError, BoundaryError, OSError, RuntimeError, UnicodeError) as error:
         print("parallel-safety-gate: %s" % error, file=sys.stderr)
         return 1
     if args.format == "json":
@@ -23,8 +24,12 @@ def main(argv):
     else:
         print("并行安全门（不自动执行）")
         print("基线: %s @ %s" % (report["base"]["ref"], report["base"]["sha"]))
+        print("新鲜度: 已验证" if report["base"]["fresh"] else "新鲜度: 未验证")
+        print(report["notice"])
+        for warning in report["warnings"]:
+            print("警告: " + warning)
         for group in report["groups"]:
-            print("- layer %s: %s [%s]" % (group["layer"], ", ".join(group["modules"]), group["classification"]))
+            print(group_text(group))
     return 0
 
 

@@ -60,3 +60,17 @@
 ### 尚未覆盖的写入口
 
 真实 Agent 启动、Desktop 登记及其命令层仍在后续 T4–T8 范围内；本项不停止现有历史进程，也不删除旧 worktree。新自动并行执行器继续保持暂停。
+
+## 2026-09-05：Checkpoint A / Issue #147
+
+审阅结论：通过底层资源写入止血 checkpoint。run 创建、模块领取、lease、worktree provision 与 reclaim 都在其最早入口拒绝；反例中 ledger、历史 worktree、分支、脏文件与 manifest 均保持不变。这个结论只适用于 T1–T3，不等同于整个并行工作流已隔离或可发布。
+
+### C1–C7 证据
+
+1. C1–C5：containment、ledger、worktree、CLI、workflow integration 回归均退出 0。
+2. C6：parallel-readiness、parallel-safety-gate、parallel-guidance 回归均退出 0，保留只读分析能力。
+3. C7：`scripts/validate.sh`、phase guard（129/0）、verify artifacts（72/0）、Codex adapter（10/0）与 plugin smoke selftest 均通过。
+
+### 审阅边界
+
+没有运行真实付费 Agent、没有推送、发布、合并、删除分支或清理用户遗留资源。T4 起必须独立封闭 Agent 启动；在 T4–T8 与后续 checkpoint 完成前，不得将本模块称为“完整自动并行执行器”或建议生产使用旧写命令。

@@ -40,6 +40,22 @@ def _is_linked_worktree(project, cwd):
     return any(line == "worktree " + cwd for line in lines) and _common_dir(project) != git_dir
 
 
+def _ensure_unique_host_worker(root, run_id_value, host, host_worker_id, cwd):
+    workers = os.path.join(root, "workers")
+    if not os.path.isdir(workers):
+        return
+    for name in os.listdir(workers):
+        if not name.endswith(".json"):
+            continue
+        manifest = load_json(os.path.join(workers, name), "worker manifest")
+        if manifest.get("owner") != "host" or manifest.get("runId") != run_id_value:
+            continue
+        if manifest.get("host") == host and manifest.get("hostWorkerId") == host_worker_id:
+            raise LedgerError("稳定 host worker ID 已登记到当前 run")
+        if os.path.realpath(manifest.get("worktreePath", "")) == cwd:
+            raise LedgerError("Desktop worktree 已登记到当前 run")
+
+
 def _host_manifest(project, run_id_value, module_id, host, host_worker_id, cwd):
     if host not in HOSTS:
         raise LedgerError("不支持的 Desktop host")
@@ -59,6 +75,7 @@ def _host_manifest(project, run_id_value, module_id, host, host_worker_id, cwd):
     run = load_json(os.path.join(root, "runs", run_id_value + ".json"), "run")
     if module_id not in run_modules(run):
         raise LedgerError("module 不属于该 run")
+    _ensure_unique_host_worker(root, run_id_value, host, host_worker_id, cwd)
     head = _git(cwd, "rev-parse", "HEAD")
     if subprocess.run(["git", "-C", cwd, "merge-base", "--is-ancestor", run["baseSha"], head]).returncode:
         raise LedgerError("Desktop worker HEAD 未从 run base 演进")

@@ -26,17 +26,19 @@ for module in json.load(sys.stdin).get("modules", []):
     if module.get("state") == "claimed":
         print(module["workerId"])
 ' | while IFS= read -r WORKER; do
-  OWNER="$(python3 - "$PROJECT" "$WORKER" "${CLAUDE_PLUGIN_ROOT}/hooks" <<'PY'
+  MANIFEST="$(python3 - "$PROJECT" "$WORKER" "${CLAUDE_PLUGIN_ROOT}/hooks" <<'PY'
 import json, os, sys
 project, worker, hooks = sys.argv[1:]
 sys.path.insert(0, hooks)
 from parallel_execution_lib import ledger_root
 manifest = json.load(open(os.path.join(ledger_root(project), "workers", worker + ".json"), encoding="utf-8"))
-print(manifest.get("owner", "unknown"))
+print(json.dumps({key: manifest.get(key) for key in ("owner", "host", "hostWorkerId", "worktreePath", "branch")}, ensure_ascii=False))
 PY
   )"
+  OWNER="$(printf '%s' "$MANIFEST" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("owner", "unknown"))')"
   if [ "$OWNER" = "host" ]; then
     echo "== worker $WORKER host-owned：宿主可回收 =="
+    printf '%s\n' "$MANIFEST"
     continue
   fi
   echo "== worker $WORKER runtime =="

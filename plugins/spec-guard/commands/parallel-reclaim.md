@@ -24,17 +24,19 @@ test "$#" = 2 || { echo "需要 <run-id> <worker-id>" >&2; exit 2; }
 RUN="$1"
 WORKER="$2"
 PROJECT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
-OWNER="$(python3 - "$PROJECT" "$WORKER" "${CLAUDE_PLUGIN_ROOT}/hooks" <<'PY'
+HOST_MANIFEST="$(python3 - "$PROJECT" "$WORKER" "${CLAUDE_PLUGIN_ROOT}/hooks" <<'PY'
 import json, os, sys
 project, worker, hooks = sys.argv[1:]
 sys.path.insert(0, hooks)
 from parallel_execution_lib import ledger_root
 manifest = json.load(open(os.path.join(ledger_root(project), "workers", worker + ".json"), encoding="utf-8"))
-print(manifest.get("owner", "unknown"))
+print(json.dumps({key: manifest.get(key) for key in ("owner", "host", "hostWorkerId", "worktreePath", "branch")}, ensure_ascii=False))
 PY
 )"
+OWNER="$(printf '%s' "$HOST_MANIFEST" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("owner", "unknown"))')"
 if [ "$OWNER" = "host" ]; then
   echo "host-owned worker：宿主可回收；不得调用 controller reclaim" >&2
+  printf '%s\n' "$HOST_MANIFEST" >&2
   exit 1
 fi
 STATUS="$(python3 "${CLAUDE_PLUGIN_ROOT}/hooks/parallel-execution.py" status --project "$PROJECT" --run "$RUN" --format json)"

@@ -35,6 +35,7 @@ confirmed execute ──> read-only status ──> integrate / reclaim
 - #125 限制 worker 模式下的 next 与 deliver（blocked by #123）
 - #126 实现 parallel-integrate 的单模块确认流程（blocked by #124）
 - #127 实现 parallel-reclaim 的确认式回收流程（blocked by #124）
+- #129 修复 worker runtime 的汇合与回收可达性
 
 ### Final checkpoint
 
@@ -48,3 +49,4 @@ confirmed execute ──> read-only status ──> integrate / reclaim
 | worker 越界修改 canonical 流程 | `/next`、`/deliver` 先识别并复验 worker manifest；不确定即停止。 |
 | unknown worker 被隐式重试 | status 只读呈现；execute 和 reclaim 都拒绝覆盖已有 ledger 记录。 |
 | 多模块被批量汇合 | integrate 只接受一个 module，并要求单独确认。 |
+| worker 提交或首次汇合后无法复验 | runtime 将 initial-base 启动检查与 branch-provenance / merged 回收检查分离，仍对损坏或脏 worktree fail closed。 |

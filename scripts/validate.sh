@@ -116,6 +116,7 @@ echo ""
 
 echo "═══ 发布证据记录回归 ═══"
 /bin/bash evals/test-release-evidence.sh || F=1
+/bin/bash evals/test-release-package.sh || F=1
 echo ""
 
 # 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」

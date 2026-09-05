@@ -369,6 +369,18 @@ Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `li
 验证默认分支的新鲜度。候选组仍需后续安全审查，插件不会自动创建或回收 worktree、任务
 或子代理。
 
+能力图的 `Build order` 允许 `identity → billing, notifications → reporting` 这样的并列组：
+它只约束组间先后和稳定展示/创建顺序，**不**把组内的逗号顺序变成依赖。真正的依赖只来自
+`Depends on`，readiness 再按该依赖计算层级；因此即使两个独立模块在线性 Build order 中相邻，
+也最多是 `candidate-only`。严格图校验失败时，同步预览、GitLab 同步与 GitHub/Codex 的新建或
+补充入口都会停止；摘要的表格行序仍只用于旧摘要兼容，不可用作执行顺序。
+
+安全门要求每个候选模块在 `spec/<module-id>.md` 提供五字段 `Parallel Boundary` JSON。
+它以路径组件比较 `src/`、`./src`、`src//`、`.` 等等价写法，保留原始值与规范值供审阅；
+`src` 不会和 `src-old` 混淆。父目录穿越、绝对/盘符/UNC、反斜杠、通配符、控制字符、空路径、
+大小写或 Unicode 别名、符号链接、权限/平台不确定性都会降级为 `needs-review`。
+未创建的普通路径可作词法声明比较，但报告会说明这不证明物理隔离、实际 diff、测试资源或运行时资源安全。
+
 `parallel-subagent-preflight` 是 **Codex 专用** 操作：只有 safety gate 合格且用户明确确认后，
 当前父会话才会创建原生子智能体进行**只读预检**，再等待并汇总结果。它不等于隔离 worktree，也不等于允许并行写入代码；没有原生子智能体能力时，流程会回退到
 `parallel-guidance` 的人工 worktree 指引。

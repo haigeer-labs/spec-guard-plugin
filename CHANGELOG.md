@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **统一严格能力图与边界诊断。** 并列 Build order 现由共享解析器验证，GitLab 同步、Desktop
+  预览及 GitHub/Codex 新建入口共享其顺序和失败语义；旧摘要的表格行序兼容语义不变。
+  并行候选仍只代表 Depends on 依赖层，未核验任务状态或运行资源，不能立即领取或执行。
+- **收紧人工并行边界检查。** 路径按组件比较并保留原始/规范值；非法路径、空声明、链接、
+  权限、大小写/Unicode 别名和无项目上下文都保守降级。文本与 JSON 均保留冲突和不确定原因，
+  非 eligible 组不生成 worker 建议。本项尚未发布，且不解除 `PARALLEL_WRITES_DISABLED`。
 - 暂停实验性并行写入口：run/lease、worktree、CLI Agent 启动、Desktop 登记、汇合与回收均返回
   `PARALLEL_WRITES_DISABLED`，保留已有资源；普通串行与只读候选分析继续可用。
 - 旧 run/worker/process 读取校验文件名、身份关联和路径；查询失败返回非零。旧 completed 显示

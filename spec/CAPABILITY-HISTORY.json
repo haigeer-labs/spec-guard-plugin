@@ -588,6 +588,196 @@
           }
         }
       ]
+    },
+    {
+      "id": "94",
+      "title": "94",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260905T053825Z-0001",
+            "map": {
+              "path": "spec/history/94/20260905T053825Z-0001/CAPABILITY-MAP.md",
+              "sha256": "59a0bd8aebcf671291ac93df1043c9a85f20679d8d8131f425de55b1089a065d"
+            },
+            "state": {
+              "path": ".agent/history/94/20260905T053825Z-0001/state.json",
+              "sha256": "5941ee31f349a9176d194f5f503c78ff7df20d0da22ec7792e59b2ff3034bf88"
+            },
+            "modules": [
+              {
+                "id": "parallel-execution-ledger",
+                "responsibility": "parallel-execution-ledger",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 95,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-execution-ledger.md",
+                  "sha256": "70665655585ba9a3b0f6ee1b7ae5f99cf9956a2a534559e1b0f07cdebd0b3422"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-execution-ledger/plan.md",
+                  "sha256": "e37c1dabbd8611b8bf36101880a793cd92cf05cc5ad0627f8f926b3aaf44220b"
+                }
+              },
+              {
+                "id": "parallel-worktree-runtime",
+                "responsibility": "parallel-worktree-runtime",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 96,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-worktree-runtime.md",
+                  "sha256": "8c80777193d227073622fc69c93d55ba62f13c63129cd55aa7f56358359884d3"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-worktree-runtime/plan.md",
+                  "sha256": "4b11e5eed02bb32e42a4f7533854053c1e1138c418701628fff38f557ed2d530"
+                }
+              },
+              {
+                "id": "parallel-cli-execution",
+                "responsibility": "parallel-cli-execution",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 97,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-cli-execution.md",
+                  "sha256": "919917a214e53feafce40f5da85243a218d32cebe10dc33d8cead529b3de7789"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-cli-execution/plan.md",
+                  "sha256": "0d5b8a8cf315ccd5b34b650962af8e403eea29d248c771196c84f0a509f53b81"
+                }
+              },
+              {
+                "id": "parallel-workflow-integration",
+                "responsibility": "parallel-workflow-integration",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 98,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-workflow-integration.md",
+                  "sha256": "e23c065a8f7b4a14a9bbf5505f8cd719d8ab07f767dcd325bece362ee15b7b1f"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-workflow-integration/plan.md",
+                  "sha256": "7eafbcdf9d48468598774dbe65df99a3aa806aa2987213222eed3c31eeabbcda"
+                }
+              },
+              {
+                "id": "desktop-worker-registration",
+                "responsibility": "desktop-worker-registration",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 99,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/desktop-worker-registration.md",
+                  "sha256": "a1da889ba4173229b6cd8864db6b6a267399663f86e9c8bbde2556e3715d2bbb"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/desktop-worker-registration/plan.md",
+                  "sha256": "b3bf289db4e67fcda48d20e59069a0c17f4e35421199fe79dc162f5b9d308227"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260905T053825Z-0001",
+            "map": {
+              "path": "spec/history/94/20260905T053825Z-0001/CAPABILITY-MAP.md",
+              "sha256": "59a0bd8aebcf671291ac93df1043c9a85f20679d8d8131f425de55b1089a065d"
+            },
+            "state": {
+              "path": ".agent/history/94/20260905T053825Z-0001/state.json",
+              "sha256": "5941ee31f349a9176d194f5f503c78ff7df20d0da22ec7792e59b2ff3034bf88"
+            },
+            "modules": [
+              {
+                "id": "parallel-execution-ledger",
+                "responsibility": "parallel-execution-ledger",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 95,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-execution-ledger.md",
+                  "sha256": "70665655585ba9a3b0f6ee1b7ae5f99cf9956a2a534559e1b0f07cdebd0b3422"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-execution-ledger/plan.md",
+                  "sha256": "e37c1dabbd8611b8bf36101880a793cd92cf05cc5ad0627f8f926b3aaf44220b"
+                }
+              },
+              {
+                "id": "parallel-worktree-runtime",
+                "responsibility": "parallel-worktree-runtime",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 96,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-worktree-runtime.md",
+                  "sha256": "8c80777193d227073622fc69c93d55ba62f13c63129cd55aa7f56358359884d3"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-worktree-runtime/plan.md",
+                  "sha256": "4b11e5eed02bb32e42a4f7533854053c1e1138c418701628fff38f557ed2d530"
+                }
+              },
+              {
+                "id": "parallel-cli-execution",
+                "responsibility": "parallel-cli-execution",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 97,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-cli-execution.md",
+                  "sha256": "919917a214e53feafce40f5da85243a218d32cebe10dc33d8cead529b3de7789"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-cli-execution/plan.md",
+                  "sha256": "0d5b8a8cf315ccd5b34b650962af8e403eea29d248c771196c84f0a509f53b81"
+                }
+              },
+              {
+                "id": "parallel-workflow-integration",
+                "responsibility": "parallel-workflow-integration",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 98,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/parallel-workflow-integration.md",
+                  "sha256": "e23c065a8f7b4a14a9bbf5505f8cd719d8ab07f767dcd325bece362ee15b7b1f"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/parallel-workflow-integration/plan.md",
+                  "sha256": "7eafbcdf9d48468598774dbe65df99a3aa806aa2987213222eed3c31eeabbcda"
+                }
+              },
+              {
+                "id": "desktop-worker-registration",
+                "responsibility": "desktop-worker-registration",
+                "dependsOn": [],
+                "status": "not-started",
+                "issue": 99,
+                "spec": {
+                  "path": "spec/history/94/20260905T053825Z-0001/desktop-worker-registration.md",
+                  "sha256": "a1da889ba4173229b6cd8864db6b6a267399663f86e9c8bbde2556e3715d2bbb"
+                },
+                "plan": {
+                  "path": "tasks/history/94/20260905T053825Z-0001/desktop-worker-registration/plan.md",
+                  "sha256": "b3bf289db4e67fcda48d20e59069a0c17f4e35421199fe79dc162f5b9d308227"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

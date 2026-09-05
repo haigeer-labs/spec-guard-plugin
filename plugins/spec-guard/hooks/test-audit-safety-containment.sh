@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
 
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
@@ -159,6 +160,35 @@ for host in ("codex-cli", "claude-cli"):
         assert result.returncode == 1 and result.stderr == "", result
         assert json.loads(result.stdout)["code"] == "PARALLEL_WRITES_DISABLED", result.stdout
         assert snapshot() == before
+
+desktop_spec = importlib.util.spec_from_file_location("parallel_desktop_test", os.path.join(hooks, "parallel-desktop-register.py"))
+desktop = importlib.util.module_from_spec(desktop_spec)
+desktop_spec.loader.exec_module(desktop)
+before = snapshot()
+for host in ("codex-desktop", "claude-desktop"):
+    with patch.object(desktop, "_git", side_effect=AssertionError("Desktop Git lookup reached")):
+        try:
+            desktop.register(project, "c" * 64, "beta", host, "existing-task", worker["worktreePath"])
+        except ParallelWritesDisabled:
+            pass
+        else:
+            raise AssertionError("Desktop registration was not disabled")
+
+def register_request(args):
+    host, run_value, module = args
+    return subprocess.run([sys.executable, os.path.join(hooks, "parallel-desktop-register.py"),
+                           "register", "--project", project, "--run", run_value,
+                           "--module", module, "--host", host, "--host-worker-id", "existing-task",
+                           "--cwd", worker["worktreePath"], "--format", "json"],
+                          capture_output=True, text=True)
+
+requests = [(host, value * 64, module) for host in ("codex-desktop", "claude-desktop")
+            for value in ("c", "d") for module in ("alpha", "beta")]
+with ThreadPoolExecutor(max_workers=4) as executor:
+    for result in executor.map(register_request, requests):
+        assert result.returncode == 1 and result.stderr == "", result
+        assert json.loads(result.stdout)["code"] == "PARALLEL_WRITES_DISABLED", result.stdout
+assert snapshot() == before, "concurrent Desktop registration changed old resources"
 PY
 
 printf 'audit-safety-containment regression passed\n'

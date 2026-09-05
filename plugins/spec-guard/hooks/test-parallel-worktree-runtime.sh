@@ -21,7 +21,7 @@ import sys
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
 
-from parallel_worktree_lib import LedgerError, provision, validate_worker_manifest, verify_worker, worker_path  # noqa: F401
+from parallel_worktree_lib import LedgerError, provision, reclaim, validate_worker_manifest, verify_worker, worker_path  # noqa: F401
 
 head = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 common = subprocess.check_output(["git", "-C", project, "rev-parse", "--git-common-dir"], text=True).strip()
@@ -68,6 +68,17 @@ with open(created["worktreePath"] + "/README.md", "a", encoding="utf-8") as hand
     handle.write("worker dirty\n")
 dirty_worker = verify_worker(project, created)
 assert dirty_worker["ok"] is False and dirty_worker["state"] == "unknown", dirty_worker
+subprocess.check_call(["git", "-C", created["worktreePath"], "checkout", "--", "README.md"])
+for candidate, merged, confirm in ((created, False, False), (dict(created, owner="host"), True, False)):
+    try:
+        reclaim(project, candidate, merged=merged, confirm=confirm)
+    except LedgerError:
+        pass
+    else:
+        raise AssertionError("unsafe reclaim accepted")
+reclaimed = reclaim(project, created, merged=True, confirm=False)
+assert reclaimed["ok"] is True and not os.path.lexists(created["worktreePath"]), reclaimed
+assert subprocess.run(["git", "-C", project, "show-ref", "--verify", "--quiet", "refs/heads/" + created["branch"]]).returncode != 0
 
 with open(project + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("dirty\n")

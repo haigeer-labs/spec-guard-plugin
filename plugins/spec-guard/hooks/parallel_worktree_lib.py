@@ -97,3 +97,18 @@ def verify_worker(project, manifest):
         return {"ok": False, "state": "unknown", "reason": str(error)}
     return {"ok": True, "state": "ready", "workerId": manifest["workerId"],
             "worktreePath": manifest["worktreePath"]}
+
+
+def reclaim(project, manifest, merged=False, confirm=False):
+    """只回收已合并或明确 discard 的 controller-owned 干净 worker。"""
+    project = os.path.abspath(project)
+    manifest = validate_worker_manifest(project, manifest)
+    if not merged and not confirm:
+        raise LedgerError("未合并 worker 必须显式 confirm discard")
+    status = verify_worker(project, manifest)
+    if status["ok"] is not True:
+        raise LedgerError("worker 不可安全回收: %s" % status["reason"])
+    _git(project, "worktree", "remove", manifest["worktreePath"])
+    _git(project, "branch", "-d" if merged else "-D", manifest["branch"])
+    _git(project, "worktree", "prune")
+    return {"ok": True, "workerId": manifest["workerId"], "state": "reclaimed"}

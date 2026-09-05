@@ -41,6 +41,9 @@ assert "--details --format json" in status and "recordedState" in status
 assert "|| true" not in status and "宿主可回收" not in status
 for forbidden in (" create-run", " provision", " reclaim", '" start'):
     assert forbidden not in status, forbidden
+readme = open(os.path.join(root, "../../README.md"), encoding="utf-8").read()
+for token in ("实验性写操作已暂停", "尚未发布", "新代码不会停止旧进程", "查询成功仅表示读取成功"):
+    assert token in readme, token
 PY
 
 printf 'parallel-workflow-integration regression passed\n'

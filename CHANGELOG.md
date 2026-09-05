@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+- 暂停实验性并行写入口：run/lease、worktree、CLI Agent 启动、Desktop 登记、汇合与回收均返回
+  `PARALLEL_WRITES_DISABLED`，保留已有资源；普通串行与只读候选分析继续可用。
+- 旧 run/worker/process 读取校验文件名、身份关联和路径；查询失败返回非零。旧 completed 显示
+  unverified 并保留 recordedState，宿主管理不等同于可回收。
+- 升级不停止旧进程、不接管已加载旧版本的会话。先保存成果、核对任务并由用户决定停止或重启，
+  确认新版本加载；不自动清理旧 ledger 或 worktree。本项尚未发布，不构成四端原生 E2E 验收。
+
 ## [0.8.0] - 2026-09-04
 
 ### 新增

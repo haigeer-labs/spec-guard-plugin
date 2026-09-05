@@ -5,6 +5,7 @@ import json
 import importlib.util
 import os
 import re
+import stat
 import unicodedata
 
 
@@ -69,7 +70,44 @@ def _paths_overlap(left, right):
     return left[:len(right)] == right or right[:len(left)] == left
 
 
-def classify_group(boundaries):
+def _alias(value):
+    return unicodedata.normalize("NFC", value).casefold()
+
+
+def _physical_path(project, path):
+    """只读元数据；逐级持有目录 fd，声明中的链接不会被跟随。"""
+    descriptor = None
+    try:
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+            return {"status": "needs-review", "reason": "平台不支持不跟随链接的目录检查"}
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        descriptor = os.open(os.path.realpath(project), flags)
+        parts = [] if path == "." else path.split("/")
+        for index, part in enumerate(parts):
+            aliases = [name for name in os.listdir(descriptor) if name != part and _alias(name) == _alias(part)]
+            if aliases:
+                return {"status": "needs-review", "reason": "目录组件存在大小写或 Unicode 别名: %s" % part}
+            try:
+                metadata = os.stat(part, dir_fd=descriptor, follow_symlinks=False)
+            except FileNotFoundError:
+                return {"status": "not-created", "reason": "路径尚未创建，仅完成词法检查"}
+            if stat.S_ISLNK(metadata.st_mode):
+                return {"status": "needs-review", "reason": "路径包含符号链接，未跟随目标: %s" % part}
+            if not stat.S_ISREG(metadata.st_mode) and not stat.S_ISDIR(metadata.st_mode):
+                return {"status": "needs-review", "reason": "路径组件不是普通文件或目录: %s" % part}
+            if index < len(parts) - 1:
+                child = os.open(part, flags, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = child
+        return {"status": "checked", "reason": "当前已有组件未发现链接或别名；不保证后续写入时状态不变"}
+    except (OSError, TypeError, ValueError, NotImplementedError) as error:
+        return {"status": "needs-review", "reason": "无法验证物理路径: %s" % error}
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def classify_group(boundaries, project=None):
     """以最保守的规则分类一个 readiness 候选组。"""
     if (not isinstance(boundaries, dict) or len(boundaries) < 2 or
             any(not isinstance(module, str) or not module for module in boundaries)):
@@ -87,6 +125,16 @@ def classify_group(boundaries):
         declarations[module] = [{"raw": value, "normalized": _path(value)} for value in valid[module]["paths"]]
         if not declarations[module]:
             uncertain.append({"category": "empty-paths", "modules": [module], "reason": "没有声明实际写入路径"})
+        if project is not None:
+            for item in declarations[module]:
+                item["physical"] = _physical_path(project, item["normalized"])
+                if item["physical"]["status"] == "needs-review":
+                    uncertain.append({"category": "physical-path", "modules": [module],
+                                      "path": item["raw"], "reason": item["physical"]["reason"]})
+
+    if project is None:
+        uncertain.append({"category": "physical-context", "modules": sorted(valid),
+                          "reason": "缺少项目上下文，未进行物理路径检查"})
 
     modules = sorted(valid)
     for module in modules:
@@ -107,13 +155,21 @@ def classify_group(boundaries):
             if paths:
                 evidence.append({"category": "paths", "modules": [left_module, right_module],
                                  "values": paths})
+            aliases = sorted({"%s|%s" % (a["raw"], b["raw"])
+                              for a in declarations[left_module] for b in declarations[right_module]
+                              if not _paths_overlap(a["normalized"], b["normalized"]) and
+                              _paths_overlap(_alias(a["normalized"]), _alias(b["normalized"]))})
+            if aliases:
+                uncertain.append({"category": "path-alias", "modules": [left_module, right_module],
+                                  "values": aliases, "reason": "大小写或 Unicode 规范化后可能重叠，不能证明路径互异"})
             interfaces = sorted(set(left["publicInterfaces"]) & set(right["publicInterfaces"]))
             if interfaces:
                 evidence.append({"category": "publicInterfaces",
                                  "modules": [left_module, right_module], "values": interfaces})
 
     classification = "sequential-required" if evidence else "needs-review" if uncertain else "manual-parallel-eligible"
-    return {"classification": classification, "evidence": evidence + uncertain, "pathDeclarations": declarations}
+    return {"classification": classification, "evidence": evidence + uncertain, "pathDeclarations": declarations,
+            "scopeNotice": "仅检查声明与当前路径元数据，不证明物理隔离、未来写入范围或运行时资源安全。"}
 
 
 def readiness_report(project, refresh=False):
@@ -136,6 +192,6 @@ def gate_report(project, refresh=False):
                 )
             except (BoundaryError, OSError):
                 boundaries[module_id] = None
-        results.append(dict(group, **classify_group(boundaries)))
+        results.append(dict(group, **classify_group(boundaries, project=project)))
     return {"ok": True, "base": readiness["base"], "groups": results,
             "warnings": readiness["warnings"]}

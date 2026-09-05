@@ -12,10 +12,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 hooks = Path(sys.argv.pop())
 sys.path.insert(0, str(hooks))
 from capability_map import MapError, parse_map
+import parallel_safety_gate as safety
 from parallel_safety_gate import BoundaryError, FIELDS, classify_group, parse_boundary
 
 TABLE = """| Module id | Responsibility | Depends on |
@@ -352,7 +354,8 @@ class LexicalBoundaries(unittest.TestCase):
 
     def test_distinct_components_are_not_parent_paths(self):
         result = classify_group({"alpha": self.boundary(["src/"]), "beta": self.boundary(["src-old/file.py"])})
-        self.assertEqual(result["classification"], "manual-parallel-eligible", result)
+        self.assertEqual(result["classification"], "needs-review", result)  # 无项目上下文。
+        self.assertFalse(any(e["category"] == "paths" for e in result["evidence"]))
 
     def test_file_and_direct_input_share_validation(self):
         bad_paths = ["", " ", " src", "src ", "..", "src/../out", "/tmp/a", "C:/temp", "C:temp",
@@ -384,6 +387,87 @@ class LexicalBoundaries(unittest.TestCase):
             self.assertEqual(result["classification"], "sequential-required", result)
             self.assertTrue(any(e["category"] == field for e in result["evidence"]))
             self.assertTrue(any(e["category"] == "invalid-boundary" for e in result["evidence"]))
+
+
+class PhysicalBoundaries(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="sg-physical-")
+        self.addCleanup(self.directory.cleanup)
+        self.project = Path(self.directory.name) / "project"
+        self.project.mkdir()
+        (self.project / "src").mkdir()
+        (self.project / "src/a.py").write_text("a")
+        (self.project / "src/b.py").write_text("b")
+
+    def classify(self, left, right="src/b.py", project=True):
+        boundaries = {"alpha": dict({field: [] for field in FIELDS}, paths=[left]),
+                      "beta": dict({field: [] for field in FIELDS}, paths=[right])}
+        return classify_group(boundaries, project=self.project) if project else classify_group(boundaries)
+
+    def test_no_context_is_not_physical_evidence(self):
+        result = self.classify("src/a.py", project=False)
+        self.assertEqual(result["classification"], "needs-review", result)
+        self.assertTrue(any(e["category"] == "physical-context" for e in result["evidence"]))
+
+    def test_normal_existing_and_future_paths_are_limited_checks(self):
+        for path, status in (("src/a.py", "checked"), ("new/feature.py", "not-created")):
+            result = self.classify(path)
+            self.assertEqual(result["classification"], "manual-parallel-eligible", result)
+            self.assertEqual(result["pathDeclarations"]["alpha"][0]["physical"]["status"], status)
+            self.assertIn("不证明物理隔离", result["scopeNotice"])
+
+    def test_symlinks_do_not_reach_external_canary(self):
+        outside = Path(self.directory.name) / "outside"
+        outside.mkdir()
+        canary = outside / "canary"
+        canary.write_text("must not be read")
+        (self.project / "linked").symlink_to(outside, target_is_directory=True)
+        (self.project / "leaf").symlink_to(canary)
+        (self.project / "broken").symlink_to(outside / "absent")
+        (self.project / "internal").symlink_to(self.project / "src", target_is_directory=True)
+        original_stat, original_open = os.stat, os.open
+        calls = []
+        def guarded_stat(path, *args, **kwargs):
+            calls.append(os.fspath(path))
+            self.assertNotIn("canary", os.fspath(path))
+            self.assertNotIn("outside", os.fspath(path))
+            return original_stat(path, *args, **kwargs)
+        def guarded_open(path, *args, **kwargs):
+            self.assertNotIn("canary", os.fspath(path))
+            self.assertNotIn("outside", os.fspath(path))
+            return original_open(path, *args, **kwargs)
+        for path in ("linked/canary", "leaf", "broken", "internal/a.py"):
+            with self.subTest(path=path), mock.patch.object(safety.os, "stat", side_effect=guarded_stat), \
+                    mock.patch.object(safety.os, "open", side_effect=guarded_open), \
+                    mock.patch("builtins.open", side_effect=AssertionError("physical checks must not read content")):
+                result = self.classify(path)
+                self.assertEqual(result["classification"], "needs-review", result)
+                self.assertTrue(any("符号链接" in e.get("reason", "") for e in result["evidence"]))
+        self.assertTrue(calls, "the metadata guard must actually run")
+        self.assertEqual(canary.read_text(), "must not be read")
+
+    def test_permissions_and_non_directory_components_need_review(self):
+        original_stat = os.stat
+        def denied(path, *args, **kwargs):
+            if os.fspath(path) == "src":
+                raise PermissionError("fixture permission denied")
+            return original_stat(path, *args, **kwargs)
+        with mock.patch.object(safety.os, "stat", side_effect=denied):
+            result = self.classify("src/a.py")
+            self.assertEqual(result["classification"], "needs-review", result)
+            self.assertTrue(any("permission denied" in e.get("reason", "") for e in result["evidence"]))
+        self.assertEqual(self.classify("src/a.py/child")["classification"], "needs-review")
+
+    def test_aliases_are_uncertain_without_rewriting_paths(self):
+        for left, right in (("Src/a", "src/a"), ("SRC", "src/b"), ("caf\u00e9/a", "cafe\u0301/a")):
+            result = self.classify(left, right)
+            self.assertEqual(result["classification"], "needs-review", result)
+            self.assertTrue(any(e["category"] == "path-alias" for e in result["evidence"]))
+            self.assertEqual(result["pathDeclarations"]["alpha"][0]["normalized"], left)
+        (self.project / "Existing").mkdir()
+        result = self.classify("existing/new.py")
+        self.assertEqual(result["classification"], "needs-review", result)
+        self.assertTrue(any("别名" in e.get("reason", "") for e in result["evidence"]))
 
 
 class ReadinessDependencyLayers(unittest.TestCase):

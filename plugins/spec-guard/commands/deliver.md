@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Write
 `parallel-worktree.py verify` 复验 manifest，并从 manifest 读取唯一 `moduleId`；验证失败立即停止。
 验证成功也**不得继续执行下面的 canonical `/deliver` 路由**：worker 不得创建模块 PR、推进
 `activeModule`、关闭 initiative 或自行 merge。向用户报告该 worker 的 moduleId、分支和待人工
-汇合状态；仅 controller checkout 的单模块汇合流程可以处理后续交付。
+核验状态，说明实验写流程暂停，保存成果并只读核对；不要继续汇合或回收。
 
 普通分支才执行以下既有流程：
 

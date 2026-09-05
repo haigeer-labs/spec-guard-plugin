@@ -115,6 +115,33 @@ def status_run(project, run_id_value):
             "baseSha": run["baseSha"], "modules": states}
 
 
+def status_details(project, run_id_value):
+    """Aggregate read-only diagnostics without hiding a failed child query."""
+    result = status_run(project, run_id_value)
+    result["workers"] = []
+    from parallel_worktree_lib import load_worker_manifest, verify_worker
+    spec = importlib.util.spec_from_file_location("parallel_cli_status", os.path.join(os.path.dirname(__file__), "parallel-cli.py"))
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    for module in result["modules"]:
+        worker_id = module.get("workerId")
+        if not worker_id:
+            continue
+        try:
+            manifest = load_worker_manifest(project, worker_id)
+            runtime = verify_worker(project, manifest)
+            entry = {"workerId": worker_id, "runtime": runtime}
+            if manifest["owner"] != "host":
+                entry["process"] = cli.inspect_worker(project, worker_id)
+            if not runtime.get("ok") or not entry.get("process", {"ok": True}).get("ok"):
+                result["ok"] = False
+        except (LedgerError, OSError, ValueError, KeyError) as error:
+            entry = {"workerId": worker_id, "state": "unknown", "reason": str(error)}
+            result["ok"] = False
+        result["workers"].append(entry)
+    return result
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -131,6 +158,7 @@ def main(argv):
     status.add_argument("--project", default=".")
     status.add_argument("--run", required=True)
     status.add_argument("--format", choices=("text", "json"), default="text")
+    status.add_argument("--details", action="store_true", help="汇总只读 worker 与 process 诊断")
     args = parser.parse_args(argv)
     try:
         if args.command == "create-run":
@@ -138,7 +166,7 @@ def main(argv):
         elif args.command == "claim-module":
             result = claim_module(args.project, args.run, args.module)
         else:
-            result = status_run(args.project, args.run)
+            result = status_details(args.project, args.run) if args.details else status_run(args.project, args.run)
     except ParallelWritesDisabled as error:
         result = {"ok": False, "code": error.code, "message": str(error)}
         if args.format == "json":
@@ -153,7 +181,7 @@ def main(argv):
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-execution: %s" % error, file=sys.stderr)
         return 1
-    if args.format == "json":
+    if args.format == "json" or (args.command == "status" and args.details):
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     else:
         if args.command == "create-run":

@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Write
 `parallel-worktree.py verify` 复验 manifest，并从 manifest 读取唯一 `moduleId`；验证失败立即停止。
 验证成功也**不得继续执行下面的 canonical `/next` 路由**：共享 `.agent/state.json` 只有一个
 `activeModule`，worker 不得修改它、关闭 initiative 或选择其他 module。向用户报告该 worker 的
-moduleId，并要求在该 module 的已分配任务范围内手工继续；需要汇合时使用 controller 的单模块流程。
+moduleId，说明实验写流程暂停，保存成果并只读核对；不要继续领取、汇合或回收。
 
 普通分支才执行以下既有流程：
 

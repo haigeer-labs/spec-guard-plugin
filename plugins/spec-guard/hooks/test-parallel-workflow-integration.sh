@@ -37,6 +37,8 @@ for name in ("next.md", "deliver.md"):
 
 status = open(os.path.join(root, "commands", "parallel-status.md"), encoding="utf-8").read()
 assert "这是只读命令" in status
+assert "--details --format json" in status and "recordedState" in status
+assert "|| true" not in status and "宿主可回收" not in status
 for forbidden in (" create-run", " provision", " reclaim", '" start'):
     assert forbidden not in status, forbidden
 PY

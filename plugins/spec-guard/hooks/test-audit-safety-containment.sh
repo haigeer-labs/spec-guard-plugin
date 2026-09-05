@@ -17,6 +17,7 @@ python3 - "$ROOT/hooks" "$WORK/project" <<'PY'
 import json
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 from unittest.mock import patch
@@ -251,6 +252,31 @@ for host in ("codex-desktop", "claude-desktop"):
     assert status["ok"] is True and status["state"] == "unverified", status
     assert status["owner"] == "host" and "未核验" in status["reason"], status
     assert snapshot() == before and not os.path.exists(process_path)
+write_record(worker_file, worker)
+
+# Execute the exact Claude command and Codex ops snippets against the same ledger.
+plugin_root = os.path.dirname(hooks)
+command = open(os.path.join(plugin_root, "commands", "parallel-status.md"), encoding="utf-8").read()
+ops = open(os.path.join(plugin_root, "skills", "spec-guard-ops", "SKILL.md"), encoding="utf-8").read()
+status_section = ops.split("## `parallel-status`", 1)[1].split("\n## `", 1)[0]
+blocks = [re.findall(r"```bash\n(.*?)\n```", text, re.S)[0] for text in (command, status_section)]
+env = dict(os.environ, ROOT=plugin_root, PROJECT=project, RUN=worker["runId"],
+           CLAUDE_PLUGIN_ROOT=plugin_root, CLAUDE_PROJECT_DIR=project, ARGUMENTS=worker["runId"],
+           PYTHONDONTWRITEBYTECODE="1")
+for owner in ("spec-guard", "host"):
+    write_record(worker_file, dict(worker, owner=owner, host="codex-desktop", hostWorkerId="native-task"))
+    before = snapshot()
+    results = [subprocess.run(["/bin/bash", "-c", block], env=env, capture_output=True, text=True) for block in blocks]
+    payloads = [json.loads(result.stdout) for result in results]
+    assert payloads[0] == payloads[1], payloads
+    for result, payload in zip(results, payloads):
+        assert result.returncode == (0 if owner == "host" else 1), result
+        assert payload["ok"] == (owner == "host"), payload
+        assert len(payload["workers"]) == 1, payload
+        if owner == "host":
+            assert "process" not in payload["workers"][0], payload
+            assert payload["workers"][0]["runtime"]["state"] == "unverified", payload
+    assert snapshot() == before, "status command modified resources"
 write_record(worker_file, worker)
 PY
 

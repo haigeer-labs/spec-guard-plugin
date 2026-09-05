@@ -185,6 +185,15 @@ for operation in ("sync-map", "next", "deliver"):
     if f"`{operation}`" not in ops or "spec-github-bridge" not in ops:
         raise SystemExit(f"{operation} 未委派给 spec-github-bridge")
 
+for operation in ("parallel-execute", "parallel-integrate", "parallel-reclaim", "parallel-register-worker", "parallel-status"):
+    if ops.count(f"## `{operation}`") != 1:
+        raise SystemExit(f"操作 {operation} 必须有唯一入口")
+for token in ("PARALLEL_WRITES_DISABLED", "--details --format json", "recordedState", "完成与可回收性未核验", "无任务绑定的 canonical next/deliver"):
+    if token not in ops:
+        raise SystemExit(f"缺少并行暂停与只读路由约束：{token}")
+if "宿主可回收" in ops:
+    raise SystemExit("不能把 host ownership 当成可回收证据")
+
 if "find ~/.claude/plugins" in bridge:
     raise SystemExit("bridge 不得猜测 ~/.claude/plugins 中的 digest 路径")
 if "spec-digest:" not in bridge:

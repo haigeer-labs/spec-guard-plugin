@@ -64,6 +64,13 @@ hasctx() {  # $1=用例名 $2=应出现的片段
   esac
 }
 
+lacksctx() {  # $1=用例名 $2=不应出现的片段
+  local out; out="$(ctx)"
+  case "$out" in *"$2"*) printf '  ❌ %s（意外出现 %s）\n' "$1" "$2"; FAIL=$((FAIL+1)) ;;
+    *) printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)) ;;
+  esac
+}
+
 strict_map() {
   mkdir -p spec
   printf '%s\n' '## Goal' '' 'fixture' '' \
@@ -86,6 +93,16 @@ hasctx "缺 binding 的下一步指向显式绑定" "/spec-guard:bind-workspace"
 
 base; mkdir -p spec; touch spec/CAPABILITY-MAP.md
 chk "只有能力图" "MAP_ONLY|断链1"
+
+# 旧项目迁移时可能已有 GitHub state 和 activeModule，但还没有第一份模块
+# spec。此时下一步只能是 /spec；binding 既不能帮助生成 spec，也无法在
+# tracker 映射尚未补齐前成功，绝不能覆盖这条前置建议。
+base; strict_map; mkdir -p .agent
+printf '%s\n' '{"tracker":"github","activeModule":"x","initiative":{"issue":1},"modules":{"x":{"issue":2}}}' > .agent/state.json
+git remote add origin git@github.com:fixture/repo.git
+chk "MAP_ONLY 保留 /spec，不被 binding 覆盖" "MAP_ONLY|断链1"
+hasctx "MAP_ONLY 的下一步仍是 /spec" "/spec 按 build order 为第一个模块生成 spec"
+lacksctx "MAP_ONLY 不要求绑定 worktree" "/spec-guard:bind-workspace"
 
 # 没有 state.json 就无从知道活跃模块，断链措辞要说这件事本身。
 # 0.7.12 之前这两条落进本地模式分支，报的是「有 spec 但没有 tasks//plan.md」

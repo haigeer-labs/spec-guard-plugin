@@ -631,10 +631,15 @@ else
   NEXT="/spec-guard:next 取下一个任务"
 fi
 
-# 远端 tracker 的 next/deliver 必须先有当前 worktree 自己的明确绑定。这里
-# 只读调用 shared helper；能力图还未达到严格格式时不猜测，也不把旧项目的
-# Phase 0 夹具误报成 binding 问题。缺失或失配只给迁移方向，绝不自动创建记录。
-if { [ "$TRACKER" = "github" ] || [ "$TRACKER" = "gitlab" ]; } \
+# 只在下一步真的会进入 next/deliver 时才检查 binding。MAP_ONLY、缺 plan 等
+# 前置阶段还不能消费 binding；此时用它覆盖 /spec 或 /plan 的建议，会把用户
+# 引到一个必然失败的命令。真正取任务或交付时仍必须 fail-closed。
+NEEDS_WORKSPACE_BINDING=false
+case "$NEXT" in
+  *"/spec-guard:next"*|*"/spec-guard:deliver"*) NEEDS_WORKSPACE_BINDING=true ;;
+esac
+if [ "$NEEDS_WORKSPACE_BINDING" = true ] \
+   && { [ "$TRACKER" = "github" ] || [ "$TRACKER" = "gitlab" ]; } \
    && [ -n "$MODULE" ] && [ -f "spec/CAPABILITY-MAP.md" ] \
    && grep -q '^Build order:' "spec/CAPABILITY-MAP.md" 2>/dev/null \
    && [ -f "${SELF_DIR}/hooks/workspace_binding.py" ]; then

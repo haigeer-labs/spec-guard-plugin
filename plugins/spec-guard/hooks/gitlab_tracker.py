@@ -9,9 +9,11 @@ import argparse
 import datetime
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 from urllib.parse import quote, urlencode
 
 
@@ -114,9 +116,19 @@ def _state(path):
 
 def _atomic_state(path, value):
     path = Path(path)
-    temporary = path.with_name(".%s.spec-guard-tmp" % path.name)
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    descriptor, temporary = tempfile.mkstemp(prefix=".%s.spec-guard-" % path.name, dir=str(path.parent))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def _write_projection(path, state, kind, issue, digest, title=None, module_id=None):

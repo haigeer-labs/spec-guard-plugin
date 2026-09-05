@@ -161,6 +161,13 @@ raise SystemExit("unexpected GitLab API endpoint: " + repr(args))
         self.assertEqual(state["initiative"]["issue"], 1)
         self.assertEqual(set(state["modules"]), {"first", "second"})
 
+    def test_atomic_state_write_never_reuses_a_predictable_temp_name(self):
+        sentinel = self.state.with_name(".state.json.spec-guard-tmp")
+        sentinel.write_text("do not overwrite", encoding="utf-8")
+        result = self.run_sync("--confirm")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "do not overwrite")
+
     def test_stale_state_stops_without_post_or_overwrite(self):
         self.write_state({"tracker": "gitlab", "initiative": {"title": "old", "issue": 99,
                           "map": "spec/CAPABILITY-MAP.md", "goalDigest": "a1b2c3d4e5f6"},

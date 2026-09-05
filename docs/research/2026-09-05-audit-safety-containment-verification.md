@@ -43,4 +43,20 @@
 
 ### 尚未覆盖的写入口
 
-`parallel-worktree.py provision/reclaim`、`parallel-cli.py start`、`parallel-desktop-register.py register` 仍由后续 T3–T6 分别收口。本任务不把由 `claim_lease` 产生的间接拒绝描述成这些入口已完成稳定契约；它们还需要各自的机器可读错误和不写入断言。
+`parallel-cli.py start`、`parallel-desktop-register.py register` 及账本身份链仍由后续 T4–T6 分别收口。本任务不把由 `claim_lease` 产生的间接拒绝描述成这些入口已完成稳定契约；它们还需要各自的机器可读错误和不写入断言。
+
+## 2026-09-05：T3 / Issue #146
+
+- `parallel-worktree.py` 的 provision/reclaim 包装函数，以及 `parallel_worktree_lib.py` 的 `provision`/`reclaim` 均在路径规范化、manifest 读取、确认参数处理或 Git 调用前拒绝。
+- provision/reclaim CLI 的 JSON 模式同样稳定返回 `PARALLEL_WRITES_DISABLED`；text 模式保留前缀化错误。`verify` 未更改，继续验证历史 worker 的只读状态。
+- containment 回归用真实的旧 fixture worktree、分支与 manifest 做快照，并把库调用的 Git helper 设为失败桩：四个直接调用与两个 CLI 调用均拒绝，`--merged` 与 `--confirm` 不构成绕过，资源保持不变。
+
+### 测试证据
+
+1. `test-audit-safety-containment.sh`、`test-parallel-worktree-runtime.sh`、`test-parallel-readiness.sh`、`test-parallel-safety-gate.sh`、`test-parallel-guidance.sh`：均退出 0。
+2. `python3 -m py_compile parallel-worktree.py parallel_worktree_lib.py` 与 `git diff --check`：均通过。
+3. `/bin/bash scripts/validate.sh`：退出 0；日志末尾为“校验通过”。
+
+### 尚未覆盖的写入口
+
+真实 Agent 启动、Desktop 登记及其命令层仍在后续 T4–T8 范围内；本项不停止现有历史进程，也不删除旧 worktree。新自动并行执行器继续保持暂停。

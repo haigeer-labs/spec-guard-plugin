@@ -7,7 +7,8 @@ import re
 import subprocess
 
 from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
-                                    validate_module_id, validate_record, write_json_exclusive)
+                                    reject_parallel_write, validate_module_id, validate_record,
+                                    write_json_exclusive)
 
 
 WORKER_ID = re.compile(r"^[0-9a-f]{12}-[a-z0-9]+(?:-[a-z0-9]+)*-[1-9][0-9]*$")
@@ -72,6 +73,7 @@ def _git(project, *args):
 
 def provision(project, manifest):
     """创建 controller-owned linked worktree；失败时不返回可启动 worker。"""
+    reject_parallel_write()
     project = os.path.abspath(project)
     manifest = validate_worker_manifest(project, manifest)
     _require_initial_base(project, manifest)
@@ -133,6 +135,7 @@ def verify_worker(project, manifest):
 
 def reclaim(project, manifest, merged=False, confirm=False):
     """只回收已合并或明确 discard 的 controller-owned 干净 worker。"""
+    reject_parallel_write()
     project = os.path.abspath(project)
     manifest = validate_worker_manifest(project, manifest)
     if not merged and not confirm:

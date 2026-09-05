@@ -22,7 +22,7 @@ import sys
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
 
-from parallel_execution_lib import ledger_root
+from parallel_execution_lib import ParallelWritesDisabled, ledger_root
 from parallel_worktree_lib import LedgerError, load_worker_manifest, provision, reclaim, validate_worker_manifest, verify_worker, worker_manifest_path, worker_path  # noqa: F401
 from test_parallel_fixture import materialize_worker, verify_fixture_worker
 
@@ -56,12 +56,12 @@ stale = dict(manifest, baseSha="b" * 40)
 validate_worker_manifest(project, stale)
 try:
     provision(project, stale)
-except LedgerError:
+except ParallelWritesDisabled:
     pass
 else:
-    raise AssertionError("stale worker provision accepted")
+    raise AssertionError("stale worker provision was not disabled")
 
-created = provision(project, manifest)
+created = materialize_worker(project, manifest)
 assert created["worktreePath"] == manifest["worktreePath"], created
 assert os.path.isdir(created["worktreePath"]), created
 assert load_worker_manifest(project, worker) == created
@@ -75,10 +75,10 @@ verified = json.loads(subprocess.check_output(["python3", cli, "verify", "--proj
 assert verified["ok"] is True and verified["state"] == "ready", verified
 try:
     provision(project, manifest)
-except LedgerError:
+except ParallelWritesDisabled:
     pass
 else:
-    raise AssertionError("duplicate worker provision accepted")
+    raise AssertionError("duplicate worker provision was not disabled")
 
 with open(created["worktreePath"] + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("worker dirty\n")
@@ -88,19 +88,12 @@ subprocess.check_call(["git", "-C", created["worktreePath"], "checkout", "--", "
 for candidate, merged, confirm in ((created, False, False), (dict(created, owner="host"), True, False)):
     try:
         reclaim(project, candidate, merged=merged, confirm=confirm)
-    except LedgerError:
+    except ParallelWritesDisabled:
         pass
     else:
-        raise AssertionError("unsafe reclaim accepted")
-reclaimed = reclaim(project, created, merged=True, confirm=False)
-assert reclaimed["ok"] is True and not os.path.lexists(created["worktreePath"]), reclaimed
-assert subprocess.run(["git", "-C", project, "show-ref", "--verify", "--quiet", "refs/heads/" + created["branch"]]).returncode != 0
-try:
-    load_worker_manifest(project, worker)
-except LedgerError:
-    pass
-else:
-    raise AssertionError("reclaimed worker manifest remained readable")
+        raise AssertionError("worktree reclaim was not disabled")
+assert os.path.lexists(created["worktreePath"]), "disabled reclaim removed a worktree"
+assert load_worker_manifest(project, worker) == created
 
 # Worker 提交后仍须证明 branch 从初始 base 演进；首次汇合后也必须能安全回收。
 progressed = dict(manifest, workerId="d" * 12 + "-alpha-1")
@@ -124,9 +117,13 @@ worker_head = subprocess.check_output(["git", "-C", progressed["worktreePath"], 
 assert worker_head != head
 progressed_status = verify_worker(project, progressed)
 assert progressed_status["ok"] is True and progressed_status["workerHead"] == worker_head, progressed_status
-subprocess.check_call(["git", "-C", project, "merge", "--no-ff", progressed["branch"], "-m", "merge worker"])
-reclaimed_progressed = reclaim(project, progressed, merged=True, confirm=False)
-assert reclaimed_progressed["ok"] is True and not os.path.lexists(progressed["worktreePath"]), reclaimed_progressed
+try:
+    reclaim(project, progressed, merged=True, confirm=False)
+except ParallelWritesDisabled:
+    pass
+else:
+    raise AssertionError("merged worktree reclaim was not disabled")
+assert os.path.lexists(progressed["worktreePath"]), "disabled merged reclaim removed a worktree"
 
 run_id = "c" * 64
 current = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
@@ -138,18 +135,22 @@ provision_target = worker_path(project, run_id[:12] + "-beta-1")
 blocked = subprocess.run(["python3", cli, "provision", "--project", project,
                            "--run", run_id, "--module", "beta", "--format", "json"],
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-assert blocked.returncode == 1 and "实验性并行写操作已暂停" in blocked.stderr, blocked.stderr
+assert blocked.returncode == 1 and json.loads(blocked.stdout)["code"] == "PARALLEL_WRITES_DISABLED", blocked.stdout
+assert blocked.stderr == "", blocked.stderr
 assert not os.path.lexists(provision_target), "disabled provision created a worktree"
 
 started = dict(manifest, workerId=run_id[:12] + "-beta-1", moduleId="beta", baseSha=current)
 started["worktreePath"] = provision_target
 started["branch"] = "spec-guard/" + started["workerId"]
 started = materialize_worker(project, started)
-reclaimed_cli = json.loads(subprocess.check_output(["python3", cli, "reclaim", "--project", project,
-                                                     "--worker", started["workerId"], "--confirm",
-                                                     "--format", "json"], text=True))
-assert reclaimed_cli["ok"] is True, reclaimed_cli
-started = materialize_worker(project, started)
+reclaimed_cli = subprocess.run(["python3", cli, "reclaim", "--project", project,
+                                "--worker", started["workerId"], "--confirm",
+                                "--format", "json"], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+assert reclaimed_cli.returncode == 1, reclaimed_cli
+assert json.loads(reclaimed_cli.stdout)["code"] == "PARALLEL_WRITES_DISABLED", reclaimed_cli.stdout
+assert reclaimed_cli.stderr == "", reclaimed_cli.stderr
+assert os.path.lexists(started["worktreePath"]), "disabled CLI reclaim removed a worktree"
 with open(worker_manifest_path(project, started["workerId"]), "w", encoding="utf-8") as handle:
     handle.write("{")
 corrupt = subprocess.run(["python3", cli, "verify", "--project", project,
@@ -164,10 +165,10 @@ dirty["worktreePath"] = worker_path(project, dirty["workerId"])
 dirty["branch"] = "spec-guard/" + dirty["workerId"]
 try:
     provision(project, dirty)
-except LedgerError:
+except ParallelWritesDisabled:
     pass
 else:
-    raise AssertionError("dirty source worktree accepted")
+    raise AssertionError("dirty source worktree provision was not disabled")
 PY
 
 printf 'parallel-worktree-runtime regression passed\n'

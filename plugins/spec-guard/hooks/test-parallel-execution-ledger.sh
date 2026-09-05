@@ -107,6 +107,8 @@ import subprocess
 import sys
 
 script, project = sys.argv[1:]
+sys.path.insert(0, os.path.dirname(script))
+from test_parallel_fixture import write_record
 command = ["python3", script, "create-run", "--project", project, "--safety-report", project + "/eligible.json", "--format", "json"]
 first = subprocess.run(command, capture_output=True, text=True)
 assert first.returncode == 0, first.stderr
@@ -146,6 +148,22 @@ beta_result = subprocess.run(beta, capture_output=True, text=True)
 assert beta_result.returncode == 0, beta_result.stderr
 assert json.loads(beta_result.stdout)["manifest"]["moduleId"] == "beta"
 
+# Read-only cases consume independently materialized legacy records. Keep the
+# production create/claim assertions above until their contracts change.
+legacy_root = os.path.dirname(os.path.dirname(created["path"]))
+legacy_run = dict(run, runId="d" * 64)
+write_record(os.path.join(legacy_root, "runs", legacy_run["runId"] + ".json"), legacy_run)
+for module_id in ("alpha", "beta"):
+    source = successes[0] if module_id == "alpha" else json.loads(beta_result.stdout)
+    legacy_lease = dict(source["manifest"], runId=legacy_run["runId"],
+                        workerId="d" * 12 + "-" + module_id + "-1")
+    target = source["path"].replace(run["runId"], legacy_run["runId"])
+    write_record(target, legacy_lease)
+    source["path"] = target
+    if module_id == "beta":
+        legacy_beta_path = target
+run = legacy_run
+
 status_command = ["python3", script, "status", "--project", project, "--run", run["runId"], "--format", "json"]
 healthy = subprocess.run(status_command, capture_output=True, text=True)
 assert healthy.returncode == 0, healthy.stderr
@@ -167,7 +185,7 @@ assert expired.returncode == 0, expired.stderr
 assert json.loads(expired.stdout)["modules"][0]["state"] == "unknown", expired.stdout
 assert (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns) == expired_before
 
-beta_path = json.loads(beta_result.stdout)["path"]
+beta_path = legacy_beta_path
 with open(beta_path, "w", encoding="utf-8") as handle:
     handle.write("{")
 malformed_before = (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns)

@@ -24,6 +24,7 @@ sys.path.insert(0, hooks)
 
 from parallel_execution_lib import ledger_root, write_json_exclusive
 from parallel_worktree_lib import LedgerError, load_worker_manifest, provision, reclaim, validate_worker_manifest, verify_worker, worker_manifest_path, worker_path  # noqa: F401
+from test_parallel_fixture import materialize_worker, verify_fixture_worker
 
 head = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 common = subprocess.check_output(["git", "-C", project, "rev-parse", "--git-common-dir"], text=True).strip()
@@ -105,7 +106,16 @@ else:
 progressed = dict(manifest, workerId="d" * 12 + "-alpha-1")
 progressed["worktreePath"] = worker_path(project, progressed["workerId"])
 progressed["branch"] = "spec-guard/" + progressed["workerId"]
-progressed = provision(project, progressed)
+progressed = materialize_worker(project, progressed)
+# The fixture checker must reject missing resources and wrong identities.
+for field, value in (("worktreePath", progressed["worktreePath"] + "-missing"),
+                     ("branch", "wrong-fixture-branch"), ("baseSha", "0" * 40)):
+    try:
+        verify_fixture_worker(project, dict(progressed, **{field: value}))
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("broken fixture accepted: " + field)
 with open(progressed["worktreePath"] + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("worker committed\n")
 subprocess.check_call(["git", "-C", progressed["worktreePath"], "add", "README.md"])

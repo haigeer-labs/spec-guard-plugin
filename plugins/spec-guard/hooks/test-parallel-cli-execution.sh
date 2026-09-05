@@ -38,7 +38,8 @@ sys.path.insert(0, hooks)
 
 from parallel_cli_adapters import LedgerError, command_for  # noqa: F401
 from parallel_execution_lib import ledger_root, load_json
-from parallel_worktree_lib import provision, worker_manifest_path, worker_path
+from parallel_worktree_lib import worker_manifest_path, worker_path
+from test_parallel_fixture import materialize_worker
 
 head = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 common = subprocess.check_output(["git", "-C", project, "rev-parse", "--git-common-dir"], text=True).strip()
@@ -70,7 +71,7 @@ def worker(worker_id):
         "worktreePath": worker_path(project, worker_id),
         "branch": "spec-guard/" + worker_id,
     }
-    return provision(project, manifest)
+    return materialize_worker(project, manifest)
 
 def start(manifest, exit_code, host="codex-cli", timeout=None, use_fake=True, sleep=None):
     missing_binary_path = os.path.dirname(shutil.which("git"))

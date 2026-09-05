@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VALIDATOR="$ROOT/scripts/release-evidence.py"
 GUIDE="$ROOT/docs/releases/README.md"
 JOURNEY_GUIDE="$ROOT/docs/releases/acceptance-journeys.md"
+RELEASE_RECORD="$ROOT/docs/releases/v0.8.0-source.json"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -99,6 +100,11 @@ then
   ok "正：真实验收旅程明确范围、确认边界与降级结果"
 else
   bad "正：真实验收旅程明确范围、确认边界与降级结果"
+fi
+if [ -f "$RELEASE_RECORD" ] && python3 "$VALIDATOR" validate "$RELEASE_RECORD" >/dev/null 2>&1; then
+  ok "正：当前版本的源码证据记录可被普通质量门校验"
+else
+  bad "正：当前版本的源码证据记录可被普通质量门校验"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

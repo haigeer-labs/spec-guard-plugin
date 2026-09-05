@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-python3 - "$ROOT/commands/parallel-register-worker.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-reclaim.md" <<'PY'
+python3 - "$ROOT/commands/parallel-register-worker.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-reclaim.md" "$ROOT/skills/spec-guard-ops/SKILL.md" "$ROOT/../../README.md" "$ROOT/../../docs/claude-desktop.md" <<'PY'
 import sys
 
 register = open(sys.argv[1], encoding="utf-8").read()
@@ -16,6 +16,14 @@ status = open(sys.argv[2], encoding="utf-8").read()
 assert "owner=host" in status and "宿主可回收" in status
 reclaim = open(sys.argv[3], encoding="utf-8").read()
 assert "owner=host" in reclaim and "不得调用" in reclaim
+skill = open(sys.argv[4], encoding="utf-8").read()
+for required in ("## `parallel-register-worker`", "register-only", "稳定 host worker ID", "不得猜测 ID"):
+    assert required in skill, required
+readme = open(sys.argv[5], encoding="utf-8").read()
+assert "parallel-register-worker" in readme and "仅登记，不创建或回收" in readme
+desktop_docs = open(sys.argv[6], encoding="utf-8").read()
+for required in ("register-only", "稳定 host worker ID", "不会创建、隐藏、归档或删除", "fail-closed"):
+    assert required in desktop_docs, required
 PY
 
 git init -q "$WORK/project"

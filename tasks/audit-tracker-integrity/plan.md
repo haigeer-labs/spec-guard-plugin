@@ -51,9 +51,11 @@ module execution.
 
 ### Phase 1: Identity and recovery foundation
 
-Task IDs will be recorded here immediately after GitHub sub-issues are created
-from the approved task payloads below. This section must remain an ordered
-index, not a duplicate checklist.
+GitHub sub-issues created from the approved task payloads are recorded below.
+This section remains an ordered index, not a duplicate checklist.
+
+- #175 T1: 建立严格 GitLab 投影身份基元
+- #176 T2: 使 GitLab 能力图同步可恢复且原子化（blocked by #175）
 
 ### Checkpoint A: Recovery foundation
 
@@ -61,24 +63,36 @@ The GitLab map parser/recovery tests and existing strict-map regressions pass;
 the only accepted outcomes for ambiguous remote state are a diagnostic and no
 remote/local projection mutation.
 
+- #177 Checkpoint A: 审查恢复行为（blocked by #176）
+
 ### Phase 2: Worktree context and task selection
 
-Task IDs will be recorded here after tracker creation.
+The corresponding GitHub sub-issues are recorded below.
+
+- #178 T3: 增加显式 worktree 本地 tracker 绑定（blocked by #177）
+- #179 T4: 入口与诊断统一执行绑定门禁（blocked by #178）
+- #180 T5: 实现 GitLab next 的确定性选择对齐（blocked by #179）
 
 ### Checkpoint B: Context safety
 
 A copied or unbound worktree cannot reach tracker selection/delivery; an open
 GitLab task with a local closing commit cannot be selected again.
 
+- #181 Checkpoint B: 审查上下文与选择安全（blocked by #180）
+
 ### Phase 3: Contract integration and delivery
 
-Task IDs will be recorded here after tracker creation.
+The corresponding GitHub sub-issues are recorded below.
+
+- #182 T6: 对齐公开契约与常规验证覆盖（blocked by #181）
 
 ### Checkpoint C: Module delivery review
 
 Run focused and full validation, inspect each host route against the shared
 checker, and prepare the module-level PR only after all task evidence is
 complete.
+
+- #183 Checkpoint C: 模块交付评审（blocked by #182）
 
 ## Approved Task Payloads
 

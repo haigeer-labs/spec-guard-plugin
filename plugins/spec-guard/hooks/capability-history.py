@@ -131,9 +131,15 @@ def check_correction(correction, initiatives):
     initiative_id = correction.get("initiativeId")
     if initiative_id not in initiatives:
         fail("correction initiative not found")
+    event_index = correction.get("eventIndex")
+    events = initiatives[initiative_id]["events"]
+    if not isinstance(event_index, int) or isinstance(event_index, bool) or not 0 <= event_index < len(events):
+        fail("invalid correction event index")
+    checkpoint = events[event_index].get("checkpoint")
     checkpoint_id = correction.get("checkpointId")
-    if not isinstance(checkpoint_id, str) or not CHECKPOINT_ID.fullmatch(checkpoint_id):
-        fail("invalid correction checkpoint id")
+    expected_checkpoint_id = checkpoint["id"] if checkpoint else None
+    if checkpoint_id != expected_checkpoint_id:
+        fail("correction checkpoint does not match event")
     module_id = correction.get("moduleId")
     field = correction.get("field")
     if field not in {"responsibility", "dependsOn", "status", "event.at"}:
@@ -141,7 +147,10 @@ def check_correction(correction, initiatives):
     if field == "event.at":
         if module_id is not None:
             fail("event time correction must not name a module")
-    elif not isinstance(module_id, str) or not ID.fullmatch(module_id):
+    elif checkpoint is None:
+        fail("module correction requires a checkpoint")
+    elif (not isinstance(module_id, str) or not ID.fullmatch(module_id) or
+          module_id not in {module["id"] for module in checkpoint["modules"]}):
         fail("module correction requires a valid module id")
     if not AUDIT_TIME.fullmatch(correction.get("auditedAt", "")):
         fail("invalid correction audit time")
@@ -178,17 +187,17 @@ def validate_data(data):
     initiatives = data.get("initiatives")
     if not isinstance(initiatives, list):
         fail("initiatives must be an array")
-    ids = set()
+    initiatives_by_id = {}
     for initiative in initiatives:
         check_initiative(initiative)
-        if initiative["id"] in ids:
+        if initiative["id"] in initiatives_by_id:
             fail("duplicate initiative id")
-        ids.add(initiative["id"])
+        initiatives_by_id[initiative["id"]] = initiative
     corrections = data.get("corrections", [])
     if not isinstance(corrections, list):
         fail("corrections must be an array")
     for correction in corrections:
-        check_correction(correction, ids)
+        check_correction(correction, initiatives_by_id)
     return data
 
 
@@ -338,11 +347,12 @@ def audit(data, root_path):
         item = {
             "initiativeId": initiative["id"],
             "eventIndex": event_index,
-            "checkpointId": checkpoint["id"],
             "field": field,
             "code": code,
             "message": message,
         }
+        if checkpoint is not None:
+            item["checkpointId"] = checkpoint["id"]
         if module is not None:
             item["moduleId"] = module["id"]
         if expected is not None:
@@ -354,6 +364,11 @@ def audit(data, root_path):
     for initiative in data["initiatives"]:
         for event_index, event in enumerate(initiative["events"]):
             checkpoint = event.get("checkpoint")
+            if event.get("at"):
+                report(initiative, event_index, checkpoint, "event.at",
+                       "timestamp-unverified",
+                       "ledger event time has no recorded source evidence",
+                       expected="unknown", actual=event["at"])
             if checkpoint is None:
                 continue
             map_artifact = checkpoint["map"]
@@ -396,11 +411,6 @@ def audit(data, root_path):
                            "status-unsupported",
                            "checkpoint state and Issue identity do not prove module status; retain unknown",
                            module, "unknown", module["status"])
-            if event.get("at"):
-                report(initiative, event_index, checkpoint, "event.at",
-                       "timestamp-unverified",
-                       "ledger event time has no recorded source evidence",
-                       expected="unknown", actual=event["at"])
 
     counts = {}
     for finding in findings:
@@ -424,7 +434,7 @@ def find_audit_finding(report, correction):
         if not isinstance(finding, dict):
             continue
         same_identity = all(finding.get(key) == correction.get(key)
-                            for key in ("initiativeId", "checkpointId", "moduleId", "field"))
+                            for key in ("initiativeId", "eventIndex", "checkpointId", "moduleId", "field"))
         if same_identity and finding.get("actual") == correction["before"] and finding.get("expected") == correction["after"]:
             return finding
     fail("correction does not match an audit finding")
@@ -436,7 +446,8 @@ def append_correction(ledger_path, audit_path, correction_path):
     correction = load_json(correction_path, "correction")
     if not isinstance(correction, dict):
         fail("invalid correction")
-    check_correction(correction, {item["id"] for item in data["initiatives"]})
+    initiatives = {item["id"]: item for item in data["initiatives"]}
+    check_correction(correction, initiatives)
     if correction.get("auditReportSha256") != digest(audit_path):
         fail("correction audit report digest differs")
     finding = find_audit_finding(report, correction)

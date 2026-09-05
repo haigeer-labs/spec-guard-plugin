@@ -19,7 +19,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/hooks/capability-history.py" audit "$LEDGER" "$PR
 `correct` 是写操作。只有用户明确确认该次补正后，才允许调用；它会向账本追加
 `history-correction` 记录，绝不重写 checkpoint。`<audit-report.json>` 和
 `<correction.json>` 必须是用户审阅过的文件，补正必须包含原值、修正值、审计报告哈希、
-审计时间与对应的 audit finding：
+审计时间、`initiativeId`、`eventIndex`、对应的 `checkpointId`（无 checkpoint 时为
+`null`）与 audit finding：
 
 ```bash
 PROJECT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"

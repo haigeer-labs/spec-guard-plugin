@@ -91,7 +91,8 @@ python3 "$ROOT/hooks/capability-history.py" correct --confirm \
 ```
 
 `AUDIT_REPORT` 和 `CORRECTION` 必须由用户审阅；后者须含 audit report 的 SHA-256、
-来源、原值、修正值和审计时间。该操作只追加 `history-correction` 事件，绝不重写
+来源、原值、修正值、审计时间以及 `initiativeId`、`eventIndex`、`checkpointId`。
+该操作只追加 `history-correction` 事件，绝不重写
 checkpoint。没有 `--confirm`、哈希不匹配、证据不充分或把 `unknown` 升级为 `completed`
 时停止并不写入。
 

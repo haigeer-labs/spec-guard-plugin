@@ -19,6 +19,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+from unittest.mock import patch
 
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
@@ -131,6 +132,33 @@ for arguments in (
                        "message": "实验性并行写操作已暂停；已有成果保留，请使用只读状态检查。"}, payload
     assert result.stderr == "", result.stderr
     assert worker_snapshot() == worker_before, "disabled worktree CLI changed the fixture"
+
+import parallel_cli_adapters
+cli_spec = importlib.util.spec_from_file_location("parallel_cli_test", os.path.join(hooks, "parallel-cli.py"))
+parallel_cli = importlib.util.module_from_spec(cli_spec)
+cli_spec.loader.exec_module(parallel_cli)
+for host in ("codex-cli", "claude-cli"):
+    for action in (
+            lambda: parallel_cli.start_worker(project, worker_id, host),
+            lambda: parallel_cli_adapters.run_worker(host, worker["worktreePath"])):
+        before = snapshot()
+        with patch.object(parallel_cli, "load_worker_manifest", side_effect=AssertionError("manifest read reached")), \
+                patch.object(parallel_cli_adapters.shutil, "which", side_effect=AssertionError("CLI discovery reached")), \
+                patch.object(parallel_cli_adapters.subprocess, "run", side_effect=AssertionError("process launch reached")):
+            try:
+                action()
+            except ParallelWritesDisabled:
+                pass
+            else:
+                raise AssertionError("CLI launch was not disabled")
+        assert snapshot() == before, "disabled CLI launch wrote a process record"
+    for target in (project, project + "-missing"):
+        result = subprocess.run([sys.executable, os.path.join(hooks, "parallel-cli.py"),
+                                 "start", "--project", target, "--worker", worker_id,
+                                 "--host", host, "--format", "json"], capture_output=True, text=True)
+        assert result.returncode == 1 and result.stderr == "", result
+        assert json.loads(result.stdout)["code"] == "PARALLEL_WRITES_DISABLED", result.stdout
+        assert snapshot() == before
 PY
 
 printf 'audit-safety-containment regression passed\n'

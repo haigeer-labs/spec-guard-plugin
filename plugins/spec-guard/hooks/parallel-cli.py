@@ -10,7 +10,8 @@ import time
 import sys
 
 from parallel_cli_adapters import CliTimeout, command_for, run_worker
-from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
+from parallel_execution_lib import (LedgerError, ParallelWritesDisabled, reject_parallel_write,
+                                    current_head, ledger_root, load_json,
                                     validate_record, write_json_exclusive)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
@@ -65,6 +66,7 @@ def _replace_record(path, record):
 
 
 def start_worker(project, worker_id, host, timeout_seconds=None):
+    reject_parallel_write()
     project = os.path.abspath(project)
     manifest = load_worker_manifest(project, worker_id)
     if current_head(project) != manifest["baseSha"]:
@@ -148,6 +150,12 @@ def main(argv):
             result = start_worker(args.project, args.worker, args.host, args.timeout_seconds)
         else:
             result = inspect_worker(args.project, args.worker)
+    except ParallelWritesDisabled as error:
+        if args.format == "json":
+            print(json.dumps({"ok": False, "code": error.code, "message": str(error)}, ensure_ascii=False))
+        else:
+            print("parallel-cli: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-cli: %s" % error, file=sys.stderr)
         return 1

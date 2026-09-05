@@ -35,6 +35,9 @@ write "$UNCONFIRMED_JOURNEY" '{"schemaVersion":1,"release":{"version":"0.8.0"},"
 WRONG_JOURNEY_TARGET="$TMP/wrong-journey-target.json"
 write "$WRONG_JOURNEY_TARGET" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"codex-cli","status":"source-verified","target":{"kind":"source-checkout","id":"commit:abc"},"observedAt":"2026-09-05T14:00:00Z","evidence":["scripts/validate.sh"]}],"journeys":[{"id":"github-first-use","kind":"github-project","confirmation":"required","status":"not-verified","target":{"kind":"source-checkout","id":"commit:abc"},"expectedSideEffects":["create named test issues"],"reason":"requires explicit project approval"}]}'
 
+DEGRADED_AS_VERIFIED="$TMP/degraded-as-verified.json"
+write "$DEGRADED_AS_VERIFIED" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"codex-cli","status":"source-verified","target":{"kind":"source-checkout","id":"commit:abc"},"observedAt":"2026-09-05T14:00:00Z","evidence":["scripts/validate.sh"]}],"journeys":[{"id":"offline","kind":"degraded-environment","confirmation":"required","target":{"kind":"environment","id":"offline"},"expectedSideEffects":["make no external writes"],"observedAt":"2026-09-05T14:00:00Z","evidence":["command:offline"]}]}'
+
 if python3 "$VALIDATOR" validate "$VALID" >/dev/null 2>&1; then
   ok "正：同等级 source 与 not-verified 记录通过"
 else
@@ -69,6 +72,11 @@ if ! python3 "$VALIDATOR" validate "$WRONG_JOURNEY_TARGET" >/dev/null 2>&1; then
   ok "反：项目旅程不能把源码冒充为目标"
 else
   bad "反：项目旅程不能把源码冒充为目标"
+fi
+if ! python3 "$VALIDATOR" validate "$DEGRADED_AS_VERIFIED" >/dev/null 2>&1; then
+  ok "反：降级环境不能伪造为已验证旅程"
+else
+  bad "反：降级环境不能伪造为已验证旅程"
 fi
 if [ -f "$GUIDE" ] && python3 - "$GUIDE" <<'PY'
 import sys

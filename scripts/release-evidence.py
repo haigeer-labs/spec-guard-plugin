@@ -101,7 +101,7 @@ def check_journey(journey):
             fail("unverified journey must not claim an observation")
         return
 
-    if status != expected_status:
+    if expected_status is None or status != expected_status:
         fail("journey status does not match its target")
     if not TIMESTAMP.fullmatch(journey.get("observedAt", "")):
         fail("verified journey requires an observation time")

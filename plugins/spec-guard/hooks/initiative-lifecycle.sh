@@ -117,16 +117,22 @@ while IFS= read -r MODULE; do
 done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
 EVENT="$(mktemp)"
 trap 'rm -f "$EVENT"' EXIT
-python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" <<'PY' || exit 1
+python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" "$HISTORY" <<'PY' || exit 1
 import hashlib
 import json
 import os
 import sys
 
-event_path, event_type, project, initiative, checkpoint_id, map_sha, state_sha = sys.argv[1:]
+event_path, event_type, project, initiative, checkpoint_id, map_sha, state_sha, history_path = sys.argv[1:]
+sys.path.insert(0, os.path.dirname(history_path))
+from capability_map import parse_map
+
 state = json.load(open(os.path.join(project, ".agent", "state.json"), encoding="utf-8"))
+map_rows = parse_map(os.path.join(project, "spec", "CAPABILITY-MAP.md"), validate_graph=False).rows
 modules = []
-for module_id, module_state in state.get("modules", {}).items():
+for row in map_rows:
+    module_id = row.module_id
+    module_state = state.get("modules", {}).get(module_id, {})
     spec_path = "spec/history/%s/%s/%s.md" % (initiative, checkpoint_id, module_id)
     plan_path = "tasks/history/%s/%s/%s/plan.md" % (initiative, checkpoint_id, module_id)
     def artifact(path):
@@ -138,9 +144,9 @@ for module_id, module_state in state.get("modules", {}).items():
         return {"path": path, "sha256": sha256}
     modules.append({
         "id": module_id,
-        "responsibility": module_id,
-        "dependsOn": [],
-        "status": "in-progress" if state.get("activeModule") == module_id else "not-started",
+        "responsibility": row.responsibility,
+        "dependsOn": row.depends_on,
+        "status": "unknown",
         "issue": module_state.get("issue"),
         "spec": artifact(spec_path),
         "plan": artifact(plan_path),

@@ -778,6 +778,212 @@
           }
         }
       ]
+    },
+    {
+      "id": "138",
+      "title": "138",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260905T145513Z-0001",
+            "map": {
+              "path": "spec/history/138/20260905T145513Z-0001/CAPABILITY-MAP.md",
+              "sha256": "779160a8495be726dfd6e05109c69618a4912b2f869eecc7f4158df8dd9c8574"
+            },
+            "state": {
+              "path": ".agent/history/138/20260905T145513Z-0001/state.json",
+              "sha256": "02af381edfb015d4e7a4dc3824d1171a93ea69d3e2cd18f8a3441d41ab05f91e"
+            },
+            "modules": [
+              {
+                "id": "audit-safety-containment",
+                "responsibility": "封闭危险实验写入口，保留只读诊断、旧资源及人工恢复说明，修正旧记录可信度与身份校验",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": 139,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-safety-containment.md",
+                  "sha256": "c70d83be2e53e831099c609144f1dd684d1beb9c68f369bc850aa261726c47ff"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-safety-containment/plan.md",
+                  "sha256": "feb5c2fcea060f3e3cad57d9d70e538c93dca739080fc533301e62f735044113"
+                }
+              },
+              {
+                "id": "audit-map-consistency",
+                "responsibility": "修复并列 Build order、解析消费者和并行边界判断的一致性，避免旧摘要迁移产生假漂移",
+                "dependsOn": [
+                  "audit-safety-containment"
+                ],
+                "status": "unknown",
+                "issue": 140,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-map-consistency.md",
+                  "sha256": "026726b27da85fd4855adcb00d1b5339089245eaf718089de0f2f71a8c705f8e"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-map-consistency/plan.md",
+                  "sha256": "ea609e12ef2b5a297279e80b6e374b646b57c382414b8449a8c6cfd8c67d7d4a"
+                }
+              },
+              {
+                "id": "audit-tracker-integrity",
+                "responsibility": "修复 GitLab 同步幂等与中断恢复，统一工作区任务绑定和 next/deliver 选择边界",
+                "dependsOn": [
+                  "audit-map-consistency"
+                ],
+                "status": "unknown",
+                "issue": 141,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-tracker-integrity.md",
+                  "sha256": "36761364210486eb37c69c674b9809ab003cd397f3ceffe1685305d1e5cc8d17"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-tracker-integrity/plan.md",
+                  "sha256": "27bb909831e14033d83a59f08707128b19bc06923e336096d2ae72332c3ccf02"
+                }
+              },
+              {
+                "id": "audit-history-integrity",
+                "responsibility": "修复历史职责、依赖、状态及时间的证据来源，保留旧快照并提供可解释纠错",
+                "dependsOn": [
+                  "audit-tracker-integrity"
+                ],
+                "status": "unknown",
+                "issue": 142,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-history-integrity.md",
+                  "sha256": "b3f0ccd36c6413d73cda99429d1766d40b16816350dc22169eddc4e06bc8691c"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-history-integrity/plan.md",
+                  "sha256": "9b54836b369ba3919a3c9e6be854d627c21bc95b0c22a0da90f45d30bcba3fe9"
+                }
+              },
+              {
+                "id": "audit-release-evidence",
+                "responsibility": "完成跨模块回归、四端功能声明、真实项目与升级验收，核验发布及实际安装内容",
+                "dependsOn": [
+                  "audit-history-integrity"
+                ],
+                "status": "unknown",
+                "issue": 143,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-release-evidence.md",
+                  "sha256": "69ac33e5f66d50d393025acfa3e84412ccf985ced4a778a0dd622d45b0f542fd"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-release-evidence/plan.md",
+                  "sha256": "a2a762dfbbfeeae2bff9991155283c9b4d38e4ac3cb0c5a5d6b2aabe45c3170a"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260905T145513Z-0001",
+            "map": {
+              "path": "spec/history/138/20260905T145513Z-0001/CAPABILITY-MAP.md",
+              "sha256": "779160a8495be726dfd6e05109c69618a4912b2f869eecc7f4158df8dd9c8574"
+            },
+            "state": {
+              "path": ".agent/history/138/20260905T145513Z-0001/state.json",
+              "sha256": "02af381edfb015d4e7a4dc3824d1171a93ea69d3e2cd18f8a3441d41ab05f91e"
+            },
+            "modules": [
+              {
+                "id": "audit-safety-containment",
+                "responsibility": "封闭危险实验写入口，保留只读诊断、旧资源及人工恢复说明，修正旧记录可信度与身份校验",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": 139,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-safety-containment.md",
+                  "sha256": "c70d83be2e53e831099c609144f1dd684d1beb9c68f369bc850aa261726c47ff"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-safety-containment/plan.md",
+                  "sha256": "feb5c2fcea060f3e3cad57d9d70e538c93dca739080fc533301e62f735044113"
+                }
+              },
+              {
+                "id": "audit-map-consistency",
+                "responsibility": "修复并列 Build order、解析消费者和并行边界判断的一致性，避免旧摘要迁移产生假漂移",
+                "dependsOn": [
+                  "audit-safety-containment"
+                ],
+                "status": "unknown",
+                "issue": 140,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-map-consistency.md",
+                  "sha256": "026726b27da85fd4855adcb00d1b5339089245eaf718089de0f2f71a8c705f8e"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-map-consistency/plan.md",
+                  "sha256": "ea609e12ef2b5a297279e80b6e374b646b57c382414b8449a8c6cfd8c67d7d4a"
+                }
+              },
+              {
+                "id": "audit-tracker-integrity",
+                "responsibility": "修复 GitLab 同步幂等与中断恢复，统一工作区任务绑定和 next/deliver 选择边界",
+                "dependsOn": [
+                  "audit-map-consistency"
+                ],
+                "status": "unknown",
+                "issue": 141,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-tracker-integrity.md",
+                  "sha256": "36761364210486eb37c69c674b9809ab003cd397f3ceffe1685305d1e5cc8d17"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-tracker-integrity/plan.md",
+                  "sha256": "27bb909831e14033d83a59f08707128b19bc06923e336096d2ae72332c3ccf02"
+                }
+              },
+              {
+                "id": "audit-history-integrity",
+                "responsibility": "修复历史职责、依赖、状态及时间的证据来源，保留旧快照并提供可解释纠错",
+                "dependsOn": [
+                  "audit-tracker-integrity"
+                ],
+                "status": "unknown",
+                "issue": 142,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-history-integrity.md",
+                  "sha256": "b3f0ccd36c6413d73cda99429d1766d40b16816350dc22169eddc4e06bc8691c"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-history-integrity/plan.md",
+                  "sha256": "9b54836b369ba3919a3c9e6be854d627c21bc95b0c22a0da90f45d30bcba3fe9"
+                }
+              },
+              {
+                "id": "audit-release-evidence",
+                "responsibility": "完成跨模块回归、四端功能声明、真实项目与升级验收，核验发布及实际安装内容",
+                "dependsOn": [
+                  "audit-history-integrity"
+                ],
+                "status": "unknown",
+                "issue": 143,
+                "spec": {
+                  "path": "spec/history/138/20260905T145513Z-0001/audit-release-evidence.md",
+                  "sha256": "69ac33e5f66d50d393025acfa3e84412ccf985ced4a778a0dd622d45b0f542fd"
+                },
+                "plan": {
+                  "path": "tasks/history/138/20260905T145513Z-0001/audit-release-evidence/plan.md",
+                  "sha256": "a2a762dfbbfeeae2bff9991155283c9b4d38e4ac3cb0c5a5d6b2aabe45c3170a"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

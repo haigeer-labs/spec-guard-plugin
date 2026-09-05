@@ -3,6 +3,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VALIDATOR="$ROOT/scripts/release-evidence.py"
+GUIDE="$ROOT/docs/releases/README.md"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -43,6 +44,17 @@ if ! python3 "$VALIDATOR" validate "$MISSING_TARGET" >/dev/null 2>&1; then
   ok "反：项目证据缺少目标身份被拒绝"
 else
   bad "反：项目证据缺少目标身份被拒绝"
+fi
+if [ -f "$GUIDE" ] && python3 - "$GUIDE" <<'PY'
+import sys
+guide = open(sys.argv[1], encoding="utf-8").read()
+for value in ("Codex CLI", "Codex 桌面", "Claude Code CLI", "Claude Code 桌面模式", "Claude Desktop MCPB", "not-verified", "自动并行执行不在支持范围内"):
+    assert value in guide, value
+PY
+then
+  ok "正：发布矩阵单列各宿主且声明未验证边界"
+else
+  bad "正：发布矩阵单列各宿主且声明未验证边界"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

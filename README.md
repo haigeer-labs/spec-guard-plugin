@@ -30,6 +30,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 | [docs/walkthrough.md](docs/walkthrough.md) | 端到端实跑记录：真实产物、真实输出，以及跑出来的那个 bug |
 | [docs/upstream-analysis.md](docs/upstream-analysis.md) | 上游源码分析：每条结论对应的源码行号 + 重新核对清单 |
 | [docs/claude-desktop.md](docs/claude-desktop.md) | Claude Desktop 的 MCPB 安装、工具权限与四端支持矩阵 |
+| [docs/releases/README.md](docs/releases/README.md) | 发布证据状态、宿主矩阵与新安装/升级记录模板 |
 | [CLAUDE.md](CLAUDE.md) | 开发本插件的 agent 配置 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本记录 |

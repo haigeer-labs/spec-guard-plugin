@@ -274,6 +274,11 @@ def lease_status(root, run, module_id):
         validate_worker_link(run, worker, manifest["workerId"], module_id)
         if worker.get("owner") not in ("host", "spec-guard"):
             raise LedgerError("worker owner 无法核验")
+        from parallel_worktree_lib import verify_worker
+        status = verify_worker(os.path.dirname(os.path.dirname(os.path.dirname(root))), worker)
+        if status.get("ok") is not True:
+            raise LedgerError("worker 资源无法核验: %s" % status.get("reason", "unknown"))
     except (LedgerError, OSError) as error:
         return {"moduleId": module_id, "state": "unknown", "reason": str(error)}
-    return {"moduleId": module_id, "state": "claimed", "workerId": manifest["workerId"]}
+    return {"moduleId": module_id, "state": "claimed", "workerId": manifest["workerId"],
+            "reason": "旧领取记录存在；任务完成与可回收性未核验"}

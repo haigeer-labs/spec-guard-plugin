@@ -72,8 +72,11 @@ for host in ("codex-cli", "claude-cli"):
         write_record(record_path, record)
         before = open(record_path, "rb").read()
         result, status = inspect()
-        assert status["state"] == ("unknown" if state == "started" else state), status
+        assert status["state"] == ({"started": "unknown", "completed": "unverified"}.get(state, state)), status
+        if state == "completed":
+            assert status["recordedState"] == "completed", status
         assert status["ok"] == (state in ("completed", "failed")), status
+        assert result.returncode == (0 if status["ok"] else 1), result
         assert open(record_path, "rb").read() == before, "inspect changed the process record"
         for _attempt in range(2):
             blocked = subprocess.run([sys.executable, cli, "start", "--project", project,

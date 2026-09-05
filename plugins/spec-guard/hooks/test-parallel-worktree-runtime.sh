@@ -96,7 +96,7 @@ assert os.path.lexists(created["worktreePath"]), "disabled reclaim removed a wor
 assert load_worker_manifest(project, worker) == created
 
 # Worker 提交后仍须证明 branch 从初始 base 演进；首次汇合后也必须能安全回收。
-progressed = dict(manifest, workerId="d" * 12 + "-alpha-1")
+progressed = dict(manifest, runId="d" * 64, workerId="d" * 12 + "-alpha-1")
 progressed["worktreePath"] = worker_path(project, progressed["workerId"])
 progressed["branch"] = "spec-guard/" + progressed["workerId"]
 progressed = materialize_worker(project, progressed)
@@ -139,7 +139,7 @@ assert blocked.returncode == 1 and json.loads(blocked.stdout)["code"] == "PARALL
 assert blocked.stderr == "", blocked.stderr
 assert not os.path.lexists(provision_target), "disabled provision created a worktree"
 
-started = dict(manifest, workerId=run_id[:12] + "-beta-1", moduleId="beta", baseSha=current)
+started = dict(manifest, runId=run_id, workerId=run_id[:12] + "-beta-1", moduleId="beta", baseSha=current)
 started["worktreePath"] = provision_target
 started["branch"] = "spec-guard/" + started["workerId"]
 started = materialize_worker(project, started)
@@ -156,7 +156,7 @@ with open(worker_manifest_path(project, started["workerId"]), "w", encoding="utf
 corrupt = subprocess.run(["python3", cli, "verify", "--project", project,
                           "--worker", started["workerId"]], stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, text=True)
-assert corrupt.returncode != 0 and "worker manifest" in corrupt.stderr, corrupt.stderr
+assert corrupt.returncode != 0 and "账本记录" in corrupt.stderr, corrupt.stderr
 
 with open(project + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("dirty\n")

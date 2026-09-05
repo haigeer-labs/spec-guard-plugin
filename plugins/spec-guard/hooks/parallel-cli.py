@@ -12,7 +12,7 @@ import sys
 from parallel_cli_adapters import CliTimeout, command_for, run_worker
 from parallel_execution_lib import (LedgerError, ParallelWritesDisabled, reject_parallel_write,
                                     current_head, ledger_root, load_json,
-                                    validate_record, write_json_exclusive)
+                                    validate_record, write_json_exclusive, load_ledger_json)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
 
@@ -111,7 +111,9 @@ def inspect_worker(project, worker_id):
     project = os.path.abspath(project)
     try:
         manifest = load_worker_manifest(project, worker_id)
-        record = load_json(process_record_path(project, worker_id), "worker process record")
+        if manifest["owner"] == "host":
+            return verify_worker(project, manifest)
+        record = load_ledger_json(ledger_root(project), "processes", worker_id + ".json")
         _validate_process_record(record)
         for field in ("runId", "baseSha", "workerId", "moduleId", "worktreePath"):
             if record[field] != manifest[field]:
@@ -127,8 +129,10 @@ def inspect_worker(project, worker_id):
                     "reason": record["reason"]}
     except (LedgerError, OSError, ValueError, KeyError) as error:
         return {"ok": False, "workerId": worker_id, "state": "unknown", "reason": str(error)}
-    return {"ok": True, "workerId": worker_id, "state": record["state"],
-            "returncode": record["returncode"]}
+    return {"ok": True, "workerId": worker_id,
+            "state": "unverified" if record["state"] == "completed" else record["state"],
+            "recordedState": record["state"], "returncode": record["returncode"],
+            "reason": "旧版进程退出记录；任务验收与可回收性未核验"}
 
 
 def main(argv):
@@ -164,7 +168,7 @@ def main(argv):
     else:
         detail = " (%s)" % result["reason"] if result.get("reason") else ""
         print("%s: %s%s" % (result["workerId"], result["state"], detail))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

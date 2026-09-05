@@ -41,6 +41,21 @@ def materialize_worker(project, manifest):
     common = _git(project, "rev-parse", "--git-common-dir")
     if not os.path.isabs(common):
         common = os.path.abspath(os.path.join(project, common))
+    root = os.path.join(common, "spec-guard", "parallel", "v1")
+    run_path = os.path.join(root, "runs", manifest["runId"] + ".json")
+    if not os.path.exists(run_path):
+        write_record(run_path, {"schemaVersion": 1, "runId": manifest["runId"],
+                               "baseSha": manifest["baseSha"], "goalDigest": "fixture",
+                               "modules": [{"id": manifest["moduleId"], "rowDigest": "fixture"}]})
+    with open(run_path, encoding="utf-8") as handle:
+        run = json.load(handle)
+    assert run["baseSha"] == manifest["baseSha"]
+    assert manifest["moduleId"] in [module["id"] for module in run["modules"]]
+    assert manifest["workerId"].startswith(manifest["runId"][:12] + "-" + manifest["moduleId"] + "-")
+    lease_path = os.path.join(root, "leases", manifest["runId"], "module-" + manifest["moduleId"])
+    if not os.path.exists(os.path.join(lease_path, "manifest.json")):
+        write_record(os.path.join(lease_path, "manifest.json"), dict(manifest, owner="fixture",
+                     createdAt=0, renewedAt=0, status="active", leasePath=lease_path))
     write_record(os.path.join(common, "spec-guard", "parallel", "v1", "workers",
                               manifest["workerId"] + ".json"), manifest)
     return dict(manifest)

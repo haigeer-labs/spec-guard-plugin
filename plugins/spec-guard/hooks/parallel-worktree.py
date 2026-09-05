@@ -96,7 +96,7 @@ def main(argv):
         print("%s: %s" % (args.worker, result["state"]))
     else:
         print("%s: %s" % (result["workerId"], result["state"]))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import subprocess
 
 from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
                                     reject_parallel_write, validate_module_id, validate_record,
-                                    write_json_exclusive)
+                                    write_json_exclusive, load_ledger_json, load_run, validate_worker_link)
 
 
 WORKER_ID = re.compile(r"^[0-9a-f]{12}-[a-z0-9]+(?:-[a-z0-9]+)*-[1-9][0-9]*$")
@@ -16,7 +16,7 @@ WORKER_ID = re.compile(r"^[0-9a-f]{12}-[a-z0-9]+(?:-[a-z0-9]+)*-[1-9][0-9]*$")
 
 def worker_path(project, worker_id):
     """返回只属于本 controller 的 worktree 位置，不接受调用方提供的目录。"""
-    if not isinstance(worker_id, str) or not WORKER_ID.match(worker_id):
+    if not isinstance(worker_id, str) or not WORKER_ID.fullmatch(worker_id):
         raise LedgerError("workerId 无效")
     return os.path.join(ledger_root(project), "worktrees", worker_id)
 
@@ -29,8 +29,14 @@ def worker_manifest_path(project, worker_id):
 
 def load_worker_manifest(project, worker_id):
     """按 worker ID 读取完整 provenance；缺失或损坏均不可启动。"""
-    manifest = load_json(worker_manifest_path(project, worker_id), "worker manifest")
+    worker_manifest_path(project, worker_id)
+    root = ledger_root(project)
+    manifest = load_ledger_json(root, "workers", worker_id + ".json")
     validate_worker_manifest(project, manifest)
+    run = load_run(root, manifest["runId"])
+    validate_worker_link(run, manifest, worker_id, manifest["moduleId"])
+    lease = load_ledger_json(root, "leases", run["runId"], "module-" + manifest["moduleId"], "manifest.json")
+    validate_worker_link(run, lease, worker_id, manifest["moduleId"])
     return manifest
 
 
@@ -46,6 +52,15 @@ def validate_worker_manifest(project, manifest):
     validate_module_id(manifest["moduleId"])
     worker_id = manifest["workerId"]
     expected_path = worker_path(project, worker_id)
+    if manifest["owner"] == "host":
+        if (manifest.get("host") not in ("codex-desktop", "claude-desktop") or
+                not isinstance(manifest.get("hostWorkerId"), str) or not manifest["hostWorkerId"] or
+                not isinstance(manifest["worktreePath"], str) or not os.path.isabs(manifest["worktreePath"]) or
+                not isinstance(manifest["branch"], str) or not manifest["branch"] or
+                not isinstance(manifest["gitCommonDir"], str) or
+                os.path.realpath(manifest["gitCommonDir"]) != os.path.realpath(_common_dir(project))):
+            raise LedgerError("host worker 身份无法核验")
+        return manifest
     if manifest["owner"] != "spec-guard":
         raise LedgerError("worker owner 不属于 spec-guard")
     if not isinstance(manifest["gitCommonDir"], str) or os.path.abspath(manifest["gitCommonDir"]) != _common_dir(project):
@@ -64,7 +79,7 @@ def _require_initial_base(project, manifest):
 
 def _git(project, *args):
     result = subprocess.run(["git", "-C", project] + list(args), stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True)
+                            stderr=subprocess.PIPE, text=True, env=dict(os.environ, GIT_OPTIONAL_LOCKS="0"))
     if result.returncode:
         detail = result.stderr.strip() or result.stdout.strip()
         raise LedgerError(detail or "git 命令失败")
@@ -111,6 +126,8 @@ def verify_worker(project, manifest):
     try:
         project = os.path.abspath(project)
         manifest = validate_worker_manifest(project, manifest)
+        if load_worker_manifest(project, manifest["workerId"]) != manifest:
+            raise LedgerError("worker manifest 与账本不匹配")
         target = manifest["worktreePath"]
         if not os.path.isdir(target):
             raise LedgerError("worker worktree 不存在")
@@ -119,6 +136,10 @@ def verify_worker(project, manifest):
             common = os.path.abspath(os.path.join(target, common))
         if os.path.realpath(common) != os.path.realpath(manifest["gitCommonDir"]):
             raise LedgerError("worker worktree common-dir 不匹配")
+        if manifest["owner"] == "host":
+            git_dir = _git(target, "rev-parse", "--absolute-git-dir")
+            if os.path.realpath(git_dir) == os.path.realpath(common):
+                raise LedgerError("host worker 不是 linked worktree")
         worker_head = _git(target, "rev-parse", "HEAD")
         if subprocess.run(["git", "-C", target, "merge-base", "--is-ancestor",
                            manifest["baseSha"], worker_head]).returncode != 0:
@@ -127,8 +148,13 @@ def verify_worker(project, manifest):
             raise LedgerError("worker worktree branch 不匹配")
         if _git(target, "status", "--porcelain"):
             raise LedgerError("worker worktree 不干净")
-    except LedgerError as error:
+    except (LedgerError, OSError, ValueError, KeyError) as error:
         return {"ok": False, "state": "unknown", "reason": str(error)}
+    if manifest["owner"] == "host":
+        return {"ok": True, "state": "unverified", "owner": "host", "workerId": manifest["workerId"],
+                "host": manifest["host"], "hostWorkerId": manifest["hostWorkerId"],
+                "worktreePath": target, "branch": manifest["branch"],
+                "reason": "宿主管理；完成与可回收性未核验"}
     return {"ok": True, "state": "ready", "workerId": manifest["workerId"],
             "worktreePath": manifest["worktreePath"], "workerHead": worker_head}
 

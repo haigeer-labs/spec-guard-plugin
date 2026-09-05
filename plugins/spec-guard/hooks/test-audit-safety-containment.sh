@@ -221,6 +221,37 @@ os.rename(runs_dir + "-saved", runs_dir)
 before = snapshot()
 missing = parallel_execution.status_run(project, "f" * 64)
 assert missing["ok"] is False and snapshot() == before
+
+# Missing resources, swapped worker IDs and process symlinks are observable failures.
+worker_file = parallel_worktree_lib.worker_manifest_path(project, worker_id)
+write_record(worker_file, dict(worker, workerId="e" * 12 + "-beta-1"))
+try:
+    parallel_worktree_lib.load_worker_manifest(project, worker_id)
+except parallel_worktree_lib.LedgerError:
+    pass
+else:
+    raise AssertionError("swapped worker identity was accepted")
+write_record(worker_file, worker)
+os.rename(worker["worktreePath"], worker["worktreePath"] + "-saved")
+assert parallel_execution.status_run(project, worker["runId"])["ok"] is False
+os.rename(worker["worktreePath"] + "-saved", worker["worktreePath"])
+process_path = os.path.join(root, "processes", worker_id + ".json")
+os.makedirs(os.path.dirname(process_path), exist_ok=True)
+os.symlink(canary, process_path)
+with patch.object(json, "load", checked_json_load):
+    assert parallel_cli.inspect_worker(project, worker_id)["ok"] is False
+os.unlink(process_path)
+
+# Host-owned workers have their own identity and no controller process record.
+for host in ("codex-desktop", "claude-desktop"):
+    host_worker = dict(worker, owner="host", host=host, hostWorkerId="native-task-id")
+    write_record(worker_file, host_worker)
+    before = snapshot()
+    status = parallel_cli.inspect_worker(project, worker_id)
+    assert status["ok"] is True and status["state"] == "unverified", status
+    assert status["owner"] == "host" and "未核验" in status["reason"], status
+    assert snapshot() == before and not os.path.exists(process_path)
+write_record(worker_file, worker)
 PY
 
 printf 'audit-safety-containment regression passed\n'

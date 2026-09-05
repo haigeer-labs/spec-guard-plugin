@@ -7,6 +7,8 @@ import re
 import sys
 import tempfile
 
+from capability_map import MapError, parse_map
+
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CHECKPOINT_ID = re.compile(r"^\d{8}T\d{6}Z-\d{4}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -266,9 +268,96 @@ def verify_checkpoint(data, root_path, initiative_id):
         verify_artifact(root, module["plan"])
 
 
+def audit(data, root_path):
+    """Report semantic history claims that cannot be established from evidence.
+
+    This is deliberately independent from ``verify``: a digest proves that a
+    checkpoint file was preserved, not that fields copied into the ledger are
+    faithful to its contents or that a status/timestamp has external support.
+    """
+    root = os.path.realpath(root_path)
+    if not os.path.isdir(root):
+        fail("project root is not a directory")
+    findings = []
+
+    def report(initiative, event_index, checkpoint, field, code, message,
+               module=None, expected=None, actual=None):
+        item = {
+            "initiativeId": initiative["id"],
+            "eventIndex": event_index,
+            "checkpointId": checkpoint["id"],
+            "field": field,
+            "code": code,
+            "message": message,
+        }
+        if module is not None:
+            item["moduleId"] = module["id"]
+        if expected is not None:
+            item["expected"] = expected
+        if actual is not None:
+            item["actual"] = actual
+        findings.append(item)
+
+    for initiative in data["initiatives"]:
+        for event_index, event in enumerate(initiative["events"]):
+            checkpoint = event.get("checkpoint")
+            if checkpoint is None:
+                continue
+            map_artifact = checkpoint["map"]
+            map_path = os.path.realpath(os.path.join(root, map_artifact["path"]))
+            rows = None
+            if not os.path.isfile(map_path):
+                report(initiative, event_index, checkpoint, "checkpoint.map",
+                       "map-missing", "checkpointed capability map is missing")
+            elif digest(map_path) != map_artifact["sha256"]:
+                report(initiative, event_index, checkpoint, "checkpoint.map",
+                       "map-digest-differs",
+                       "checkpointed capability map digest differs")
+            else:
+                try:
+                    rows = dict((row.module_id, row) for row in parse_map(map_path).rows)
+                except (OSError, MapError) as error:
+                    report(initiative, event_index, checkpoint, "checkpoint.map",
+                           "map-unparseable", "checkpointed capability map is unusable: %s" % error)
+
+            for module in checkpoint["modules"]:
+                if rows is not None:
+                    source = rows.get(module["id"])
+                    if source is None:
+                        report(initiative, event_index, checkpoint, "module",
+                               "module-missing-from-map",
+                               "ledger module is absent from checkpointed capability map", module)
+                    else:
+                        if module["responsibility"] != source.responsibility:
+                            report(initiative, event_index, checkpoint, "responsibility",
+                                   "responsibility-mismatch",
+                                   "ledger responsibility differs from checkpointed capability map",
+                                   module, source.responsibility, module["responsibility"])
+                        if module["dependsOn"] != source.depends_on:
+                            report(initiative, event_index, checkpoint, "dependsOn",
+                                   "dependency-mismatch",
+                                   "ledger dependencies differ from checkpointed capability map",
+                                   module, source.depends_on, module["dependsOn"])
+                if module["status"] != "unknown":
+                    report(initiative, event_index, checkpoint, "status",
+                           "status-unsupported",
+                           "checkpoint state and Issue identity do not prove module status; retain unknown",
+                           module, "unknown", module["status"])
+            if event.get("at"):
+                report(initiative, event_index, checkpoint, "event.at",
+                       "timestamp-unverified",
+                       "ledger event time has no recorded source evidence")
+
+    counts = {}
+    for finding in findings:
+        counts[finding["code"]] = counts.get(finding["code"], 0) + 1
+    return {"schemaVersion": 1, "readOnly": True, "findings": findings,
+            "summary": {"findings": len(findings), "byCode": counts}}
+
+
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "audit", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | audit <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
         if argv[0] == "create":
@@ -300,6 +389,12 @@ def main(argv):
                 return 2
             verify(data, argv[2])
             print("ok")
+            return 0
+        if argv[0] == "audit":
+            if len(argv) != 3:
+                return 2
+            json.dump(audit(data, argv[2]), sys.stdout, ensure_ascii=False, sort_keys=True)
+            sys.stdout.write("\n")
             return 0
         if argv[0] == "checkpoint":
             if len(argv) != 3:

@@ -224,7 +224,17 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/initiative-lifecycle.sh" <p
 
 ## `sync-map`
 
-先读取 `.agent/state.json` 的 `tracker`。`github` 加载 `spec-guard:spec-github-bridge`，
+先读取 `.agent/state.json` 的 `tracker`。`github` 加载 `spec-guard:spec-github-bridge`；
+新建/补充前，使用公共环境解析出的当前安装包运行严格图校验：
+
+```bash
+python3 "$ROOT/hooks/capability-map.py" "$PROJECT/spec/CAPABILITY-MAP.md" || exit "$?"
+```
+
+失败或旧安装包缺少脚本时停止，报告升级/修正输入后重试，不自行解析兜底。
+创建顺序取严格结果的 `order`，依赖只取 `modules[].dependsOn`；digest 的 `order` 仍是
+表格行序。通过校验不代替写入确认；仅刷新旧摘要时按 bridge 原规则保留历史兼容。
+
 `none` 保持本地流程。GitLab 使用确定性入口，默认只预览：
 
 ```bash

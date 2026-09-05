@@ -5,6 +5,7 @@ HOOKS="$(cd "$(dirname "$0")" && pwd)"
 PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" <<'PY'
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -329,6 +330,42 @@ class DesktopMapPreview(unittest.TestCase):
         result = self.preview()
         self.assertIs(result["isError"], False, result)
         self.assertIn("未写入任何远端或本地状态", result["content"][0]["text"])
+
+
+class SyncPreflightInstructions(unittest.TestCase):
+    def test_actual_instruction_blocks_gate_github_writes(self):
+        with tempfile.TemporaryDirectory(prefix="sg-sync-instructions-") as temp:
+            project = Path(temp) / "project"
+            (project / ".agent").mkdir(parents=True)
+            (project / "spec").mkdir()
+            (project / ".agent/state.json").write_text('{"tracker":"github"}')
+            path = project / "spec/CAPABILITY-MAP.md"
+            bin_path = Path(temp) / "bin"
+            bin_path.mkdir()
+            marker = Path(temp) / "writes"
+            gh = bin_path / "gh"
+            gh.write_text("#!" + sys.executable + "\nimport os,pathlib\npathlib.Path(os.environ['WRITE_MARKER']).write_text('called')\n")
+            gh.chmod(0o755)
+            sources = ["skills/spec-github-bridge/SKILL.md", "commands/sync-map.md", "skills/spec-guard-ops/SKILL.md"]
+            for source in sources:
+                text = (hooks.parent / source).read_text()
+                blocks = [block for block in re.findall(r"```bash\n(.*?)\n```", text, re.S) if "capability-map.py" in block]
+                self.assertEqual(len(blocks), 1, source + " must provide an executable strict preflight")
+                for invalid, missing_parser in ((False, False), (True, False), (False, True)):
+                    with self.subTest(source=source, invalid=invalid, missing_parser=missing_parser):
+                        if marker.exists():
+                            marker.unlink()
+                        path.write_text(TABLE + "\nBuild order: " + ("invalid" if invalid else ORDER) + "\n")
+                        plugin_root = Path(temp) / "old-plugin" if missing_parser else hooks.parent
+                        env = dict(os.environ, PATH=str(bin_path) + os.pathsep + os.environ["PATH"],
+                                   PROJECT=str(project), ROOT=str(plugin_root), CLAUDE_PLUGIN_ROOT=str(plugin_root),
+                                   SPEC_GUARD_DIGEST=str(plugin_root / "hooks/spec-digest.py"), WRITE_MARKER=str(marker))
+                        result = subprocess.run(["/bin/bash", "-c", blocks[0] + "\ngh issue create --title guarded-test\n"],
+                                                cwd=project, env=env, capture_output=True, text=True)
+                        self.assertEqual(result.returncode == 0, not invalid and not missing_parser, result.stdout + result.stderr)
+                        self.assertEqual(marker.exists(), not invalid and not missing_parser)
+                        if not invalid and not missing_parser:
+                            self.assertEqual(json.loads(result.stdout)["order"], ["identity", "billing", "notifications", "reporting"])
 
 
 unittest.main(verbosity=2)

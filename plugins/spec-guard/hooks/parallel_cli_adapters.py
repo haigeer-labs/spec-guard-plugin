@@ -5,8 +5,13 @@ from __future__ import print_function
 import os
 import shutil
 import subprocess
+import math
 
 from parallel_execution_lib import LedgerError
+
+
+class CliTimeout(LedgerError):
+    """受控宿主 CLI 未能在调用者指定的时限内结束。"""
 
 
 def command_for(host, worktree_path, executable):
@@ -21,17 +26,23 @@ def command_for(host, worktree_path, executable):
     return [executable]
 
 
-def run_worker(host, worktree_path):
+def run_worker(host, worktree_path, timeout_seconds=None):
     """在已验证的 worktree 中同步运行固定的宿主 CLI。"""
     executable = {"codex-cli": "codex", "claude-cli": "claude"}.get(host)
     if executable is None:
         raise LedgerError("不支持的 CLI host")
+    if timeout_seconds is not None and (type(timeout_seconds) not in (int, float) or
+                                        not math.isfinite(timeout_seconds) or timeout_seconds <= 0):
+        raise LedgerError("CLI timeout 必须是有限正数")
     if shutil.which(executable) is None:
         raise LedgerError("未找到 %s CLI" % executable)
     command = command_for(host, worktree_path, executable)
     try:
         result = subprocess.run(command, cwd=worktree_path, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True, check=False)
+                                stderr=subprocess.PIPE, text=True, check=False,
+                                timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        raise CliTimeout("host CLI 超时")
     except OSError as error:
         raise LedgerError("无法启动 %s: %s" % (executable, error))
     return {"command": command, "returncode": result.returncode,

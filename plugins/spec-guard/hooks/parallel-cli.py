@@ -9,7 +9,7 @@ import tempfile
 import time
 import sys
 
-from parallel_cli_adapters import command_for, run_worker
+from parallel_cli_adapters import CliTimeout, command_for, run_worker
 from parallel_execution_lib import (LedgerError, ledger_root, load_json, validate_record,
                                     write_json_exclusive)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
@@ -64,7 +64,7 @@ def _replace_record(path, record):
         raise LedgerError("无法更新 worker process record: %s" % error)
 
 
-def start_worker(project, worker_id, host):
+def start_worker(project, worker_id, host, timeout_seconds=None):
     project = os.path.abspath(project)
     manifest = load_worker_manifest(project, worker_id)
     ready = verify_worker(project, manifest)
@@ -88,8 +88,10 @@ def start_worker(project, worker_id, host):
     if not write_json_exclusive(path, record):
         raise LedgerError("worker 已有 process record，拒绝重复启动")
     try:
-        result = run_worker(host, manifest["worktreePath"])
+        result = run_worker(host, manifest["worktreePath"], timeout_seconds=timeout_seconds)
         record.update(result, finishedAt=time.time())
+    except CliTimeout as error:
+        record.update(state="unknown", reason=str(error), finishedAt=time.time())
     except KeyboardInterrupt:
         record.update(state="unknown", reason="host CLI 被中断", finishedAt=time.time())
     except LedgerError as error:
@@ -130,6 +132,7 @@ def main(argv):
     start.add_argument("--project", default=".")
     start.add_argument("--worker", required=True)
     start.add_argument("--host", required=True, choices=("codex-cli", "claude-cli"))
+    start.add_argument("--timeout-seconds", type=float)
     start.add_argument("--format", choices=("text", "json"), default="text")
     inspect = commands.add_parser("inspect")
     inspect.add_argument("--project", default=".")
@@ -138,7 +141,7 @@ def main(argv):
     args = parser.parse_args(argv)
     try:
         if args.command == "start":
-            result = start_worker(args.project, args.worker, args.host)
+            result = start_worker(args.project, args.worker, args.host, args.timeout_seconds)
         else:
             result = inspect_worker(args.project, args.worker)
     except (LedgerError, OSError, ValueError, KeyError) as error:

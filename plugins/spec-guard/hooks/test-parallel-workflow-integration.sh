@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-python3 - "$ROOT/commands/parallel-execute.md" <<'PY'
+python3 - "$ROOT/commands/parallel-execute.md" "$ROOT/commands/parallel-status.md" <<'PY'
 import sys
 
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -18,6 +18,13 @@ for required in (
     assert required in text, required
 assert "parallel-cli.py\" start" not in text
 assert text.index("阶段一：只读预览") < text.index("阶段二：确认后执行")
+
+status = open(sys.argv[2], encoding="utf-8").read()
+for required in ("这是只读命令", "parallel-execution.py\" status", "parallel-worktree.py\" verify",
+                 "parallel-cli.py\" inspect", "unknown worker"):
+    assert required in status, required
+for forbidden in (" create-run", " provision", " reclaim", "\" start"):
+    assert forbidden not in status, forbidden
 PY
 
 printf 'parallel-workflow-integration regression passed\n'

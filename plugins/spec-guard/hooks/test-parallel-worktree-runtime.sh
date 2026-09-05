@@ -22,7 +22,7 @@ import sys
 hooks, project = sys.argv[1:]
 sys.path.insert(0, hooks)
 
-from parallel_execution_lib import ledger_root, write_json_exclusive
+from parallel_execution_lib import ledger_root
 from parallel_worktree_lib import LedgerError, load_worker_manifest, provision, reclaim, validate_worker_manifest, verify_worker, worker_manifest_path, worker_path  # noqa: F401
 from test_parallel_fixture import materialize_worker, verify_fixture_worker
 
@@ -132,18 +132,28 @@ run_id = "c" * 64
 current = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
 run = {"schemaVersion": 1, "runId": run_id, "baseSha": current, "goalDigest": "fixture",
        "modules": [{"id": "beta", "rowDigest": "fixture"}]}
-assert write_json_exclusive(os.path.join(ledger_root(project), "runs", run_id + ".json"), run)
-started = json.loads(subprocess.check_output(["python3", cli, "provision", "--project", project,
-                                               "--run", run_id, "--module", "beta", "--format", "json"], text=True))
-assert started["ok"] is True and started["manifest"]["moduleId"] == "beta", started
+from test_parallel_fixture import write_record
+write_record(os.path.join(ledger_root(project), "runs", run_id + ".json"), run)
+provision_target = worker_path(project, run_id[:12] + "-beta-1")
+blocked = subprocess.run(["python3", cli, "provision", "--project", project,
+                           "--run", run_id, "--module", "beta", "--format", "json"],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+assert blocked.returncode == 1 and "实验性并行写操作已暂停" in blocked.stderr, blocked.stderr
+assert not os.path.lexists(provision_target), "disabled provision created a worktree"
+
+started = dict(manifest, workerId=run_id[:12] + "-beta-1", moduleId="beta", baseSha=current)
+started["worktreePath"] = provision_target
+started["branch"] = "spec-guard/" + started["workerId"]
+started = materialize_worker(project, started)
 reclaimed_cli = json.loads(subprocess.check_output(["python3", cli, "reclaim", "--project", project,
-                                                     "--worker", started["manifest"]["workerId"], "--confirm",
+                                                     "--worker", started["workerId"], "--confirm",
                                                      "--format", "json"], text=True))
 assert reclaimed_cli["ok"] is True, reclaimed_cli
-with open(worker_manifest_path(project, started["manifest"]["workerId"]), "w", encoding="utf-8") as handle:
+started = materialize_worker(project, started)
+with open(worker_manifest_path(project, started["workerId"]), "w", encoding="utf-8") as handle:
     handle.write("{")
 corrupt = subprocess.run(["python3", cli, "verify", "--project", project,
-                          "--worker", started["manifest"]["workerId"]], stdout=subprocess.PIPE,
+                          "--worker", started["workerId"]], stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, text=True)
 assert corrupt.returncode != 0 and "worker manifest" in corrupt.stderr, corrupt.stderr
 

@@ -109,60 +109,38 @@ import sys
 script, project = sys.argv[1:]
 sys.path.insert(0, os.path.dirname(script))
 from test_parallel_fixture import write_record
-command = ["python3", script, "create-run", "--project", project, "--safety-report", project + "/eligible.json", "--format", "json"]
-first = subprocess.run(command, capture_output=True, text=True)
-assert first.returncode == 0, first.stderr
-created = json.loads(first.stdout)
-assert created["created"] is True, created
-run = created["run"]
-assert run["baseSha"] == subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
-assert [module["id"] for module in run["modules"]] == ["alpha", "beta"], run
-assert os.path.isfile(created["path"]), created
+from parallel_execution_lib import ledger_root, run_id
 
-second = subprocess.run(command, capture_output=True, text=True)
-assert second.returncode == 0, second.stderr
-again = json.loads(second.stdout)
-assert again["created"] is False and again["run"]["runId"] == run["runId"], again
-
-stale_command = command[:]
-stale_command[stale_command.index(project + "/eligible.json")] = project + "/stale.json"
-stale = subprocess.run(stale_command, capture_output=True, text=True)
-assert stale.returncode != 0 and "base SHA" in stale.stderr, stale.stderr
-
-claim = ["python3", script, "claim-module", "--project", project, "--run", run["runId"], "--module", "alpha", "--format", "json"]
-left = subprocess.Popen(claim, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-right = subprocess.Popen(claim, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-outcomes = [process.communicate() + (process.returncode,) for process in (left, right)]
-assert all(stdout.strip() for stdout, stderr, code in outcomes), outcomes
-successes = [json.loads(stdout) for stdout, stderr, code in outcomes if code == 0]
-conflicts = [json.loads(stdout) for stdout, stderr, code in outcomes if code != 0]
-assert len(successes) == 1 and len(conflicts) == 1, outcomes
-assert conflicts[0]["code"] == "CONFLICT", conflicts
-manifest = successes[0]["manifest"]
-assert manifest["runId"] == run["runId"] and manifest["moduleId"] == "alpha", manifest
-assert manifest["baseSha"] == run["baseSha"] and os.path.isfile(successes[0]["path"]), successes[0]
-
-beta = claim[:]
-beta[beta.index("alpha")] = "beta"
-beta_result = subprocess.run(beta, capture_output=True, text=True)
-assert beta_result.returncode == 0, beta_result.stderr
-assert json.loads(beta_result.stdout)["manifest"]["moduleId"] == "beta"
-
-# Read-only cases consume independently materialized legacy records. Keep the
-# production create/claim assertions above until their contracts change.
-legacy_root = os.path.dirname(os.path.dirname(created["path"]))
-legacy_run = dict(run, runId="d" * 64)
-write_record(os.path.join(legacy_root, "runs", legacy_run["runId"] + ".json"), legacy_run)
+# Build a legacy ledger without calling production write paths: create-run and
+# claim-module are intentionally disabled, but status must still inspect their
+# old records.
+base = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+run = {
+    "schemaVersion": 1,
+    "runId": run_id("git@github.com:owner/repo.git", base, "fixture", ["alpha", "beta"]),
+    "baseSha": base,
+    "goalDigest": "fixture",
+    "modules": [{"id": "alpha", "rowDigest": "alpha"}, {"id": "beta", "rowDigest": "beta"}],
+}
+root = ledger_root(project)
+write_record(os.path.join(root, "runs", run["runId"] + ".json"), run)
+paths = {}
 for module_id in ("alpha", "beta"):
-    source = successes[0] if module_id == "alpha" else json.loads(beta_result.stdout)
-    legacy_lease = dict(source["manifest"], runId=legacy_run["runId"],
-                        workerId="d" * 12 + "-" + module_id + "-1")
-    target = source["path"].replace(run["runId"], legacy_run["runId"])
-    write_record(target, legacy_lease)
-    source["path"] = target
-    if module_id == "beta":
-        legacy_beta_path = target
-run = legacy_run
+    lease_path = os.path.join(root, "leases", run["runId"], "module-" + module_id)
+    manifest = {
+        "schemaVersion": 1,
+        "runId": run["runId"],
+        "baseSha": run["baseSha"],
+        "moduleId": module_id,
+        "workerId": run["runId"][:12] + "-" + module_id + "-1",
+        "leasePath": lease_path,
+        "owner": "fixture",
+        "createdAt": 0,
+        "renewedAt": 0,
+        "status": "active",
+    }
+    paths[module_id] = os.path.join(lease_path, "manifest.json")
+    write_record(paths[module_id], manifest)
 
 status_command = ["python3", script, "status", "--project", project, "--run", run["runId"], "--format", "json"]
 healthy = subprocess.run(status_command, capture_output=True, text=True)
@@ -173,7 +151,7 @@ assert [item["state"] for item in healthy_status["modules"]] == ["claimed", "cla
 human_status = subprocess.run(status_command[:-2], capture_output=True, text=True)
 assert human_status.returncode == 0 and "alpha: claimed" in human_status.stdout, human_status
 
-alpha_path = successes[0]["path"]
+alpha_path = paths["alpha"]
 with open(alpha_path, encoding="utf-8") as handle:
     expired_manifest = json.load(handle)
 expired_manifest["status"] = "expired"
@@ -185,7 +163,7 @@ assert expired.returncode == 0, expired.stderr
 assert json.loads(expired.stdout)["modules"][0]["state"] == "unknown", expired.stdout
 assert (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns) == expired_before
 
-beta_path = legacy_beta_path
+beta_path = paths["beta"]
 with open(beta_path, "w", encoding="utf-8") as handle:
     handle.write("{")
 malformed_before = (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns)

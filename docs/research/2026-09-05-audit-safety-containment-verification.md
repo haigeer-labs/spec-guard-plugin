@@ -27,3 +27,20 @@
 生产 create/claim/provision/start/register/reclaim 仍未禁用；其原有行为断言按计划保留，待对应任务变更契约。只读场景的夹具已可独立构造，生产创建行为测试尚须调用生产入口。
 
 没有向默认分支合并或发布，Issue #144 应在模块交付合并后才由提交 closing keyword 关闭。后续从 #145 继续，不把 T1 计为 F01–F04/F09/F10 已缓解。
+
+## 2026-09-05：T2 / Issue #145
+
+- `parallel-execution.py create-run` 与 `claim-module` 在解析项目路径、读取 safety report 或 ledger 前统一拒绝，稳定返回 `PARALLEL_WRITES_DISABLED`；JSON 模式只输出一份结构化错误。
+- 共享的 `claim_lease` 也在所有输入校验和文件写入前拒绝，因此不能从库调用绕过 CLI 边界。通用 `write_json_exclusive` 没有被改成全局禁用，以免破坏只读状态夹具和无关的安全写入场景。
+- 新增 `test-audit-safety-containment.sh`，覆盖 create、claim、direct lease 及两个 CLI 入口：每个拒绝场景都验证 ledger 父目录保持不存在、无 stderr 污染 JSON 输出。
+
+### 测试证据
+
+1. `test-audit-safety-containment.sh`、`test-parallel-execution-ledger.sh`、`test-parallel-worktree-runtime.sh`、`test-parallel-cli-execution.sh`、`test-parallel-workflow-integration.sh`：均退出 0。
+2. `python3 -m py_compile parallel_execution_lib.py parallel-execution.py`：退出 0。
+3. `git diff --check`：无空白错误。
+4. `/bin/bash scripts/validate.sh`：退出 0；日志末尾为“校验通过”。
+
+### 尚未覆盖的写入口
+
+`parallel-worktree.py provision/reclaim`、`parallel-cli.py start`、`parallel-desktop-register.py register` 仍由后续 T3–T6 分别收口。本任务不把由 `claim_lease` 产生的间接拒绝描述成这些入口已完成稳定契约；它们还需要各自的机器可读错误和不写入断言。

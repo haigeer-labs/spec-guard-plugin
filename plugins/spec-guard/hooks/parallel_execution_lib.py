@@ -21,6 +21,16 @@ class LedgerError(Exception):
     """账本输入或本地 Git 身份无法安全验证。"""
 
 
+class ParallelWritesDisabled(LedgerError):
+    """实验性并行写入已暂停，调用方不得尝试绕过。"""
+
+    code = "PARALLEL_WRITES_DISABLED"
+
+
+def reject_parallel_write():
+    raise ParallelWritesDisabled("实验性并行写操作已暂停；已有成果保留，请使用只读状态检查。")
+
+
 class ClaimConflict(LedgerError):
     """另一个 worker 已原子领取相同模块。"""
 
@@ -140,6 +150,7 @@ def write_json_exclusive(path, value):
 
 def claim_lease(root, run, module_id):
     """用目录创建的原子性领取单个模块，并生成其 worker manifest。"""
+    reject_parallel_write()
     validate_module_id(module_id)
     if module_id not in run_modules(run):
         raise LedgerError("module 不属于该 run")

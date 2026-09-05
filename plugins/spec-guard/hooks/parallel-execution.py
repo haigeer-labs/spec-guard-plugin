@@ -11,6 +11,7 @@ import sys
 from parallel_execution_lib import (
     ClaimConflict,
     LedgerError,
+    ParallelWritesDisabled,
     claim_lease,
     current_head,
     ledger_root,
@@ -22,6 +23,7 @@ from parallel_execution_lib import (
     validate_run_id,
     write_json_exclusive,
     run_modules,
+    reject_parallel_write,
 )
 
 
@@ -56,6 +58,7 @@ def _eligible_modules(report, map_order):
 
 
 def create_run(project, safety_report_path):
+    reject_parallel_write()
     project = os.path.abspath(project)
     report = load_json(safety_report_path, "safety report")
     map_path = os.path.join(project, "spec", "CAPABILITY-MAP.md")
@@ -88,6 +91,7 @@ def create_run(project, safety_report_path):
 
 
 def claim_module(project, run_id_value, module_id):
+    reject_parallel_write()
     project = os.path.abspath(project)
     validate_run_id(run_id_value)
     path = os.path.join(ledger_root(project), "runs", run_id_value + ".json")
@@ -134,6 +138,13 @@ def main(argv):
             result = claim_module(args.project, args.run, args.module)
         else:
             result = status_run(args.project, args.run)
+    except ParallelWritesDisabled as error:
+        result = {"ok": False, "code": error.code, "message": str(error)}
+        if args.format == "json":
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        else:
+            print("parallel-execution: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except ClaimConflict as error:
         result = {"ok": False, "code": "CONFLICT", "message": str(error)}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))

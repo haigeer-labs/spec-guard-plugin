@@ -43,7 +43,7 @@ manifest = {
 }
 validate_worker_manifest(project, manifest)
 for field, value in (("owner", "host"), ("gitCommonDir", common + "-other"),
-                     ("worktreePath", os.path.join(project, "outside")), ("baseSha", "b" * 40)):
+                     ("worktreePath", os.path.join(project, "outside"))):
     invalid = dict(manifest, **{field: value})
     try:
         validate_worker_manifest(project, invalid)
@@ -51,6 +51,14 @@ for field, value in (("owner", "host"), ("gitCommonDir", common + "-other"),
         pass
     else:
         raise AssertionError("invalid manifest accepted: %s" % field)
+stale = dict(manifest, baseSha="b" * 40)
+validate_worker_manifest(project, stale)
+try:
+    provision(project, stale)
+except LedgerError:
+    pass
+else:
+    raise AssertionError("stale worker provision accepted")
 
 created = provision(project, manifest)
 assert created["worktreePath"] == manifest["worktreePath"], created
@@ -93,8 +101,26 @@ except LedgerError:
 else:
     raise AssertionError("reclaimed worker manifest remained readable")
 
+# Worker 提交后仍须证明 branch 从初始 base 演进；首次汇合后也必须能安全回收。
+progressed = dict(manifest, workerId="d" * 12 + "-alpha-1")
+progressed["worktreePath"] = worker_path(project, progressed["workerId"])
+progressed["branch"] = "spec-guard/" + progressed["workerId"]
+progressed = provision(project, progressed)
+with open(progressed["worktreePath"] + "/README.md", "a", encoding="utf-8") as handle:
+    handle.write("worker committed\n")
+subprocess.check_call(["git", "-C", progressed["worktreePath"], "add", "README.md"])
+subprocess.check_call(["git", "-C", progressed["worktreePath"], "commit", "-qm", "worker commit"])
+worker_head = subprocess.check_output(["git", "-C", progressed["worktreePath"], "rev-parse", "HEAD"], text=True).strip()
+assert worker_head != head
+progressed_status = verify_worker(project, progressed)
+assert progressed_status["ok"] is True and progressed_status["workerHead"] == worker_head, progressed_status
+subprocess.check_call(["git", "-C", project, "merge", "--no-ff", progressed["branch"], "-m", "merge worker"])
+reclaimed_progressed = reclaim(project, progressed, merged=True, confirm=False)
+assert reclaimed_progressed["ok"] is True and not os.path.lexists(progressed["worktreePath"]), reclaimed_progressed
+
 run_id = "c" * 64
-run = {"schemaVersion": 1, "runId": run_id, "baseSha": head, "goalDigest": "fixture",
+current = subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip()
+run = {"schemaVersion": 1, "runId": run_id, "baseSha": current, "goalDigest": "fixture",
        "modules": [{"id": "beta", "rowDigest": "fixture"}]}
 assert write_json_exclusive(os.path.join(ledger_root(project), "runs", run_id + ".json"), run)
 started = json.loads(subprocess.check_output(["python3", cli, "provision", "--project", project,

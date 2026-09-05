@@ -51,11 +51,14 @@ def validate_worker_manifest(project, manifest):
         raise LedgerError("worker git common-dir 不匹配")
     if not isinstance(manifest["worktreePath"], str) or os.path.abspath(manifest["worktreePath"]) != expected_path:
         raise LedgerError("worker worktree 路径不属于 controller")
-    if manifest["baseSha"] != current_head(project):
-        raise LedgerError("worker 基线与当前 HEAD 不一致")
     if manifest["branch"] != "spec-guard/" + worker_id:
         raise LedgerError("worker branch 不匹配")
     return manifest
+
+
+def _require_initial_base(project, manifest):
+    if manifest["baseSha"] != current_head(project):
+        raise LedgerError("worker 基线与当前 HEAD 不一致")
 
 
 def _git(project, *args):
@@ -71,6 +74,7 @@ def provision(project, manifest):
     """创建 controller-owned linked worktree；失败时不返回可启动 worker。"""
     project = os.path.abspath(project)
     manifest = validate_worker_manifest(project, manifest)
+    _require_initial_base(project, manifest)
     if _git(project, "status", "--porcelain"):
         raise LedgerError("源 worktree 不干净")
     target = manifest["worktreePath"]
@@ -113,8 +117,10 @@ def verify_worker(project, manifest):
             common = os.path.abspath(os.path.join(target, common))
         if os.path.realpath(common) != os.path.realpath(manifest["gitCommonDir"]):
             raise LedgerError("worker worktree common-dir 不匹配")
-        if _git(target, "rev-parse", "HEAD") != manifest["baseSha"]:
-            raise LedgerError("worker worktree HEAD 不匹配")
+        worker_head = _git(target, "rev-parse", "HEAD")
+        if subprocess.run(["git", "-C", target, "merge-base", "--is-ancestor",
+                           manifest["baseSha"], worker_head]).returncode != 0:
+            raise LedgerError("worker worktree HEAD 未从初始 base 演进")
         if _git(target, "branch", "--show-current") != manifest["branch"]:
             raise LedgerError("worker worktree branch 不匹配")
         if _git(target, "status", "--porcelain"):
@@ -122,7 +128,7 @@ def verify_worker(project, manifest):
     except LedgerError as error:
         return {"ok": False, "state": "unknown", "reason": str(error)}
     return {"ok": True, "state": "ready", "workerId": manifest["workerId"],
-            "worktreePath": manifest["worktreePath"]}
+            "worktreePath": manifest["worktreePath"], "workerHead": worker_head}
 
 
 def reclaim(project, manifest, merged=False, confirm=False):
@@ -136,6 +142,9 @@ def reclaim(project, manifest, merged=False, confirm=False):
     status = verify_worker(project, manifest)
     if status["ok"] is not True:
         raise LedgerError("worker 不可安全回收: %s" % status["reason"])
+    if merged and subprocess.run(["git", "-C", project, "merge-base", "--is-ancestor",
+                                  manifest["branch"], current_head(project)]).returncode != 0:
+        raise LedgerError("worker branch 尚未汇合到当前 HEAD")
     _git(project, "worktree", "remove", manifest["worktreePath"])
     _git(project, "branch", "-d" if merged else "-D", manifest["branch"])
     _git(project, "worktree", "prune")

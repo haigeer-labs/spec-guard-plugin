@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-python3 - "$ROOT/commands/parallel-execute.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-integrate.md" <<'PY'
+python3 - "$ROOT/commands/parallel-execute.md" "$ROOT/commands/parallel-status.md" "$ROOT/commands/parallel-integrate.md" "$ROOT/commands/parallel-reclaim.md" <<'PY'
 import sys
 
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -47,6 +47,22 @@ for required in (
     assert required in integrate, required
 for forbidden in ("while IFS= read", " create-run", " provision", " reclaim", "\" start"):
     assert forbidden not in integrate, forbidden
+
+reclaim = open(sys.argv[4], encoding="utf-8").read()
+for required in (
+    "本次明确确认",
+    "parallel-execution.py\" status",
+    "parallel-worktree.py\" verify",
+    "parallel-cli.py\" inspect",
+    "merge-base --is-ancestor",
+    "--merged",
+    "--confirm",
+    "明确 discard",
+):
+    assert required in reclaim, required
+for forbidden in ("git -C \"$PROJECT\" worktree remove", "git -C \"$PROJECT\" branch -D",
+                  " create-run", " provision", "\" start"):
+    assert forbidden not in reclaim, forbidden
 PY
 
 printf 'parallel-workflow-integration regression passed\n'

@@ -39,7 +39,8 @@ run_server() {
 {"jsonrpc":"2.0","id":4,"method":"unknown/method","params":{}}
 {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"phase","arguments":{"project":"$TEST_PROJECT"}}}
 {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"verify_history","arguments":{"project":"$PROJECT"}}}
-{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"sync_map_preview","arguments":{"project":"$TEST_PROJECT"}}}
+{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"audit_history","arguments":{"project":"$PROJECT"}}}
+{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"sync_map_preview","arguments":{"project":"$TEST_PROJECT"}}}
 EOF
 }
 
@@ -60,11 +61,11 @@ fi
 if python3 - "$TMP/stdout" <<'PY'
 import json, sys
 lines=[json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
-assert [line['id'] for line in lines] == [1, 2, 3, 4, 5, 6, 7]
+assert [line['id'] for line in lines] == [1, 2, 3, 4, 5, 6, 7, 8]
 assert lines[0]['result']['protocolVersion'] == '2025-06-18'
 assert lines[0]['result']['capabilities'] == {'tools': {}}
 assert [tool['name'] for tool in lines[1]['result']['tools']] == [
-    'phase', 'verify', 'verify_history', 'sync_map_preview', 'write_operation'
+    'phase', 'verify', 'verify_history', 'audit_history', 'sync_map_preview', 'write_operation'
 ]
 assert lines[2]['result']['isError'] is True
 assert 'not execute' in lines[2]['result']['content'][0]['text']
@@ -74,9 +75,11 @@ assert 'hookSpecificOutput' in lines[4]['result']['content'][0]['text']
 assert lines[5]['result']['isError'] is False
 assert '历史证据校验通过' in lines[5]['result']['content'][0]['text']
 assert lines[6]['result']['isError'] is False
-assert 'Initiative: Test Preview' in lines[6]['result']['content'][0]['text']
-assert 'preview-module' in lines[6]['result']['content'][0]['text']
-assert 'No local or remote writes were performed.' in lines[6]['result']['content'][0]['text']
+assert '"readOnly": true' in lines[6]['result']['content'][0]['text']
+assert lines[7]['result']['isError'] is False
+assert 'Initiative: Test Preview' in lines[7]['result']['content'][0]['text']
+assert 'preview-module' in lines[7]['result']['content'][0]['text']
+assert 'No local or remote writes were performed.' in lines[7]['result']['content'][0]['text']
 PY
 then
   ok "protocol, safe write response, and read-only hook tools"

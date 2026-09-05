@@ -7,9 +7,12 @@ import re
 import sys
 import tempfile
 
+from capability_map import MapError, parse_map
+
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CHECKPOINT_ID = re.compile(r"^\d{8}T\d{6}Z-\d{4}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+AUDIT_TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 EVENTS = {"created", "paused", "resumed", "completed", "abandoned", "superseded"}
 MODULE_STATUS = {"not-started", "in-progress", "completed", "abandoned", "unknown"}
 TERMINAL = {"completed", "abandoned", "superseded"}
@@ -122,18 +125,79 @@ def check_initiative(initiative):
         previous = event_type
 
 
+def check_correction(correction, initiatives):
+    if not isinstance(correction, dict) or correction.get("type") != "history-correction":
+        fail("invalid history correction")
+    initiative_id = correction.get("initiativeId")
+    if initiative_id not in initiatives:
+        fail("correction initiative not found")
+    event_index = correction.get("eventIndex")
+    events = initiatives[initiative_id]["events"]
+    if not isinstance(event_index, int) or isinstance(event_index, bool) or not 0 <= event_index < len(events):
+        fail("invalid correction event index")
+    checkpoint = events[event_index].get("checkpoint")
+    checkpoint_id = correction.get("checkpointId")
+    expected_checkpoint_id = checkpoint["id"] if checkpoint else None
+    if checkpoint_id != expected_checkpoint_id:
+        fail("correction checkpoint does not match event")
+    module_id = correction.get("moduleId")
+    field = correction.get("field")
+    if field not in {"responsibility", "dependsOn", "status", "event.at"}:
+        fail("invalid correction field")
+    if field == "event.at":
+        if module_id is not None:
+            fail("event time correction must not name a module")
+    elif checkpoint is None:
+        fail("module correction requires a checkpoint")
+    elif (not isinstance(module_id, str) or not ID.fullmatch(module_id) or
+          module_id not in {module["id"] for module in checkpoint["modules"]}):
+        fail("module correction requires a valid module id")
+    if not AUDIT_TIME.fullmatch(correction.get("auditedAt", "")):
+        fail("invalid correction audit time")
+    if not isinstance(correction.get("auditReportSha256"), str) or not SHA256.fullmatch(correction["auditReportSha256"]):
+        fail("invalid correction audit report digest")
+    if "before" not in correction or "after" not in correction:
+        fail("correction before and after are required")
+    if field == "responsibility":
+        if not all(isinstance(correction[key], str) and correction[key].strip()
+                   for key in ("before", "after")):
+            fail("responsibility correction values are invalid")
+    elif field == "dependsOn":
+        if any(not isinstance(correction[key], list) or
+               any(not isinstance(item, str) or not ID.fullmatch(item) for item in correction[key])
+               for key in ("before", "after")):
+            fail("dependency correction values are invalid")
+    elif field == "status":
+        if correction["before"] not in MODULE_STATUS or correction["after"] != "unknown":
+            fail("status correction must retain unknown")
+    elif not isinstance(correction["before"], str) or correction["after"] != "unknown":
+        fail("event time correction must retain unknown")
+    sources = correction.get("sources")
+    if not isinstance(sources, list) or not sources:
+        fail("correction sources are required")
+    for source in sources:
+        if (not isinstance(source, dict) or source.get("kind") != "audit-finding" or
+                not isinstance(source.get("code"), str) or not source["code"]):
+            fail("invalid correction source")
+
+
 def validate_data(data):
     if not isinstance(data, dict) or data.get("schemaVersion") != 1:
         fail("unsupported capability history schema")
     initiatives = data.get("initiatives")
     if not isinstance(initiatives, list):
         fail("initiatives must be an array")
-    ids = set()
+    initiatives_by_id = {}
     for initiative in initiatives:
         check_initiative(initiative)
-        if initiative["id"] in ids:
+        if initiative["id"] in initiatives_by_id:
             fail("duplicate initiative id")
-        ids.add(initiative["id"])
+        initiatives_by_id[initiative["id"]] = initiative
+    corrections = data.get("corrections", [])
+    if not isinstance(corrections, list):
+        fail("corrections must be an array")
+    for correction in corrections:
+        check_correction(correction, initiatives_by_id)
     return data
 
 
@@ -266,11 +330,150 @@ def verify_checkpoint(data, root_path, initiative_id):
         verify_artifact(root, module["plan"])
 
 
+def audit(data, root_path):
+    """Report semantic history claims that cannot be established from evidence.
+
+    This is deliberately independent from ``verify``: a digest proves that a
+    checkpoint file was preserved, not that fields copied into the ledger are
+    faithful to its contents or that a status/timestamp has external support.
+    """
+    root = os.path.realpath(root_path)
+    if not os.path.isdir(root):
+        fail("project root is not a directory")
+    findings = []
+
+    def report(initiative, event_index, checkpoint, field, code, message,
+               module=None, expected=None, actual=None):
+        item = {
+            "initiativeId": initiative["id"],
+            "eventIndex": event_index,
+            "field": field,
+            "code": code,
+            "message": message,
+        }
+        if checkpoint is not None:
+            item["checkpointId"] = checkpoint["id"]
+        if module is not None:
+            item["moduleId"] = module["id"]
+        if expected is not None:
+            item["expected"] = expected
+        if actual is not None:
+            item["actual"] = actual
+        findings.append(item)
+
+    for initiative in data["initiatives"]:
+        for event_index, event in enumerate(initiative["events"]):
+            checkpoint = event.get("checkpoint")
+            if event.get("at"):
+                report(initiative, event_index, checkpoint, "event.at",
+                       "timestamp-unverified",
+                       "ledger event time has no recorded source evidence",
+                       expected="unknown", actual=event["at"])
+            if checkpoint is None:
+                continue
+            map_artifact = checkpoint["map"]
+            map_path = os.path.realpath(os.path.join(root, map_artifact["path"]))
+            rows = None
+            if not os.path.isfile(map_path):
+                report(initiative, event_index, checkpoint, "checkpoint.map",
+                       "map-missing", "checkpointed capability map is missing")
+            elif digest(map_path) != map_artifact["sha256"]:
+                report(initiative, event_index, checkpoint, "checkpoint.map",
+                       "map-digest-differs",
+                       "checkpointed capability map digest differs")
+            else:
+                try:
+                    rows = dict((row.module_id, row) for row in parse_map(map_path).rows)
+                except (OSError, MapError) as error:
+                    report(initiative, event_index, checkpoint, "checkpoint.map",
+                           "map-unparseable", "checkpointed capability map is unusable: %s" % error)
+
+            for module in checkpoint["modules"]:
+                if rows is not None:
+                    source = rows.get(module["id"])
+                    if source is None:
+                        report(initiative, event_index, checkpoint, "module",
+                               "module-missing-from-map",
+                               "ledger module is absent from checkpointed capability map", module)
+                    else:
+                        if module["responsibility"] != source.responsibility:
+                            report(initiative, event_index, checkpoint, "responsibility",
+                                   "responsibility-mismatch",
+                                   "ledger responsibility differs from checkpointed capability map",
+                                   module, source.responsibility, module["responsibility"])
+                        if module["dependsOn"] != source.depends_on:
+                            report(initiative, event_index, checkpoint, "dependsOn",
+                                   "dependency-mismatch",
+                                   "ledger dependencies differ from checkpointed capability map",
+                                   module, source.depends_on, module["dependsOn"])
+                if module["status"] != "unknown":
+                    report(initiative, event_index, checkpoint, "status",
+                           "status-unsupported",
+                           "checkpoint state and Issue identity do not prove module status; retain unknown",
+                           module, "unknown", module["status"])
+
+    counts = {}
+    for finding in findings:
+        counts[finding["code"]] = counts.get(finding["code"], 0) + 1
+    return {"schemaVersion": 1, "readOnly": True, "findings": findings,
+            "summary": {"findings": len(findings), "byCode": counts}}
+
+
+def load_json(path, description):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        fail("invalid %s: %s" % (description, error))
+
+
+def find_audit_finding(report, correction):
+    if report.get("schemaVersion") != 1 or report.get("readOnly") is not True:
+        fail("invalid audit report")
+    for finding in report.get("findings", []):
+        if not isinstance(finding, dict):
+            continue
+        same_identity = all(finding.get(key) == correction.get(key)
+                            for key in ("initiativeId", "eventIndex", "checkpointId", "moduleId", "field"))
+        if same_identity and finding.get("actual") == correction["before"] and finding.get("expected") == correction["after"]:
+            return finding
+    fail("correction does not match an audit finding")
+
+
+def append_correction(ledger_path, audit_path, correction_path):
+    data = load(ledger_path)
+    report = load_json(audit_path, "audit report")
+    correction = load_json(correction_path, "correction")
+    if not isinstance(correction, dict):
+        fail("invalid correction")
+    initiatives = {item["id"]: item for item in data["initiatives"]}
+    check_correction(correction, initiatives)
+    if correction.get("auditReportSha256") != digest(audit_path):
+        fail("correction audit report digest differs")
+    finding = find_audit_finding(report, correction)
+    codes = {source["code"] for source in correction.get("sources", [])
+             if isinstance(source, dict) and source.get("kind") == "audit-finding"}
+    if finding["code"] not in codes:
+        fail("correction source does not cite audit finding")
+    corrections = data.setdefault("corrections", [])
+    if correction in corrections:
+        fail("correction already recorded")
+    corrections.append(correction)
+    validate_data(data)
+    write_atomic(ledger_path, data)
+
+
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "audit", "correct", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | audit <file> <project-root> | correct --confirm <ledger> <audit-report> <correction> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
+        if argv[0] == "correct":
+            if len(argv) != 5 or argv[1] != "--confirm":
+                return 2
+            append_correction(argv[2], argv[3], argv[4])
+            print("ok")
+            return 0
         if argv[0] == "create":
             if len(argv) != 3:
                 return 2
@@ -300,6 +503,12 @@ def main(argv):
                 return 2
             verify(data, argv[2])
             print("ok")
+            return 0
+        if argv[0] == "audit":
+            if len(argv) != 3:
+                return 2
+            json.dump(audit(data, argv[2]), sys.stdout, ensure_ascii=False, sort_keys=True)
+            sys.stdout.write("\n")
             return 0
         if argv[0] == "checkpoint":
             if len(argv) != 3:

@@ -68,6 +68,34 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/verify-artifacts.sh"
 
 无账本时报告“未验证”；orphan 或篡改证据时报告失败，不自动删除任何文件。
 
+## `audit-history`
+
+语义审计同样是只读的。它会把 checkpoint map 与账本字段逐项比对，并把未被证据
+支持的状态和时间报告为 `unknown`，不改动历史产物：
+
+```bash
+LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
+[ -f "$LEDGER" ] || { echo "未验证：没有 capability history ledger"; exit 0; }
+python3 "$ROOT/hooks/capability-history.py" audit "$LEDGER" "$PROJECT"
+```
+
+审计发现不授权猜测或覆盖历史值。应先向用户说明每项证据缺口。
+
+## `correct-history`
+
+这是确认门控的写操作。只有用户明确确认本次审计报告与补正内容后，才可以运行：
+
+```bash
+python3 "$ROOT/hooks/capability-history.py" correct --confirm \
+  "$PROJECT/spec/CAPABILITY-HISTORY.json" "$AUDIT_REPORT" "$CORRECTION"
+```
+
+`AUDIT_REPORT` 和 `CORRECTION` 必须由用户审阅；后者须含 audit report 的 SHA-256、
+来源、原值、修正值、审计时间以及 `initiativeId`、`eventIndex`、`checkpointId`。
+该操作只追加 `history-correction` 事件，绝不重写
+checkpoint。没有 `--confirm`、哈希不匹配、证据不充分或把 `unknown` 升级为 `completed`
+时停止并不写入。
+
 ## `history-migration`
 
 迁移预览是只读操作：

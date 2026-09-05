@@ -154,9 +154,12 @@ assert os.path.lexists(started["worktreePath"]), "disabled CLI reclaim removed a
 with open(worker_manifest_path(project, started["workerId"]), "w", encoding="utf-8") as handle:
     handle.write("{")
 corrupt = subprocess.run(["python3", cli, "verify", "--project", project,
-                          "--worker", started["workerId"]], stdout=subprocess.PIPE,
+                          "--worker", started["workerId"], "--format", "json"], stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, text=True)
-assert corrupt.returncode != 0 and "账本记录" in corrupt.stderr, corrupt.stderr
+assert corrupt.returncode == 1 and corrupt.stderr == "", corrupt
+corrupt_status = json.loads(corrupt.stdout)
+assert corrupt_status["ok"] is False and corrupt_status["state"] == "unknown", corrupt_status
+assert "账本记录" in corrupt_status["reason"], corrupt_status
 
 with open(project + "/README.md", "a", encoding="utf-8") as handle:
     handle.write("dirty\n")

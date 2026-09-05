@@ -111,6 +111,17 @@ def status_run(project, run_id_value):
     except LedgerError as error:
         return {"ok": False, "runId": run_id_value, "state": "unknown", "reason": str(error), "modules": []}
     states = [lease_status(root, run, module_id) for module_id in modules]
+    from parallel_worktree_lib import load_worker_manifest, verify_worker
+    for state in states:
+        if state["state"] != "claimed":
+            continue
+        try:
+            manifest = load_worker_manifest(project, state["workerId"])
+            status = verify_worker(project, manifest)
+            if status.get("ok") is not True:
+                raise LedgerError(status.get("reason", "worker 资源无法核验"))
+        except (LedgerError, OSError, ValueError, KeyError) as error:
+            state.update(state="unknown", reason=str(error))
     return {"ok": all(item["state"] != "unknown" for item in states), "runId": run["runId"],
             "baseSha": run["baseSha"], "modules": states}
 

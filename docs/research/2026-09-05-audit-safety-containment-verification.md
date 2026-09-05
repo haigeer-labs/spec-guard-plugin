@@ -1,6 +1,7 @@
 # audit-safety-containment 增量验证记录
 
-状态：PARTIAL。不是整个模块通过，不代表实验写入口已禁用。
+状态：LOCAL VERIFIED。首模块实现与本地验收已通过，待模块 PR；未推送、合并或发布。
+以下 T1–Checkpoint B 段落是当时的增量记录；最终范围及证据见末尾 T11 / Checkpoint C。
 
 ## 2026-09-05：映射与 T1 / Issue #144
 
@@ -86,3 +87,48 @@
 Checkpoint B：通过。C1–C6 的 8 个脚本各自退出 0；C7 完整 validate 退出 0，phase 129/0、verify 72/0、Codex adapter 10/0、smoke selftest 退出 0。每个子进程均等待到实际退出码，未以“命令已启动”判通过。日志在本机 `/private/tmp/checkpoint-b-*.log` 和 `/private/tmp/spec-guard-checkpoint-b-validate.log`，可能随临时目录清理；本记录保留结果摘要。
 
 剩余范围：T7 仍需修正 worker/process 只读语义和读取链；T8–T10 仍需收口用户命令及升级说明。底层写入口拒绝不意味着已加载的旧会话或旧进程停止，也不构成发布验收。
+
+## 2026-09-05：T7–T11 最终验收 / Issues #152–#156
+
+源码基线 `52fbf91` 加本次 T11 收尾差异，最终提交 SHA 由 Checkpoint C 记录。
+
+### 结果与必要的连带修改
+
+- T7 把旧 completed 显示为 unverified/recordedState；worker、run、lease、process 的身份和路径需互相匹配。host-owned 展示“完成与可回收性未核验”，不要求插件进程记录。缺失 worktree、错误身份、坏 JSON 与符号链接安全拒绝。查询时禁用 Git optional locks，完整目录快照没有变化。
+- T8 让四个写命令只执行统一拒绝入口；移除了 merge/remove 等实际写流程与 stdin 双用途片段。回归直接执行文档 Shell，而不只检查关键词。
+- T9 为现有 status CLI 增加 `--details`，由共享入口汇总两端诊断，子项失败传播为总体非零。Codex ops 和 Claude 命令在同一真实 Git fixture 中得到相同输出；已知受管 worker 不进入无绑定的 canonical next/deliver。
+- T10 更新 README、Desktop 文档与 Unreleased 说明，明确源码尚未发布、旧会话不会自动停止、成果和账本保留。
+- T11 将 9 套并行相关回归接入 validate；修正此前未接入门禁的 Desktop 登记旧断言。增加完整 Git/目录/用户文件快照、28 个并发重复写请求、JSON/text 拒绝、help/用法错误及独立 process 查询的缺失资源反例。
+
+T7/T9/T11 的实际文件数高于最初估计，原因是必须同时更新共享 fixture、独立 CLI 退出码、next/deliver 文案和状态汇总消费者。未引入新的自动执行能力。最终审查另修复“独立 inspect 未检查 worktree 是否存在”及“worktree verify 的 JSON 失败仍输出文本”两个遗漏，并将资源核验移回上层查询，去掉账本库对 worktree 层的反向依赖。
+
+### AC 与原审计映射
+
+| 验收 | 证据 | 原问题及结论 |
+|---|---|---|
+| AC1 全部写入口先拒绝 | 11 个直接业务入口的移除保护变异均被拦截；所有 CLI 与 4 个命令 Shell 实际拒绝，28 个重复/并发请求保留脏文件和 Git 元数据 | F01/F03/F04：风险已隔离，执行器与汇合算法未实现 |
+| AC2 保留资源、只读可信 | 目录/refs/ledger/文件字节快照、身份错配、文件及目录符号链接、外部 canary、缺失资源反例 | F09/F10：查询与身份缺陷已处置，不自动清理旧占用 |
+| AC3 旧状态不误导 | completed→unverified+recordedState；started/unknown/坏记录非零；host 缺插件 process 正常返回未核验 | F01/F09：不再把进程退出或所有权当验收/回收凭证 |
+| AC4 写命令解释与只读下一步 | 4 个真实 Shell 拒绝；只保留状态与只读分析指引 | F02/F03：危险流程已撤出，未提供替代自动汇合 |
+| AC5 串行与未启用项目 | phase 129/0、verify 72/0、Codex adapter 10/0；readiness/safety/guidance 原套件通过 | 不声明 F05/F07/F08 已完成；完整任务绑定仍待下一模块 |
+| AC6 回归进入门禁 | validate 执行 9 套并行回归；13/13 变异被拦截；两端实际状态片段输出一致 | F01–F04/F09/F10 的本模块处置有行为证据 |
+| AC7 升级影响清楚 | README/Desktop/Unreleased 说明及文档回归通过 | 旧进程/旧版本会话仍需用户保存成果并确认停止或重启 |
+
+### 最终执行记录
+
+| 命令 | 结果 | 本机日志 |
+|---|---|---|
+| `/bin/bash scripts/validate.sh` | 退出 0，包含全部新增并行回归、Codex adapter 10/0 和 smoke selftest | `/private/tmp/spec-guard-containment-final-validate.log` |
+| `/bin/bash plugins/spec-guard/hooks/test-audit-safety-containment.sh --selftest` | 退出 0；11 个保护删除 + 旧 completed + run 身份校验，共 13/13 被拦截 | `/private/tmp/spec-guard-containment-final-mutations.log` |
+| `/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh` | 退出 0；129/0 | `/private/tmp/spec-guard-containment-final-phase.log` |
+| `/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh` | 退出 0；72/0 | `/private/tmp/spec-guard-containment-final-artifacts.log` |
+| `/bin/bash plugins/spec-guard/hooks/test-claude-desktop-mcp.sh` | 退出 0；7/0 | `/private/tmp/spec-guard-containment-final-desktop-mcp.log` |
+| `git diff --check` | 退出 0 | 无空白错误 |
+
+所有长运行均等待实际退出码后记录。变异只在独立临时副本进行，未改写原工作区。临时日志可能被清理，本报告保存可复跑命令与结果摘要。
+
+### 五轴自查与未验证范围
+
+按 code-review-and-quality 自查正确性、可读性、架构、安全和性能：已解决独立查询漏检与反向依赖；未新增依赖、后台进程或 hook 热路径，写入口采用单一异常政策，目录读取采用不跟随符号链接的方式。不支持这种安全读取的平台明确返回无法核验，未以不安全路径降级。
+
+本记录是本地自查与行为回归，不是独立审查者批准，也不是四端原生 UI、Windows/远程环境、真实付费 Agent、发布安装或真实 GitHub/GitLab 完整 E2E 的证明。本模块不处理 F05–F08/F11 等其他审计模块，不重新开放自动执行器；未停止旧进程、未删除用户资源。

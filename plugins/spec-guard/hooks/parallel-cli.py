@@ -11,7 +11,7 @@ import sys
 
 from parallel_cli_adapters import CliTimeout, command_for, run_worker
 from parallel_execution_lib import (LedgerError, ParallelWritesDisabled, reject_parallel_write,
-                                    current_head, ledger_root, load_json,
+                                    current_head, ledger_root,
                                     validate_record, write_json_exclusive, load_ledger_json)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
@@ -112,7 +112,10 @@ def inspect_worker(project, worker_id):
     try:
         manifest = load_worker_manifest(project, worker_id)
         if manifest["owner"] == "host":
-            return verify_worker(project, manifest)
+            return dict(verify_worker(project, manifest), workerId=worker_id)
+        runtime = verify_worker(project, manifest)
+        if runtime.get("ok") is not True:
+            raise LedgerError("worker 资源无法核验: %s" % runtime.get("reason", "unknown"))
         record = load_ledger_json(ledger_root(project), "processes", worker_id + ".json")
         _validate_process_record(record)
         for field in ("runId", "baseSha", "workerId", "moduleId", "worktreePath"):

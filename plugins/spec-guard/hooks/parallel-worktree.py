@@ -38,8 +38,11 @@ def provision_worker(project, run_id_value, module_id):
 
 
 def inspect_worker(project, worker_id):
-    manifest = load_worker_manifest(project, worker_id)
-    return verify_worker(project, manifest)
+    try:
+        manifest = load_worker_manifest(project, worker_id)
+        return dict(verify_worker(project, manifest), workerId=worker_id)
+    except (LedgerError, OSError, ValueError, KeyError) as error:
+        return {"ok": False, "workerId": worker_id, "state": "unknown", "reason": str(error)}
 
 
 def reclaim_worker(project, worker_id, merged, confirm):
@@ -93,7 +96,8 @@ def main(argv):
     elif args.command == "provision":
         print("已创建 worker %s" % result["manifest"]["workerId"])
     elif args.command == "verify":
-        print("%s: %s" % (args.worker, result["state"]))
+        detail = " (%s)" % result["reason"] if result.get("reason") else ""
+        print("%s: %s%s" % (args.worker, result["state"], detail))
     else:
         print("%s: %s" % (result["workerId"], result["state"]))
     return 0 if result.get("ok") is True else 1

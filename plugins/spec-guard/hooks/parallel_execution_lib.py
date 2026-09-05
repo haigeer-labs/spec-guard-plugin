@@ -135,6 +135,8 @@ def load_json(path, label):
 
 def load_ledger_json(root, *parts):
     """Read regular ledger files without following symlinks, including parent directories."""
+    if os.open not in os.supports_dir_fd or not all(hasattr(os, flag) for flag in ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK")):
+        raise LedgerError("当前平台无法安全核验账本路径")
     if any(not isinstance(part, str) or not part or part in (".", "..") or
            os.path.sep in part for part in parts):
         raise LedgerError("账本路径无效")
@@ -274,10 +276,6 @@ def lease_status(root, run, module_id):
         validate_worker_link(run, worker, manifest["workerId"], module_id)
         if worker.get("owner") not in ("host", "spec-guard"):
             raise LedgerError("worker owner 无法核验")
-        from parallel_worktree_lib import verify_worker
-        status = verify_worker(os.path.dirname(os.path.dirname(os.path.dirname(root))), worker)
-        if status.get("ok") is not True:
-            raise LedgerError("worker 资源无法核验: %s" % status.get("reason", "unknown"))
     except (LedgerError, OSError) as error:
         return {"moduleId": module_id, "state": "unknown", "reason": str(error)}
     return {"moduleId": module_id, "state": "claimed", "workerId": manifest["workerId"],

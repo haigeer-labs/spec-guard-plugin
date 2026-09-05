@@ -3,6 +3,61 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ "${1:-}" = "--selftest" ]; then
+  python3 - "$ROOT" <<'PY'
+import ast
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+root = sys.argv[1]
+guards = [("parallel-execution.py", "create_run"), ("parallel-execution.py", "claim_module"),
+          ("parallel_execution_lib.py", "claim_lease"), ("parallel-worktree.py", "provision_worker"),
+          ("parallel-worktree.py", "reclaim_worker"), ("parallel_worktree_lib.py", "provision"),
+          ("parallel_worktree_lib.py", "reclaim"), ("parallel-cli.py", "start_worker"),
+          ("parallel_cli_adapters.py", "run_worker"), ("parallel-desktop-register.py", "register"),
+          ("parallel-desktop-register.py", "_host_manifest")]
+cases = guards + [("parallel-cli.py", "legacy-completed"), ("parallel_execution_lib.py", "run-identity")]
+for filename, name in cases:
+    with tempfile.TemporaryDirectory(prefix="sg-containment-mutation-") as temporary:
+        copy = os.path.join(temporary, "plugin")
+        shutil.copytree(root, copy, ignore=shutil.ignore_patterns("__pycache__"))
+        path = os.path.join(copy, "hooks", filename)
+        with open(path, encoding="utf-8") as handle:
+            source = handle.read()
+        test = "test-audit-safety-containment.sh"
+        if name == "legacy-completed":
+            old = '"unverified" if record["state"] == "completed" else record["state"]'
+            assert source.count(old) == 1
+            source = source.replace(old, 'record["state"]')
+            test = "test-parallel-cli-execution.sh"
+        elif name == "run-identity":
+            old = 'if run["runId"] != requested_id:'
+            assert source.count(old) == 1
+            source = source.replace(old, 'if False:')
+        else:
+            function = next(node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef) and node.name == name)
+            guard = next(node for node in function.body if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+                         and isinstance(node.value.func, ast.Name) and node.value.func.id == "reject_parallel_write")
+            lines = source.splitlines(keepends=True)
+            del lines[guard.lineno - 1:guard.end_lineno]
+            source = "".join(lines)
+        compile(source, path, "exec")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(source)
+        result = subprocess.run(["/bin/bash", os.path.join(copy, "hooks", test)],
+                                capture_output=True, text=True, timeout=90,
+                                env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+        assert result.returncode == 1 and ("AssertionError" in result.stderr or "LedgerError" in result.stderr), (name, result)
+        print("mutation rejected: " + name, flush=True)
+print("containment mutation selftest passed: %d/%d" % (len(cases), len(cases)))
+PY
+  exit "$?"
+fi
+
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -46,10 +101,14 @@ run = {"schemaVersion": 1, "runId": run_id("git@github.com:owner/repo.git", head
 
 def snapshot():
     found = []
-    for base, _dirs, files in os.walk(os.path.dirname(root)):
-        for name in files:
+    for base, dirs, files in os.walk(project):
+        found.append((os.path.relpath(base, project), "directory"))
+        for name in dirs + files:
             path = os.path.join(base, name)
-            found.append((os.path.relpath(path, project), open(path, "rb").read()))
+            if os.path.islink(path):
+                found.append((os.path.relpath(path, project), "link", os.readlink(path)))
+            elif name in files:
+                found.append((os.path.relpath(path, project), "file", open(path, "rb").read()))
     return sorted(found)
 
 before = snapshot()
@@ -114,7 +173,8 @@ try:
             lambda: parallel_worktree_lib.reclaim(project, worker, merged=True, confirm=True),
             lambda: parallel_worktree.reclaim_worker(project, worker_id, merged=True, confirm=True)):
         try:
-            action()
+            with patch.object(parallel_worktree, "load_worker_manifest", side_effect=AssertionError("wrapper read reached")):
+                action()
         except ParallelWritesDisabled as error:
             assert error.code == "PARALLEL_WRITES_DISABLED", error.code
         else:
@@ -169,11 +229,18 @@ before = snapshot()
 for host in ("codex-desktop", "claude-desktop"):
     with patch.object(desktop, "_git", side_effect=AssertionError("Desktop Git lookup reached")):
         try:
-            desktop.register(project, "c" * 64, "beta", host, "existing-task", worker["worktreePath"])
+            with patch.object(desktop, "_host_manifest", side_effect=AssertionError("Desktop manifest builder reached")):
+                desktop.register(project, "c" * 64, "beta", host, "existing-task", worker["worktreePath"])
         except ParallelWritesDisabled:
             pass
         else:
             raise AssertionError("Desktop registration was not disabled")
+        try:
+            desktop._host_manifest(project, "c" * 64, "beta", host, "existing-task", worker["worktreePath"])
+        except ParallelWritesDisabled:
+            pass
+        else:
+            raise AssertionError("Desktop manifest builder was not disabled")
 
 def register_request(args):
     host, run_value, module = args
@@ -278,6 +345,55 @@ for owner in ("spec-guard", "host"):
             assert payload["workers"][0]["runtime"]["state"] == "unverified", payload
     assert snapshot() == before, "status command modified resources"
 write_record(worker_file, worker)
+
+# Repeat every public writer concurrently; even a dirty worker and old confirmation flags are retained.
+record = {"schemaVersion": 1, "runId": worker["runId"], "baseSha": head, "workerId": worker_id,
+          "moduleId": "beta", "host": "codex-cli", "worktreePath": worker["worktreePath"],
+          "command": ["codex", "-C", worker["worktreePath"]], "state": "completed",
+          "startedAt": 0, "finishedAt": 1, "returncode": 0}
+write_record(process_path, record)
+assert parallel_cli.inspect_worker(project, worker_id)["state"] == "unverified"
+os.rename(worker["worktreePath"], worker["worktreePath"] + "-saved")
+assert parallel_cli.inspect_worker(project, worker_id)["ok"] is False, "standalone inspect accepted missing worktree"
+os.rename(worker["worktreePath"] + "-saved", worker["worktreePath"])
+for field, value in (("runId", "f" * 64), ("workerId", "f" * 12 + "-beta-1"),
+                     ("moduleId", "alpha"), ("command", ["arbitrary-command"])):
+    write_record(process_path, dict(record, **{field: value}))
+    assert parallel_cli.inspect_worker(project, worker_id)["ok"] is False, field
+write_record(process_path, record)
+
+with open(os.path.join(worker["worktreePath"], "uncommitted.txt"), "w", encoding="utf-8") as handle:
+    handle.write("user work must survive\n")
+commands = [
+    ("parallel-execution.py", ["create-run", "--safety-report", "missing.json"]),
+    ("parallel-execution.py", ["claim-module", "--run", worker["runId"], "--module", "beta"]),
+    ("parallel-worktree.py", ["provision", "--run", worker["runId"], "--module", "beta"]),
+    ("parallel-worktree.py", ["reclaim", "--worker", worker_id, "--merged", "--confirm"]),
+    ("parallel-cli.py", ["start", "--worker", worker_id, "--host", "codex-cli"]),
+    ("parallel-cli.py", ["start", "--worker", worker_id, "--host", "claude-cli"]),
+    ("parallel-desktop-register.py", ["register", "--run", worker["runId"], "--module", "beta",
+                                     "--host", "codex-desktop", "--host-worker-id", "native-task", "--cwd", worker["worktreePath"]]),
+]
+before = snapshot()
+requests = [(script, arguments, output) for script, arguments in commands for output in ("json", "text") for _ in range(2)]
+def write_request(request):
+    script, arguments, output = request
+    result = subprocess.run([sys.executable, os.path.join(hooks, script)] + arguments +
+                            ["--project", project, "--format", output], capture_output=True, text=True)
+    assert result.returncode == 1, result
+    if output == "json":
+        assert result.stderr == "" and json.loads(result.stdout)["code"] == "PARALLEL_WRITES_DISABLED", result
+    else:
+        assert result.stdout == "" and "PARALLEL_WRITES_DISABLED" in result.stderr, result
+with ThreadPoolExecutor(max_workers=4) as executor:
+    list(executor.map(write_request, requests))
+assert snapshot() == before, "concurrent writes changed refs, directories, ledger or user work"
+
+for script in sorted(set(item[0] for item in commands)):
+    help_result = subprocess.run([sys.executable, os.path.join(hooks, script), "--help"], capture_output=True, text=True)
+    invalid = subprocess.run([sys.executable, os.path.join(hooks, script), "--unknown-argument"], capture_output=True, text=True)
+    assert help_result.returncode == 0 and invalid.returncode == 2
+assert snapshot() == before
 PY
 
 printf 'audit-safety-containment regression passed\n'

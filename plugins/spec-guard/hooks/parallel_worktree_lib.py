@@ -6,7 +6,7 @@ import os
 import re
 import subprocess
 
-from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
+from parallel_execution_lib import (LedgerError, current_head, ledger_root,
                                     reject_parallel_write, validate_module_id, validate_record,
                                     write_json_exclusive, load_ledger_json, load_run, validate_worker_link)
 

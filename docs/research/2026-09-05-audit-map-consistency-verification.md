@@ -1,8 +1,8 @@
 # audit-map-consistency：阶段验收记录
 
-日期：2026-09-05。状态：Checkpoint A 本地验证通过，供用户审阅；模块尚未交付。
+日期：2026-09-05。状态：Checkpoint A、B 本地验证通过，当前 B 供用户审阅；模块尚未交付。
 基线：`44e3546017511cf563301841f15a11e992a28632`。
-本阶段验证代码：`9e8d30a`（测试时内容与该提交一致）。
+Checkpoint A 验证代码：`9e8d30a`（测试时内容与该提交一致）；B 证据见文末。
 规格：[audit-map-consistency](../../spec/audit-map-consistency.md)。
 计划：[implementation plan](../../tasks/audit-map-consistency/plan.md)。
 
@@ -120,3 +120,83 @@ Desktop GitHub 预览、GitHub/Codex 指引仍待 #163–#165；F05 路径安全
 
 下一阶段是 Checkpoint B 对应的入口统一。按计划在 A 提交记录后交用户审阅，不越过检查点自行宣称模块已完成。
 自动执行器持续暂停；未进行四端原生、真实 GitLab 业务流程、发布包或安装版本验收。
+
+## Checkpoint B：入口一致性（2026-09-05 续）
+
+以下是用户确认 A 后新增的阶段记录；上面的 A 结论保留为历史，不代表 B 的当前进度。
+验证代码：`f257ab9`，本阶段三个切片均独立提交，报告提交对应 #166：
+
+- `24b2d24` / #163：Desktop 预览复用共享严格解析器。
+- `de5802b` / #164：GitHub bridge、sync-map 命令与 Codex ops 的创建前校验对齐。
+- `f257ab9` / #165：明确候选不等于可执行，并锁定依赖层语义。
+
+### T4–T6 的行为证据
+
+T4：新增 4 组真实 stdio JSON-RPC 测试，带空格项目目录下执行 MCP 服务。
+修复前的失败与修复后 19 组通过已记录于 #163 closing commit；本检查点重跑全部通过。
+GitHub 预览按声明顺序展示，不再按表格行序；坏图、Python 缺失、非零退出、坏 JSON、
+缺字段/空模块/重复模块/未知顺序/坏行均返回 isError，不回退旧正则。
+非零退出反例使用结构合法的 JSON，避免误把输出形态错误当成退出码检查证据。
+GitLab 预览仍不带 confirm；两类预览前后比较完整项目文件快照，未发生写入。
+
+T5：首跑退出 1，原因是 bridge 尚未提供可执行严格校验片段。添加指引后聚焦 20 组通过。
+测试从三个实际文档中提取 bash 前置片段并执行，在其后接测试 gh 写桩：合法图可到达写桩，
+坏图和当前安装包缺少解析器时非零退出，写桩未执行。
+旧摘要仅刷新路径保持原约定；新建/补充使用严格 order，摘要 compute.order 仍是表格行序。
+依赖边仅取 Depends on，不从组内顺序推导；未更改写入确认、增量记账或旧摘要算法。
+两份修改后的 skill 均通过 skill-creator quick_validate；Codex adapter 与完整 validate 通过。
+这证明片段本身能阻断后续命令，**不是**模型必定遵循 skill 的原生宿主 E2E 证明。
+
+T6：在真实临时 Git 仓库配置 origin/trunk 跟踪 ref，运行同图三种 Build order 的真实 CLI：
+并列、线性、调换 billing/notifications 展示顺序。结果均为 layer 1 的同一对 candidate-only，
+只改变展示顺序，不改变依赖关系。无刷新时 fresh=false，保留远端新鲜度警告；坏图非零且无成功输出。
+运行前后比较 refs、索引、state 和图等项目文件，默认只读分析没有改写。
+
+首轮测试自身曾将线性图的预期展示顺序写反，已修正为逐例显式期望；该失败不计作产品缺陷。
+修正测试后唯一 RED 是缺少 notice。最小修复在 JSON 与文本输出增加说明：
+“候选仅来自 Depends on 依赖层；未核验任务状态或运行资源，不表示可立即领取或执行。”
+新增 3 组后共 23 组通过。既有本地 bare remote 刷新测试也核对该说明：
+即使 fresh=true、无新鲜度警告，仍然只是 candidate-only，不是领取/执行授权。
+依赖层算法本来已有上述语义，本次没有重写算法，更没有增加自动调度。
+
+### B 验证结果
+
+C1/C2 使用 T6 GREEN 的同内容结果；其后生产代码未变化，不重复运行制造额外次数。
+C3–C6 在 B 阶段运行，各组合命令用 `&&` 串接且均核对实际退出 0。
+
+| 验证项 | 结果 |
+| --- | --- |
+| C1 test-audit-map-consistency.sh | 23 组通过，退出 0 |
+| C2 digest selftest、parallel-readiness | 均退出 0 |
+| C3 sync-map-gitlab、claude-desktop-mcp | 均退出 0；MCP 7 / 0 |
+| C4 parallel-safety-gate、parallel-guidance | 均退出 0；既有路径回归，不代表 F05 修复 |
+| C5 scripts/validate.sh | 完整通过，退出 0；自测后 spec-digest.py 与 HEAD 一致 |
+| C5 phase-guard、verify-artifacts | 129 / 0、72 / 0，组合退出 0 |
+| C5 Codex adapter、smoke selftest | 10 / 0、判决器自检退出 0，非原生宿主验收 |
+| C6 capability-history、history-migration、history-verification | 11 / 0；其余两套均退出 0 |
+| C6 audit-safety-containment | 通过，退出 0；写入口仍封闭 |
+| git diff --check | 通过 |
+
+临时日志：`/private/tmp/spec-guard-map-t6-{red,red-corrected,green}.log`、
+`/private/tmp/spec-guard-map-checkpoint-b-{validate,focused,hooks}.log`。
+此次 focused 日志保存整个组合命令的输出；部分历史脚本成功时没有汇总文本，以组合退出码确认。
+本模块 `--selftest` 与接入常规 validate 仍留到 #172，尚未实现。
+
+### B 自查与边界
+
+按 code-review-and-quality 五轴做本阶段自查，按批准计划串行执行，非独立 Agent 评审：
+
+- 正确性：各入口共同消费严格图；Node 只验证跨进程形态，没有第二套依赖解析。
+  缺运行环境或坏输出显式失败；旧摘要刷新与新建输入验证分开。
+- 可读性：已删除 Desktop 的表格正则路径；readiness 只新增一条统一说明，不引入额外状态机。
+- 架构：保留依赖层与声明组区别，不改变 digest.order、单 activeModule 或上游流程。
+- 安全：MCP 使用参数数组，片段正确引用路径；测试外部写入全为桩。
+  仍未解决其他会话在校验后修改图的竞态，不能把本阶段当作跨会话事务/锁实现。
+- 性能：预览新增一次 Python 子进程，不新增依赖、后台服务或每轮 hook 网络请求。
+  未做大图性能基准，不宣称延迟上限。
+
+AC2 的入口一致性已有本地证据，F12 仍需最终文档/常规门禁/隔离变异验收后整体收尾。
+F05 的词法/物理路径风险还未修复；GitLab 幂等恢复与任务绑定问题仍归后续模块。
+未测试四端原生完整交互、真实 GitHub/GitLab 业务流程或已安装包；未推送、合并、发版、更新插件。
+自动执行器提案未改动。本分支截至 B 完成 #159–#166 的 8 个任务/检查点，尚余 7 项。
+下一步为用户审阅 B 后执行 #167–#169 的路径边界修复及 Checkpoint C，不提前开放自动并行。

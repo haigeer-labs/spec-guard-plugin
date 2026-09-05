@@ -28,8 +28,10 @@ from gitlab_tracker import (  # RED: the shared identity module does not exist y
     module_marker,
     parse_issue_page,
     recover_exact_issue,
+    select_task_candidate,
+    task_marker,
 )
-from workspace_binding import bind_workspace, inspect_workspace
+from workspace_binding import bind_workspace, inspect_workspace, set_task_binding
 
 
 GOAL = "a1b2c3d4e5f6"
@@ -161,6 +163,17 @@ class WorkspaceBindingContract(unittest.TestCase):
         self.assertNotEqual(linked["binding"]["gitDir"], result["binding"]["gitDir"])
         self.assertEqual(inspect_workspace(str(self.worktree), str(self.map_path), str(self.state_path))["code"], "ok")
 
+    def test_task_binding_requires_a_verified_expected_previous_value(self):
+        self.assertTrue(bind_workspace(str(self.root), str(self.map_path), str(self.state_path), "alpha")["ok"])
+        updated = set_task_binding(str(self.root), str(self.map_path), str(self.state_path), 21,
+                                   expected_previous=None)
+        self.assertTrue(updated["ok"])
+        self.assertEqual(updated["binding"]["taskIssue"], 21)
+        conflict = set_task_binding(str(self.root), str(self.map_path), str(self.state_path), 22,
+                                    expected_previous=None)
+        self.assertFalse(conflict["ok"])
+        self.assertEqual(conflict["code"], "context-mismatch")
+
     def test_copied_or_mapped_binding_fails_closed(self):
         bound = bind_workspace(str(self.root), str(self.map_path), str(self.state_path), "alpha")
         self.assertTrue(bound["ok"])
@@ -209,6 +222,50 @@ class WorkspaceBindingContract(unittest.TestCase):
         blocked = bind_workspace(str(self.worktree), str(self.map_path), str(self.state_path), "beta")
         self.assertFalse(blocked["ok"])
         self.assertEqual(blocked["code"], "dependency-blocked")
+
+
+class GitLabTaskSelectionContract(unittest.TestCase):
+    def issue(self, iid, state="opened", assignees=None, marker=None):
+        return {
+            "iid": iid, "project_id": 17, "state": state,
+            "description": "task\n%s\n" % (marker or task_marker("alpha")),
+            "assignees": assignees if assignees is not None else [],
+        }
+
+    def binding(self, task=None):
+        return {"moduleId": "alpha", "taskIssue": task}
+
+    def test_selects_only_exact_open_plan_indexed_task_in_order(self):
+        result = select_task_candidate(self.binding(), [12, 13], {
+            12: self.issue(12, state="closed"),
+            13: self.issue(13),
+        }, project_id=17, current_user="me", closed_by_commit=set())
+        self.assertEqual(result, {"ok": True, "code": "ok", "taskIssue": 13})
+
+    def test_rejects_foreign_marker_assignee_and_closing_commit(self):
+        result = select_task_candidate(self.binding(), [12, 13, 14, 15], {
+            12: self.issue(12, state="closed"),
+            13: self.issue(13, assignees=[{"username": "other"}]),
+            14: self.issue(14),
+            15: self.issue(15),
+        }, project_id=17, current_user="me", closed_by_commit={14})
+        self.assertEqual(result, {"ok": True, "code": "ok", "taskIssue": 15})
+
+    def test_unfinished_local_binding_returns_it_and_unknown_facts_fail_closed(self):
+        existing = select_task_candidate(self.binding(13), [12, 13], {
+            12: self.issue(12), 13: self.issue(13),
+        }, project_id=17, current_user="me", closed_by_commit=set())
+        self.assertEqual(existing, {"ok": True, "code": "task-in-progress", "taskIssue": 13})
+        broken = select_task_candidate(self.binding(), [12], {
+            12: {"iid": 12, "project_id": 17, "state": "opened", "description": task_marker("alpha")},
+        }, project_id=17, current_user="me", closed_by_commit=set())
+        self.assertFalse(broken["ok"])
+        self.assertEqual(broken["code"], "context-unknown")
+        mismatch = select_task_candidate(self.binding(), [12], {
+            12: self.issue(12, marker="<!-- spec-guard-task:module=other -->"),
+        }, project_id=17, current_user="me", closed_by_commit=set())
+        self.assertFalse(mismatch["ok"])
+        self.assertEqual(mismatch["code"], "context-mismatch")
 
 
 if __name__ == "__main__":

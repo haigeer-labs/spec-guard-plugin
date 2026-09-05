@@ -45,6 +45,76 @@ def module_marker(module_id, row_digest):
         module_id, _digest(row_digest, "rowDigest"))
 
 
+def task_marker(module_id):
+    """返回 plan-indexed GitLab task 必须逐行携带的模块身份 marker。"""
+    if not isinstance(module_id, str) or not MODULE_ID.fullmatch(module_id):
+        raise TrackerIdentityError("module id 必须是 kebab-case")
+    return "<!-- spec-guard-task:module=%s -->" % module_id
+
+
+def _task_identity(issue, module_id, project_id):
+    if not isinstance(issue, dict):
+        return reject_task("context-unknown", "GitLab task 响应不是对象")
+    if issue.get("project_id") != project_id:
+        return reject_task("context-mismatch", "GitLab task 不属于当前项目")
+    if not isinstance(issue.get("iid"), int) or issue["iid"] <= 0:
+        return reject_task("context-unknown", "GitLab task 缺少有效 iid")
+    if issue.get("state") not in ("opened", "closed"):
+        return reject_task("context-unknown", "GitLab task state 不可读取")
+    if not isinstance(issue.get("description"), str):
+        return reject_task("context-unknown", "GitLab task 缺少 description")
+    if task_marker(module_id) not in issue["description"].splitlines():
+        return reject_task("context-mismatch", "GitLab task 缺少当前模块的完整 marker")
+    assignees = issue.get("assignees")
+    if not isinstance(assignees, list):
+        return reject_task("context-unknown", "GitLab task assignees 不可读取")
+    names = []
+    for assignee in assignees:
+        name = assignee.get("username") if isinstance(assignee, dict) else None
+        if not isinstance(name, str) or not name:
+            return reject_task("context-unknown", "GitLab task assignee 不可读取")
+        names.append(name)
+    return {"ok": True, "issue": issue, "assignees": names}
+
+
+def reject_task(code, message):
+    return {"ok": False, "code": code, "message": message}
+
+
+def select_task_candidate(binding, plan_iids, issues, project_id, current_user, closed_by_commit):
+    """从已读取的 GitLab task facts 中确定唯一下一项，绝不查询或写入 tracker。"""
+    if (not isinstance(binding, dict) or not isinstance(binding.get("moduleId"), str) or
+            binding.get("taskIssue") is not None and
+            (type(binding["taskIssue"]) is not int or binding["taskIssue"] <= 0)):
+        return reject_task("context-unknown", "worktree binding 缺少有效模块或 task")
+    if (not isinstance(plan_iids, list) or not plan_iids or
+            any(type(iid) is not int or iid <= 0 for iid in plan_iids) or
+            len(set(plan_iids)) != len(plan_iids) or not isinstance(issues, dict) or
+            type(project_id) is not int or project_id <= 0 or
+            not isinstance(current_user, str) or not current_user or
+            not isinstance(closed_by_commit, set) or
+            any(type(iid) is not int or iid <= 0 for iid in closed_by_commit)):
+        return reject_task("context-unknown", "GitLab task 选择输入不完整")
+
+    ordered = ([binding["taskIssue"]] if binding["taskIssue"] is not None else []) + [
+        iid for iid in plan_iids if iid != binding.get("taskIssue")]
+    for iid in ordered:
+        if iid not in plan_iids:
+            return reject_task("context-mismatch", "binding task 不属于当前模块计划索引")
+        checked = _task_identity(issues.get(iid), binding["moduleId"], project_id)
+        if not checked["ok"]:
+            return checked
+        issue = checked["issue"]
+        if issue["state"] == "closed" or iid in closed_by_commit:
+            continue
+        if any(name != current_user for name in checked["assignees"]):
+            continue
+        if binding.get("taskIssue") == iid:
+            return {"ok": True, "code": "task-in-progress", "taskIssue": iid}
+        return {"ok": True, "code": "ok", "taskIssue": iid}
+    return {"ok": True, "code": "no-eligible-task", "taskIssue": None}
+
+
 def parse_issue_page(payload):
     """严格读取 GitLab Issues API 的一页 JSON 响应。"""
     try:
@@ -186,6 +256,85 @@ class GitLabClient(object):
                         "-f", "title=%s" % title, "-f", "description=%s" % description)
         return _issue(raw, "新建 GitLab Issue")
 
+    def current_username(self):
+        user = _json(self.call("api", "user"), "GitLab current user")
+        username = user.get("username") if isinstance(user, dict) else None
+        if not isinstance(username, str) or not username:
+            raise TrackerIdentityError("GitLab current user 缺少 username")
+        return username
+
+
+def _plan_task_iids(plan_path):
+    try:
+        text = Path(plan_path).read_text(encoding="utf-8")
+    except OSError as error:
+        raise TrackerIdentityError("plan.md 无法读取") from error
+    matches = re.findall(r"^> Tasks tracked in GitLab Issues:\s*((?:#[1-9][0-9]*(?:,\s*#[1-9][0-9]*)*))\s*$",
+                         text, re.M)
+    if len(matches) != 1:
+        raise TrackerIdentityError("plan.md 必须恰好有一个 GitLab task 索引")
+    values = [int(value[1:]) for value in re.findall(r"#[1-9][0-9]*", matches[0])]
+    if not values or len(values) != len(set(values)):
+        raise TrackerIdentityError("GitLab task 索引为空或重复")
+    return values
+
+
+def _git(project, *args):
+    result = subprocess.run(["git", "-C", str(project)] + list(args), capture_output=True, text=True)
+    if result.returncode:
+        raise TrackerIdentityError(result.stderr.strip() or "Git 命令失败")
+    return result.stdout.strip()
+
+
+def _default_base(project):
+    probe = subprocess.run(["git", "-C", str(project), "symbolic-ref", "--short",
+                            "refs/remotes/origin/HEAD"], capture_output=True, text=True)
+    remote = probe.stdout.strip() if probe.returncode == 0 else ""
+    name = remote[7:] if remote.startswith("origin/") else ""
+    for candidate in (name, "main", "master"):
+        if candidate and subprocess.run(["git", "-C", str(project), "show-ref", "--verify", "--quiet",
+                                         "refs/heads/" + candidate]).returncode == 0:
+            return candidate
+    if name and subprocess.run(["git", "-C", str(project), "show-ref", "--verify", "--quiet",
+                               "refs/remotes/origin/" + name]).returncode == 0:
+        return "origin/" + name
+    raise TrackerIdentityError("无法确定默认基线，拒绝选择 GitLab task")
+
+
+def _closed_by_commit(project):
+    base = _default_base(project)
+    messages = _git(project, "log", "--format=%B", "%s..HEAD" % base)
+    return set(int(value) for value in re.findall(
+        r"(?im)^\s*(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#([1-9][0-9]*)\b", messages))
+
+
+def select_next(project, map_path, state_path, plan_path):
+    """读完全部必需事实后选择一个 GitLab task，再原子更新当前 binding。"""
+    from workspace_binding import inspect_workspace, set_task_binding
+
+    binding_result = inspect_workspace(project, map_path, state_path)
+    if not binding_result.get("ok"):
+        return binding_result
+    binding = binding_result["binding"]
+    if binding.get("tracker") != "gitlab":
+        return reject_task("context-mismatch", "当前 binding 不是 gitlab tracker")
+    try:
+        plan_iids = _plan_task_iids(plan_path)
+        client = GitLabClient()
+        client.initialize()
+        issues = dict((iid, client.read_issue(iid)) for iid in plan_iids)
+        selected = select_task_candidate(binding, plan_iids, issues, client.project_id,
+                                         client.current_username(), _closed_by_commit(project))
+        if not selected.get("ok") or selected["code"] in ("task-in-progress", "no-eligible-task"):
+            return selected
+        updated = set_task_binding(project, map_path, state_path, selected["taskIssue"],
+                                   expected_previous=binding.get("taskIssue"))
+        if not updated.get("ok"):
+            return updated
+        return dict(selected, binding=updated["binding"])
+    except (OSError, TrackerIdentityError, ValueError) as error:
+        return reject_task("context-unknown", str(error))
+
 
 def _map_projection(map_path):
     from capability_map import parse_map as parse_capability_map
@@ -288,14 +437,22 @@ def sync_map(project, map_path, state_path, confirm):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Spec Guard GitLab tracker helper")
-    parser.add_argument("action", choices=("sync",))
+    parser.add_argument("action", choices=("sync", "next"))
     parser.add_argument("--project", required=True)
     parser.add_argument("--map", required=True)
     parser.add_argument("--state", required=True)
+    parser.add_argument("--plan")
     parser.add_argument("--confirm", action="store_true")
     args = parser.parse_args(argv)
     try:
-        sync_map(args.project, args.map, args.state, args.confirm)
+        if args.action == "sync":
+            sync_map(args.project, args.map, args.state, args.confirm)
+        else:
+            if not args.plan:
+                raise TrackerIdentityError("next 必须指定 --plan")
+            result = select_next(args.project, args.map, args.state, args.plan)
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+            return 0 if result.get("ok") else 1
     except (OSError, TrackerIdentityError) as error:
         print("❌ %s" % error, file=__import__("sys").stderr)
         return 1

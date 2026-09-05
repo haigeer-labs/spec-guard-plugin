@@ -265,6 +265,23 @@ def bind_workspace(project, map_path, state_path, module_id, task_issue=None, re
         return reject("context-unknown", str(error))
 
 
+def set_task_binding(project, map_path, state_path, task_issue, expected_previous=None):
+    """仅由已验证的 selector 写入 taskIssue；不允许静默替换未完成任务。"""
+    try:
+        _issue(task_issue, "taskIssue", allow_null=True)
+        current = inspect_workspace(project, map_path, state_path)
+        if not current.get("ok"):
+            return current
+        record = dict(current["binding"])
+        if record["taskIssue"] != expected_previous:
+            return reject("context-mismatch", "task binding 已变化，拒绝覆盖")
+        record["taskIssue"] = task_issue
+        _atomic_write(_binding_path(_facts(project, map_path, state_path)), record)
+        return {"ok": True, "code": "ok", "binding": record}
+    except (BindingError, MapError, OSError, ValueError) as error:
+        return reject("context-unknown", str(error))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)

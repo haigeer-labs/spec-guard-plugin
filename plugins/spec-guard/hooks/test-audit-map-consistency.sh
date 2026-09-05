@@ -2,7 +2,12 @@
 # 增量覆盖 audit-map-consistency 的已实现契约；不调用远端或 Agent。
 set -euo pipefail
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
-PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" <<'PY'
+MODE="${1:-}"
+case "$MODE" in
+  ""|--selftest) ;;
+  *) printf 'usage: %s [--selftest]\n' "$0" >&2; exit 2 ;;
+esac
+PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" "$MODE" <<'PY'
 import json
 import os
 import re
@@ -14,6 +19,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+mode = sys.argv.pop()
 hooks = Path(sys.argv.pop())
 sys.path.insert(0, str(hooks))
 from capability_map import MapError, parse_map
@@ -645,5 +651,60 @@ class SyncPreflightInstructions(unittest.TestCase):
                             self.assertEqual(json.loads(result.stdout)["order"], ["identity", "billing", "notifications", "reporting"])
 
 
+def selftest():
+    """在隔离插件副本恢复旧漏洞；每个都必须让同一份聚焦回归变红。"""
+    mutations = [
+        ("不拆并列 Build order", "hooks/capability_map.py",
+         'groups = [[_strip_ticks(item) for item in group.split(",")]',
+         'groups = [[_strip_ticks(group)]'),
+        ("同组依赖按展开位置放行", "hooks/capability_map.py",
+         'positions = {module_id: index for index, group in enumerate(order_groups)\n                 for module_id in group}',
+         'positions = {module_id: index for index, module_id in enumerate(order)}'),
+        ("尾斜杠不规范化", "hooks/parallel_safety_gate.py",
+         'return "/".join(part for part in value.split("/") if part not in ("", ".")) or "."',
+         'return value'),
+        ("直接库调用绕过边界验证", "hooks/parallel_safety_gate.py",
+         'valid[module] = _validate_boundary(boundaries[module])',
+         'valid[module] = boundaries[module]'),
+        ("链接检查被绕过", "hooks/parallel_safety_gate.py",
+         'if stat.S_ISLNK(metadata.st_mode):',
+         'if False:'),
+        ("Desktop 预览吞掉子进程失败", "mcp/claude_desktop_server.mjs",
+         'if (result.status !== 0)',
+         'if (false)'),
+        ("摘要只 hash module id", "hooks/spec-digest.py",
+         'rows = [(row.module_id, row.normalized_row) for row in parsed.rows]',
+         'rows = [(row.module_id, row.module_id) for row in parsed.rows]'),
+    ]
+    failures = []
+    with tempfile.TemporaryDirectory(prefix="sg-map-mutation-") as temp:
+        root = Path(temp) / "spec-guard"
+        shutil.copytree(hooks.parent, root)
+        for name, relative, old, new in mutations:
+            target = root / relative
+            source = target.read_text(encoding="utf-8")
+            if old not in source:
+                failures.append(name + "（变异锚点失效）")
+                continue
+            target.write_text(source.replace(old, new, 1), encoding="utf-8")
+            try:
+                result = subprocess.run(["/bin/bash", str(root / "hooks/test-audit-map-consistency.sh")],
+                                        capture_output=True, text=True, timeout=90)
+            finally:
+                target.write_text(source, encoding="utf-8")
+            if result.returncode == 0:
+                failures.append(name + "（变异后仍通过）")
+                print("  ❌ " + name)
+            else:
+                print("  ✅ " + name)
+    if failures:
+        print("隔离变异自检失败: " + "；".join(failures), file=sys.stderr)
+        return 1
+    print("隔离变异自检通过")
+    return 0
+
+
+if mode == "--selftest":
+    sys.exit(selftest())
 unittest.main(verbosity=2)
 PY

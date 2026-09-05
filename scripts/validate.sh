@@ -66,6 +66,10 @@ echo "═══ 指纹算法自检 ═══"
 python3 plugins/spec-guard/hooks/spec-digest.py --selftest || F=1
 echo ""
 
+echo "═══ 能力图一致性聚焦回归 ═══"
+/bin/bash plugins/spec-guard/hooks/test-audit-map-consistency.sh || F=1
+echo ""
+
 echo "═══ Capability history ledger regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-capability-history.sh || F=1
 echo ""

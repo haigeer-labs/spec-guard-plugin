@@ -23,7 +23,8 @@
 | Claude Desktop MCPB | `source-verified`：`test-claude-desktop-mcp.sh` | `not-verified`：未记录已安装 MCPB 会话 | 只读；没有写入工具 |
 
 以上行不等同于 GitHub/GitLab 项目验收；项目验收必须另行记录目标仓库、操作范围和
-观察结果。完整自动并行执行不在支持范围内。
+观察结果。完整自动并行执行不在支持范围内。真实项目、双 worktree、新安装及降级环境的
+逐次确认流程见 [acceptance-journeys.md](acceptance-journeys.md)。
 
 ## 新安装或升级记录模板
 

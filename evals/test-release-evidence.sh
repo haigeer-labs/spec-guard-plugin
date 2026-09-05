@@ -4,6 +4,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VALIDATOR="$ROOT/scripts/release-evidence.py"
 GUIDE="$ROOT/docs/releases/README.md"
+JOURNEY_GUIDE="$ROOT/docs/releases/acceptance-journeys.md"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -25,6 +26,15 @@ write "$PARALLEL" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{
 MISSING_TARGET="$TMP/missing-target.json"
 write "$MISSING_TARGET" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"gitlab-project","status":"project-verified","observedAt":"2026-09-05T14:00:00Z","evidence":["run:1"]}]}'
 
+JOURNEY="$TMP/journey.json"
+write "$JOURNEY" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"codex-cli","status":"source-verified","target":{"kind":"source-checkout","id":"commit:abc"},"observedAt":"2026-09-05T14:00:00Z","evidence":["scripts/validate.sh"]}],"journeys":[{"id":"github-first-use","kind":"github-project","confirmation":"required","status":"not-verified","target":{"kind":"tracker-project","id":"github.com/example/spec-guard-e2e"},"expectedSideEffects":["create named test issues"],"reason":"requires explicit project approval"}]}'
+
+UNCONFIRMED_JOURNEY="$TMP/unconfirmed-journey.json"
+write "$UNCONFIRMED_JOURNEY" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"codex-cli","status":"source-verified","target":{"kind":"source-checkout","id":"commit:abc"},"observedAt":"2026-09-05T14:00:00Z","evidence":["scripts/validate.sh"]}],"journeys":[{"id":"github-first-use","kind":"github-project","confirmation":"not-required","status":"not-verified","target":{"kind":"tracker-project","id":"github.com/example/spec-guard-e2e"},"expectedSideEffects":["create named test issues"],"reason":"requires explicit project approval"}]}'
+
+WRONG_JOURNEY_TARGET="$TMP/wrong-journey-target.json"
+write "$WRONG_JOURNEY_TARGET" '{"schemaVersion":1,"release":{"version":"0.8.0"},"records":[{"subject":"codex-cli","status":"source-verified","target":{"kind":"source-checkout","id":"commit:abc"},"observedAt":"2026-09-05T14:00:00Z","evidence":["scripts/validate.sh"]}],"journeys":[{"id":"github-first-use","kind":"github-project","confirmation":"required","status":"not-verified","target":{"kind":"source-checkout","id":"commit:abc"},"expectedSideEffects":["create named test issues"],"reason":"requires explicit project approval"}]}'
+
 if python3 "$VALIDATOR" validate "$VALID" >/dev/null 2>&1; then
   ok "正：同等级 source 与 not-verified 记录通过"
 else
@@ -45,6 +55,21 @@ if ! python3 "$VALIDATOR" validate "$MISSING_TARGET" >/dev/null 2>&1; then
 else
   bad "反：项目证据缺少目标身份被拒绝"
 fi
+if python3 "$VALIDATOR" validate "$JOURNEY" >/dev/null 2>&1; then
+  ok "正：待确认的真实验收旅程可被如实记录"
+else
+  bad "正：待确认的真实验收旅程可被如实记录"
+fi
+if ! python3 "$VALIDATOR" validate "$UNCONFIRMED_JOURNEY" >/dev/null 2>&1; then
+  ok "反：未要求确认的真实验收旅程被拒绝"
+else
+  bad "反：未要求确认的真实验收旅程被拒绝"
+fi
+if ! python3 "$VALIDATOR" validate "$WRONG_JOURNEY_TARGET" >/dev/null 2>&1; then
+  ok "反：项目旅程不能把源码冒充为目标"
+else
+  bad "反：项目旅程不能把源码冒充为目标"
+fi
 if [ -f "$GUIDE" ] && python3 - "$GUIDE" <<'PY'
 import sys
 guide = open(sys.argv[1], encoding="utf-8").read()
@@ -55,6 +80,17 @@ then
   ok "正：发布矩阵单列各宿主且声明未验证边界"
 else
   bad "正：发布矩阵单列各宿主且声明未验证边界"
+fi
+if [ -f "$JOURNEY_GUIDE" ] && python3 - "$JOURNEY_GUIDE" <<'PY'
+import sys
+guide = open(sys.argv[1], encoding="utf-8").read()
+for value in ("GitHub 测试仓库", "GitLab 测试仓库", "两个手工创建的不同 worktree", "逐次获得用户确认", "not-verified"):
+    assert value in guide, value
+PY
+then
+  ok "正：真实验收旅程明确范围、确认边界与降级结果"
+else
+  bad "正：真实验收旅程明确范围、确认边界与降级结果"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

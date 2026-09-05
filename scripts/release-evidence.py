@@ -16,6 +16,13 @@ VERIFIED_TARGETS = {
 }
 UNVERIFIED = {"not-verified", "unsupported"}
 FORBIDDEN_CAPABILITIES = {"automatic-parallel-execution", "parallel-write-execution"}
+JOURNEY_TARGETS = {
+    "github-project": ("project-verified", "tracker-project"),
+    "gitlab-project": ("project-verified", "tracker-project"),
+    "manual-worktrees": ("host-verified", "worktree-pair"),
+    "fresh-install": ("installed-verified", "installed-session"),
+    "degraded-environment": (None, "environment"),
+}
 
 
 class Invalid(ValueError):
@@ -68,6 +75,43 @@ def check_record(record):
     fail("invalid evidence status")
 
 
+def check_journey(journey):
+    if not isinstance(journey, dict):
+        fail("journey must be an object")
+    nonempty(journey.get("id"), "journey id")
+    kind = journey.get("kind")
+    if kind not in JOURNEY_TARGETS:
+        fail("invalid journey kind")
+    if journey.get("confirmation") != "required":
+        fail("real acceptance journeys require confirmation")
+    target_kind, _ = check_target(journey.get("target"))
+    expected_status, expected_target = JOURNEY_TARGETS[kind]
+    if target_kind != expected_target:
+        fail("journey target does not match its kind")
+    effects = journey.get("expectedSideEffects")
+    if not isinstance(effects, list) or not effects:
+        fail("journey requires expected side effects")
+    for effect in effects:
+        nonempty(effect, "expected side effect")
+
+    status = journey.get("status")
+    if status in UNVERIFIED:
+        nonempty(journey.get("reason"), "unverified journey reason")
+        if "observedAt" in journey or "evidence" in journey:
+            fail("unverified journey must not claim an observation")
+        return
+
+    if status != expected_status:
+        fail("journey status does not match its target")
+    if not TIMESTAMP.fullmatch(journey.get("observedAt", "")):
+        fail("verified journey requires an observation time")
+    evidence = journey.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        fail("verified journey requires references")
+    for item in evidence:
+        nonempty(item, "journey evidence reference")
+
+
 def validate(data):
     if not isinstance(data, dict) or data.get("schemaVersion") != 1:
         fail("unsupported release evidence schema")
@@ -84,6 +128,15 @@ def validate(data):
         if key in seen:
             fail("duplicate evidence record")
         seen.add(key)
+    journeys = data.get("journeys", [])
+    if not isinstance(journeys, list):
+        fail("invalid journeys")
+    journey_ids = set()
+    for journey in journeys:
+        check_journey(journey)
+        if journey["id"] in journey_ids:
+            fail("duplicate journey id")
+        journey_ids.add(journey["id"])
 
 
 def main(argv):

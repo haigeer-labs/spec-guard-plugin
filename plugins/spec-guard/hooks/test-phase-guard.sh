@@ -57,10 +57,32 @@ try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
 except Exception: print("")'
 }
 
+hasctx() {  # $1=用例名 $2=应出现的片段
+  local out; out="$(ctx)"
+  case "$out" in *"$2"*) printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)) ;;
+    *) printf '  ❌ %s（没有 %s）\n' "$1" "$2"; FAIL=$((FAIL+1)) ;;
+  esac
+}
+
+strict_map() {
+  mkdir -p spec
+  printf '%s\n' '## Goal' '' 'fixture' '' \
+    '| Module id | Responsibility | Depends on |' '|---|---|---|' \
+    '| x | fixture | — |' '' 'Build order: x' > spec/CAPABILITY-MAP.md
+}
+
 echo "═══ phase-guard 回归测试 ═══"
 
 base
 chk "空仓库" "IDLE|断链0"
+
+# 远端 tracker 的严格能力图项目必须被只读地提示显式绑定；hook 不得趁机写
+# .git 或 state。旧的非严格夹具不触发这条诊断，避免把 Phase 0 误判为 binding。
+base; strict_map; mkdir -p .agent tasks/x; touch spec/x.md tasks/x/plan.md
+printf '%s\n' '{"tracker":"github","activeModule":"x","initiative":{"issue":1},"modules":{"x":{"issue":2}}}' > .agent/state.json
+git remote add origin git@github.com:fixture/repo.git
+hasctx "远端严格项目缺 binding → 只读迁移诊断" "当前 worktree 没有可用的 tracker binding（context-unknown）"
+hasctx "缺 binding 的下一步指向显式绑定" "/spec-guard:bind-workspace"
 
 base; mkdir -p spec; touch spec/CAPABILITY-MAP.md
 chk "只有能力图" "MAP_ONLY|断链1"

@@ -188,6 +188,28 @@ echo "═══ 产物落地校验 ═══"
 echo "  tracker=${TRACKER}${MODULE:+  activeModule=${MODULE}}"
 echo ""
 
+# 只读诊断：远端 tracker 的 worktree 必须先显式绑定才可进入 next/deliver。
+# 不在这里创建、修复或覆盖 binding；能力图尚未有严格 Build order 的旧项目保留
+# 原有迁移路径，不能凭不完整输入制造误报。
+if { [ "${TRACKER}" = "github" ] || [ "${TRACKER}" = "gitlab" ]; } \
+   && [ -n "${MODULE}" ] && [ -f "spec/CAPABILITY-MAP.md" ] \
+   && grep -q '^Build order:' "spec/CAPABILITY-MAP.md" 2>/dev/null \
+   && [ -f "${SELF_DIR}/hooks/workspace_binding.py" ]; then
+  BINDING_JSON=$(python3 "${SELF_DIR}/hooks/workspace_binding.py" inspect --project "${ROOT}" --format json 2>/dev/null || true)
+  BINDING_CODE=$(printf '%s' "${BINDING_JSON}" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("code", "context-unknown"))
+except Exception: print("context-unknown")
+' 2>/dev/null)
+  echo "── A0. worktree tracker binding ──"
+  if [ "${BINDING_CODE}" = "ok" ]; then
+    ok "当前 worktree tracker binding 已验证"
+  else
+    bad "当前 worktree tracker binding 不可用（${BINDING_CODE}）—— 这是只读诊断；确认身份后运行 /spec-guard:bind-workspace 显式绑定"
+  fi
+  echo ""
+fi
+
 # ── A. 能力图 ──────────────────────────────────────────────
 echo "── A. 能力图 ──"
 MAP="spec/CAPABILITY-MAP.md"

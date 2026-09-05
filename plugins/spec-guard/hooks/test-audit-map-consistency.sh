@@ -232,9 +232,12 @@ elif args == ["repo", "view", "--output", "json"]:
     print(json.dumps({"path_with_namespace": "test/project"}))
 elif args == ["api", "projects/test%2Fproject"]:
     print(json.dumps({"id": 1}))
+elif len(args) >= 2 and args[0] == "api" and args[1].startswith("projects/1/issues?"):
+    print("[]")
 elif args[:3] == ["api", "-X", "POST"] and args[3] == "projects/1/issues":
     calls = [json.loads(line) for line in log.read_text().splitlines()]
-    print(json.dumps({"iid": sum("POST" in call for call in calls)}))
+    print(json.dumps({"iid": sum("POST" in call for call in calls), "project_id": 1,
+                      "description": next(arg[12:] for arg in args if arg.startswith("description="))}))
 else:
     raise SystemExit("Unexpected glab call: " + repr(args))
 ''')

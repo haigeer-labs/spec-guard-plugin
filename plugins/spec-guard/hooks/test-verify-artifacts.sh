@@ -31,6 +31,12 @@ map() {  # $@ = module ids
     echo ""; echo "- [x] 已评审"; } > spec/CAPABILITY-MAP.md
 }
 
+strict_map() {
+  printf '%s\n' '## Goal' '' 'fixture' '' \
+    '| Module id | Responsibility | Depends on |' '|---|---|---|' \
+    '| identity | x | — |' '' 'Build order: identity' > spec/CAPABILITY-MAP.md
+}
+
 # 跑一次，输出「通过数|警告数|失败数|退出码」
 run() {
   local out rc
@@ -63,6 +69,13 @@ has() {  # $1=用例名 $2=期望包含
 }
 
 echo "═══ verify-artifacts 回归测试 ═══"
+
+# tracker binding 只做只读诊断：它不能因缺记录创建文件或改写 state。
+base; strict_map; touch spec/identity.md
+mkdir -p tasks/identity; echo "## Task List" > tasks/identity/plan.md
+echo '{"tracker":"github","activeModule":"identity","initiative":{"issue":1},"modules":{"identity":{"issue":2}}}' > .agent/state.json
+git remote add origin git@github.com:fixture/repo.git
+has "远端严格项目缺 binding → verify 给可操作诊断" "当前 worktree tracker binding 不可用（context-unknown）"
 
 # ── 零误报：合规项目必须全绿 ──
 base; map identity; touch spec/identity.md

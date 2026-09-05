@@ -94,11 +94,18 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 
 ## 操作三：`/next` 选择下一个任务
 
-读取 `.agent/state.json` 的 `activeModule` 与对应的 `modules.<id>.issue`，再用
-`glab api 'projects/<project-id>/issues/<iid>'` 确认该 Issue 仍为 `opened`。从该模块
-`plan.md` 的 GitLab Issue 索引中逐条查询：只选择 `opened` 的 task，按计划出现顺序给出
-一个候选。打开时才进入 `/build`；关闭、缺失或无法查询时停止并要求刷新 state。不要把
-`relates_to` 当作依赖排序依据。
+先运行 `workspace_binding.py inspect`；从其 `binding.moduleId` 取得唯一模块，再调用唯一选择器：
+
+```bash
+python3 plugins/spec-guard/hooks/gitlab_tracker.py next \
+  --project . --map spec/CAPABILITY-MAP.md --state .agent/state.json \
+  --plan tasks/<binding.moduleId>/plan.md
+```
+
+只有 JSON 的 `code=ok` 才进入 `/build`。选择器只使用该计划索引、完整模块 marker、远端
+`opened` 状态、当前用户 assignee 和默认基线到 `HEAD` 的 closing keyword；它不会使用
+`relates_to`，不会回退到 `gh`，也不会在远端事实不可读时猜测候选。`task-in-progress` 原样
+返回未完成本地 binding；`no-eligible-task` 只报告状态，不能擅自推进模块。
 
 当没有打开的 task 时，先向用户展示模块 Issue 与 task 的关闭状态。确认模块已完成后才
 关闭模块 Issue、推进 `activeModule` 到 build order 的下一项，并立即写回状态；最后一个
@@ -106,6 +113,9 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 流程。
 
 ## 操作四：`/deliver` 模块级 Merge Request
+
+先运行同一 `workspace_binding.py inspect` 检查，只有 `code=ok` 才能创建、合并或关闭 GitLab
+对象；失败时停止并保留原记录，不要把 binding 当成可自动恢复的 tracker 缓存。
 
 1. 先执行 `code-review-and-quality` 的五轴检查和仓库测试；失败时不要创建 MR。
 2. 确认当前分支仅属于 `activeModule`，工作区干净，并将本模块关闭 task 的 IID 写入

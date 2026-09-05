@@ -10,6 +10,16 @@ moduleId，说明实验写流程暂停，保存成果并只读核对；不要继
 
 普通分支才执行以下既有流程：
 
+若 `.agent/state.json` 的 `tracker` 是 `github` 或 `gitlab`，在加载 bridge、选择、认领或写入任何任务前，先运行：
+
+```bash
+python3 plugins/spec-guard/hooks/workspace_binding.py inspect --project . --format json
+```
+
+只有 JSON 的 `code` 为 `ok` 才能继续。`context-unknown`、`context-mismatch`、
+`dependency-blocked` 或 `task-in-progress` 必须立即停止并原样说明；缺失 binding 的旧串行项目引导用户执行
+`/spec-guard:bind-workspace`，不得由 `/next` 自动 enrol 或改写 `activeModule`。
+
 立即读取 `.agent/state.json` 的 `tracker`，加载对应 bridge skill，并完整执行其「操作三：next」：`github` 使用 `spec-github-bridge`，`gitlab` 使用 `spec-gitlab-bridge`，`none` 使用本地任务流程。不要只复述路由规则或静默结束。
 取到任务后接 /build。
 

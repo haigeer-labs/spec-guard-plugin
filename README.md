@@ -523,7 +523,7 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 |---|---|---|
 | `github` | GitHub Issues | 完整（含任务层） |
 | `github` + `issueTypes:false` | GitHub Issues（个人仓库） | 完整，仅省略 `--type` |
-| `gitlab` | GitLab Issues | 完整（含任务层；平面 Issue，`relates_to` 仅作关联） |
+| `gitlab` | GitLab Issues | 受控任务选择（平面 Issue；需显式 worktree binding，`relates_to` 仅作关联） |
 | `none` | `tasks/<module>/todo.md` | 完整（上游原生路径） |
 | `other` / `jira` | 你自己的系统 | **只到 plan 层** |
 
@@ -554,6 +554,7 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 /bin/bash plugins/spec-guard/hooks/test-phase-guard.sh
 /bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh
 /bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh
+/bin/bash plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh --selftest
 /bin/bash evals/codex-plugin-smoke.sh --selftest            # 不调用 Codex
 ```
 
@@ -574,8 +575,10 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 
 ## 已知限制
 
-1. **任务层自动化覆盖 `github`、`gitlab` 和 `none`**。GitLab 使用平面 Issue 与 Merge
-   Request；受 GitLab 15.3 API 能力限制，`relates_to` 只表示关联，不代表父子或阻塞关系。
+1. **GitLab 任务层使用受控选择而非全局并行器。** 当前 worktree 必须显式绑定 initiative 与
+   module；binding 是本地上下文，不是跨机器 lease，也不创建 Agent/worktree。GitLab 使用平面
+   Issue 与 Merge Request；`relates_to` 只表示关联，不代表父子、阻塞或锁。真实 GitLab 实例的
+   写入 E2E 作为发布证据单独验收，离线桩测试不替代它。
    `jira` 等其他 tracker 仍只检测到 plan 层。
 2. **需要 `gh` ≥ 2.94.0**。
 3. ~~`/deliver` 的 PR 环节未经端到端实测~~ —— **0.7.1 起作废，已实测。**

@@ -285,3 +285,67 @@ C1 的 --selftest 与接入常规 validate 尚待 #172，不计为已通过。
 AC4/AC5 已有本地修复证据，F05/F12 整体关闭仍需 #171–#173 的文档、常规门禁、
 隔离变异和最终交付检查。当前完成 12/15 个任务/检查点，剩余 3 项。
 自动执行器保持暂停；未提交提案保持原样。C 提交后交用户审阅，再进入最终收尾阶段。
+
+## Checkpoint D：模块交付评审（2026-09-05 续）
+
+T10、T11 和本检查点在 C 后完成。T10 的用户文档提交为 `167ea36` / #171；
+T11 的常规门禁与隔离变异提交为 `ca5eb75` / #172；本段报告提交对应 #173。
+
+### 完整验收与任务可追溯性
+
+在代码未再变更的条件下，重新串行运行 C1–C6。结果：
+
+| 验证项 | 结果 |
+| --- | --- |
+| C1 `test-audit-map-consistency.sh` | 35 组通过，退出 0 |
+| C1 `--selftest` | 7 个隔离变异全部被抓到，退出 0 |
+| C2 digest selftest、readiness | 均退出 0 |
+| C3 GitLab sync、Desktop MCP | 均退出 0；MCP 7 / 0 |
+| C4 safety gate、guidance | 均退出 0 |
+| C5 `scripts/validate.sh` | 完整通过，退出 0；checkers 34 / 0 |
+| C5 phase、verify-artifacts、Codex adapter | 129 / 0、72 / 0、10 / 0 |
+| C5 Codex smoke selftest | 判决器自检退出 0；故意的“hook 输出无事实”反例不是宿主成功 |
+| C6 capability-history、history-migration、history-verification | 均退出 0；capability-history 11 / 0 |
+| C6 audit-safety-containment | 通过，退出 0；实验写入口仍封闭 |
+| `git diff --check` | 通过 |
+
+`--selftest` 在临时复制的 `plugins/spec-guard/` 内逐项恢复旧行为，随后运行同一份聚焦回归；
+真实工作区不写入变异。被抓到的方向为：不拆并列 Build order、用展开位置放过同组依赖、
+尾斜杠不规范化、库入口绕过字段验证、链接检查绕过、Desktop 吞掉子进程失败、摘要只 hash id。
+此前 `--selftest` 参数只是被忽略、普通测试返回 0；本轮已修正并接入常规 `validate.sh`。
+
+本分支从基线 `44e3546` 至本检查点，#159–#173 各有一条 closing commit：
+`db8e7d2`、`d8bf66e`、`9e8d30a`、`7898611`、`24b2d24`、`de5802b`、`f257ab9`、
+`68cc548`、`9df61cd`、`fd45733`、`a03c76e`、`d8dd546`、`167ea36`、`ca5eb75` 与本提交。
+这些 GitHub Issue 在模块 PR 合入默认分支前仍应保持 open；不创建本地 checklist 代替 tracker。
+
+### AC 与 Definition of Done 复查
+
+- AC1：严格共享解析接受线性/并列顺序、拒绝坏图；readiness 依赖层不混用 Build order。
+- AC2：GitLab、Desktop、GitHub/Codex 指引均有共享入口/片段回归；没有新增远端写入或第二解析器。
+- AC3：基线黄金 digest、旧无 Build order 输入与真实漂移均有回归，算法仍只有 `spec-digest.py` 一份。
+- AC4/AC5：词法等价、父子关系、非法输入、空声明、别名、链接与无 project 上下文均保守处理；
+  canary 证明未读取外部链接目标。
+- AC6：聚焦回归已进 validate，7 条隔离变异均被杀死；没有在真实工作区做就地变异。
+- AC7：README、Desktop 文档、两份行为 spec、CHANGELOG 和验收报告均区分候选、声明检查、
+  运行时安全、四端原生验证和写入口暂停。
+
+按 Definition of Done 与五维代码审查做了本地复核，未发现阻断合入的问题：
+输入在路径、CLI JSON 与跨进程边界上显式验证；没有新依赖、后台服务、状态 schema 或自动执行分支；
+共享 parser/digest 没有复制；每个行为变化都有 RED/Green 或隔离变异证据。变更按任务提交，
+文档与公开命令契约同步。此为作者自审，**尚不替代合并前的人类 PR 审查**。
+
+### 已修复、仍受限与未验证
+
+已修复：F12 的并列 Build order 消费者分歧，以及 F05 的已知路径拼写、直接库输入、
+链接/别名不确定性和诊断缺失。修复均是保守拒绝或降级，不扩张自动化权限。
+
+仍受限：该检查不递归验证目录所有后代，不检测所有硬链接/挂载别名，不防检查后的文件系统变化，
+也不证明实际 diff、端口、测试服务或运行资源隔离。GitLab 同步幂等/恢复与任务绑定仍在后续模块范围内。
+
+未验证：真实 GitHub/GitLab 业务仓库上的本模块端到端写流程、四端原生 UI、Windows 行为、
+大目录性能、已安装包升级和发布。Desktop 的 MCP 协议测试不等于 Desktop UI E2E；Codex smoke
+自检不等于已加载本分支插件的宿主通过。
+
+自动执行器、worktree 创建、Agent 启动、登记、汇合与回收仍保持暂停。本模块未推送、合并、发布、
+安装或删除任何资源；CheckPoint D 后才可按用户批准创建模块 PR，PR 合入前不称 Issue 已关闭。

@@ -10,8 +10,8 @@ import time
 import sys
 
 from parallel_cli_adapters import CliTimeout, command_for, run_worker
-from parallel_execution_lib import (LedgerError, ledger_root, load_json, validate_record,
-                                    write_json_exclusive)
+from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
+                                    validate_record, write_json_exclusive)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
 
@@ -67,9 +67,13 @@ def _replace_record(path, record):
 def start_worker(project, worker_id, host, timeout_seconds=None):
     project = os.path.abspath(project)
     manifest = load_worker_manifest(project, worker_id)
+    if current_head(project) != manifest["baseSha"]:
+        raise LedgerError("worker 基线与当前 HEAD 不一致")
     ready = verify_worker(project, manifest)
     if ready.get("ok") is not True:
         raise LedgerError("worker 不可启动: %s" % ready.get("reason", "unknown"))
+    if ready["workerHead"] != manifest["baseSha"]:
+        raise LedgerError("worker 已有提交，拒绝重复启动")
     command = command_for(host, manifest["worktreePath"], {"codex-cli": "codex", "claude-cli": "claude"}.get(host, ""))
     record = {
         "schemaVersion": 1,

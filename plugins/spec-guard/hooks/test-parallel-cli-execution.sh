@@ -176,6 +176,19 @@ tampered_start = subprocess.run([sys.executable, cli, "start", "--project", proj
                                  "--worker", tampered["workerId"], "--host", "codex-cli"],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 assert tampered_start.returncode == 1 and "worker branch" in tampered_start.stderr, tampered_start.stderr
+
+# 已创建但尚未启动的 worker 不得在 controller 初始基线漂移后启动。
+drifted = worker("d" * 12 + "-alpha-2")
+with open(os.path.join(project, "README.md"), "a", encoding="utf-8") as handle:
+    handle.write("controller advanced\n")
+subprocess.check_call(["git", "-C", project, "add", "README.md"])
+subprocess.check_call(["git", "-C", project, "commit", "-qm", "controller advanced"])
+try:
+    parallel_cli.start_worker(project, drifted["workerId"], "codex-cli")
+except LedgerError as error:
+    assert "基线" in str(error), error
+else:
+    raise AssertionError("baseline-drifted worker start accepted")
 PY
 
 printf 'parallel-cli-execution regression passed\n'

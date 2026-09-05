@@ -25,6 +25,12 @@ for required in ("这是只读命令", "parallel-execution.py\" status", "parall
     assert required in status, required
 for forbidden in (" create-run", " provision", " reclaim", "\" start"):
     assert forbidden not in status, forbidden
+
+for path in ("next.md", "deliver.md"):
+    command = open(sys.argv[1].replace("parallel-execute.md", path), encoding="utf-8").read()
+    for required in ("spec-guard/<worker-id>", "parallel-worktree.py verify", "moduleId",
+                     "不得继续执行下面的 canonical", "activeModule"):
+        assert required in command, (path, required)
 PY
 
 printf 'parallel-workflow-integration regression passed\n'

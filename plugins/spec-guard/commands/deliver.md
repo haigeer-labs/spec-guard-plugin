@@ -2,6 +2,14 @@
 description: 当前模块交付到当前 tracker
 allowed-tools: Bash, Read, Write
 ---
+先检查当前分支。若它是 `spec-guard/<worker-id>`，这是 controller-owned worker checkout：先用
+`parallel-worktree.py verify` 复验 manifest，并从 manifest 读取唯一 `moduleId`；验证失败立即停止。
+验证成功也**不得继续执行下面的 canonical `/deliver` 路由**：worker 不得创建模块 PR、推进
+`activeModule`、关闭 initiative 或自行 merge。向用户报告该 worker 的 moduleId、分支和待人工
+汇合状态；仅 controller checkout 的单模块汇合流程可以处理后续交付。
+
+普通分支才执行以下既有流程：
+
 交付粒度是**模块**，不是单个 task。模块完成校验、默认分支解析与远端交付命令由所选 bridge 定义；不要在此处调用另一 tracker 的 CLI。
 
 交付前 invoke code-review-and-quality 做五轴自查；有 Critical 级别发现时不要交付，先修。

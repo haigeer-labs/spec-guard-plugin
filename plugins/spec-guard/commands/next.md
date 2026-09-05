@@ -2,6 +2,14 @@
 description: 从当前 tracker 取下一个可执行任务并开始实现
 allowed-tools: Bash, Read, Write
 ---
+先检查当前分支。若它是 `spec-guard/<worker-id>`，这是 controller-owned worker checkout：先用
+`parallel-worktree.py verify` 复验 manifest，并从 manifest 读取唯一 `moduleId`；验证失败立即停止。
+验证成功也**不得继续执行下面的 canonical `/next` 路由**：共享 `.agent/state.json` 只有一个
+`activeModule`，worker 不得修改它、关闭 initiative 或选择其他 module。向用户报告该 worker 的
+moduleId，并要求在该 module 的已分配任务范围内手工继续；需要汇合时使用 controller 的单模块流程。
+
+普通分支才执行以下既有流程：
+
 立即读取 `.agent/state.json` 的 `tracker`，加载对应 bridge skill，并完整执行其「操作三：next」：`github` 使用 `spec-github-bridge`，`gitlab` 使用 `spec-gitlab-bridge`，`none` 使用本地任务流程。不要只复述路由规则或静默结束。
 取到任务后接 /build。
 

@@ -6,7 +6,8 @@ import os
 import re
 import subprocess
 
-from parallel_execution_lib import LedgerError, current_head, ledger_root, validate_module_id, validate_record
+from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
+                                    validate_module_id, validate_record, write_json_exclusive)
 
 
 WORKER_ID = re.compile(r"^[0-9a-f]{12}-[a-z0-9]+(?:-[a-z0-9]+)*-[1-9][0-9]*$")
@@ -17,6 +18,19 @@ def worker_path(project, worker_id):
     if not isinstance(worker_id, str) or not WORKER_ID.match(worker_id):
         raise LedgerError("workerId 无效")
     return os.path.join(ledger_root(project), "worktrees", worker_id)
+
+
+def worker_manifest_path(project, worker_id):
+    """返回 controller-owned worker manifest 的唯一账本位置。"""
+    worker_path(project, worker_id)
+    return os.path.join(ledger_root(project), "workers", worker_id + ".json")
+
+
+def load_worker_manifest(project, worker_id):
+    """按 worker ID 读取完整 provenance；缺失或损坏均不可启动。"""
+    manifest = load_json(worker_manifest_path(project, worker_id), "worker manifest")
+    validate_worker_manifest(project, manifest)
+    return manifest
 
 
 def _common_dir(project):
@@ -60,16 +74,28 @@ def provision(project, manifest):
     if _git(project, "status", "--porcelain"):
         raise LedgerError("源 worktree 不干净")
     target = manifest["worktreePath"]
+    manifest_path = worker_manifest_path(project, manifest["workerId"])
     if os.path.lexists(target):
         raise LedgerError("worker worktree 已存在")
+    if os.path.lexists(manifest_path):
+        raise LedgerError("worker manifest 已存在")
     if subprocess.run(["git", "-C", project, "show-ref", "--verify", "--quiet",
                        "refs/heads/" + manifest["branch"]]).returncode == 0:
         raise LedgerError("worker branch 已存在")
+    created = False
     try:
         _git(project, "worktree", "add", "-b", manifest["branch"], target, manifest["baseSha"])
+        created = True
         if _git(target, "rev-parse", "HEAD") != manifest["baseSha"] or _git(target, "branch", "--show-current") != manifest["branch"]:
             raise LedgerError("新 worktree Git 元数据不匹配")
+        if not write_json_exclusive(manifest_path, manifest):
+            raise LedgerError("worker manifest 已存在")
     except LedgerError:
+        if created:
+            subprocess.run(["git", "-C", project, "worktree", "remove", "--force", target],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            subprocess.run(["git", "-C", project, "branch", "-D", manifest["branch"]],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         raise
     return manifest
 
@@ -105,10 +131,16 @@ def reclaim(project, manifest, merged=False, confirm=False):
     manifest = validate_worker_manifest(project, manifest)
     if not merged and not confirm:
         raise LedgerError("未合并 worker 必须显式 confirm discard")
+    if load_worker_manifest(project, manifest["workerId"]) != manifest:
+        raise LedgerError("worker manifest 与账本不匹配")
     status = verify_worker(project, manifest)
     if status["ok"] is not True:
         raise LedgerError("worker 不可安全回收: %s" % status["reason"])
     _git(project, "worktree", "remove", manifest["worktreePath"])
     _git(project, "branch", "-d" if merged else "-D", manifest["branch"])
     _git(project, "worktree", "prune")
+    try:
+        os.unlink(worker_manifest_path(project, manifest["workerId"]))
+    except OSError as error:
+        raise LedgerError("无法删除 worker manifest: %s" % error)
     return {"ok": True, "workerId": manifest["workerId"], "state": "reclaimed"}

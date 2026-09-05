@@ -12,7 +12,10 @@ esac
 PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" "$MODE" <<'PY'
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 
 hooks = Path(sys.argv[1])
@@ -26,6 +29,7 @@ from gitlab_tracker import (  # RED: the shared identity module does not exist y
     parse_issue_page,
     recover_exact_issue,
 )
+from workspace_binding import bind_workspace, inspect_workspace
 
 
 GOAL = "a1b2c3d4e5f6"
@@ -86,8 +90,129 @@ class ProjectionIdentityContract(unittest.TestCase):
             recover_exact_issue(page, marker, project_id=17, page_complete=True)
 
 
+class WorkspaceBindingContract(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.root = Path(self.tempdir.name) / "source"
+        self.worktree = Path(self.tempdir.name) / "linked"
+        self.root.mkdir()
+        self.git(self.root, "init", "-q")
+        self.git(self.root, "config", "user.email", "test@example.invalid")
+        self.git(self.root, "config", "user.name", "Spec Guard test")
+        (self.root / "README.md").write_text("fixture\n", encoding="utf-8")
+        self.git(self.root, "add", "README.md")
+        self.git(self.root, "commit", "-qm", "bootstrap")
+        (self.root / "README.md").write_text("fixture\ncompleted alpha\n", encoding="utf-8")
+        self.git(self.root, "add", "README.md")
+        self.git(self.root, "commit", "-qm", "complete alpha\n\nCloses #11")
+        self.git(self.root, "remote", "add", "origin", "git@GitHub.com:Acme/Widget.git")
+        self.git(self.root, "worktree", "add", "-q", "-b", "fixture-linked", str(self.worktree))
+        self.map_path = self.root / "spec" / "CAPABILITY-MAP.md"
+        self.map_path.parent.mkdir()
+        self.map_path.write_text(
+            "## Goal\n\nBinding fixture.\n\n"
+            "| Module id | Responsibility | Depends on |\n"
+            "|---|---|---|\n"
+            "| alpha | foundation | — |\n"
+            "| beta | dependent | alpha |\n\n"
+            "Build order: alpha → beta\n",
+            encoding="utf-8",
+        )
+        self.state_path = self.root / ".agent" / "state.json"
+        self.state_path.parent.mkdir()
+        self.state_path.write_text(json.dumps({
+            "tracker": "github",
+            "activeModule": "alpha",
+            "initiative": {"issue": 10, "goalDigest": GOAL},
+            "modules": {
+                "alpha": {"issue": 11, "rowDigest": ROW},
+                "beta": {"issue": 12, "rowDigest": ROW},
+            },
+        }), encoding="utf-8")
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def git(self, project, *args):
+        completed = subprocess.run(["git", "-C", str(project), *args], check=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return completed.stdout.strip()
+
+    def binding_path(self, project):
+        git_dir = self.git(project, "rev-parse", "--git-dir")
+        return (Path(project) / git_dir / "spec-guard" / "workspace-binding.json").resolve()
+
+    def test_explicit_bind_is_worktree_local_and_deterministic(self):
+        completed = subprocess.run([
+            sys.executable, str(hooks / "workspace_binding.py"), "bind",
+            "--project", str(self.root), "--map", str(self.map_path), "--state", str(self.state_path),
+            "--module", "alpha", "--format", "json",
+        ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["binding"]["repo"], "github.com/acme/widget")
+        self.assertEqual(result["binding"]["moduleIssue"], 11)
+        self.assertTrue(self.binding_path(self.root).is_file())
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"], "ok")
+
+        linked = bind_workspace(str(self.worktree), str(self.map_path), str(self.state_path), "beta")
+        self.assertTrue(linked["ok"])
+        self.assertNotEqual(linked["binding"]["gitDir"], result["binding"]["gitDir"])
+        self.assertEqual(inspect_workspace(str(self.worktree), str(self.map_path), str(self.state_path))["code"], "ok")
+
+    def test_copied_or_mapped_binding_fails_closed(self):
+        bound = bind_workspace(str(self.root), str(self.map_path), str(self.state_path), "alpha")
+        self.assertTrue(bound["ok"])
+        target = self.binding_path(self.worktree)
+        target.parent.mkdir(parents=True)
+        shutil.copyfile(self.binding_path(self.root), target)
+        self.assertEqual(inspect_workspace(str(self.worktree), str(self.map_path), str(self.state_path))["code"],
+                         "context-mismatch")
+
+        record = json.loads(self.binding_path(self.root).read_text(encoding="utf-8"))
+        record["repo"] = "github.com/acme/other"
+        self.binding_path(self.root).write_text(json.dumps(record), encoding="utf-8")
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-mismatch")
+        record["repo"] = "github.com/acme/widget"
+        record["tracker"] = "gitlab"
+        self.binding_path(self.root).write_text(json.dumps(record), encoding="utf-8")
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-mismatch")
+        record["tracker"] = "github"
+        record["moduleIssue"] = 999
+        self.binding_path(self.root).write_text(json.dumps(record), encoding="utf-8")
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-mismatch")
+
+    def test_missing_bad_non_git_and_unresolved_dependency_are_not_safe(self):
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-unknown")
+        self.binding_path(self.root).parent.mkdir(parents=True)
+        self.binding_path(self.root).write_text("{bad", encoding="utf-8")
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-unknown")
+        self.binding_path(self.root).write_text("[]", encoding="utf-8")
+        self.assertEqual(inspect_workspace(str(self.root), str(self.map_path), str(self.state_path))["code"],
+                         "context-unknown")
+        self.assertEqual(inspect_workspace(self.tempdir.name, str(self.map_path), str(self.state_path))["code"],
+                         "context-unknown")
+
+        root_beta = bind_workspace(str(self.root), str(self.map_path), str(self.state_path), "beta")
+        self.assertFalse(root_beta["ok"])
+        self.assertEqual(root_beta["code"], "context-mismatch")
+
+        # A dependency Issue mapped in state but without a current-HEAD closing
+        # commit is not enough evidence to bind a non-default worktree module.
+        self.git(self.worktree, "reset", "--hard", "HEAD~1")
+        blocked = bind_workspace(str(self.worktree), str(self.map_path), str(self.state_path), "beta")
+        self.assertFalse(blocked["ok"])
+        self.assertEqual(blocked["code"], "dependency-blocked")
+
+
 if __name__ == "__main__":
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProjectionIdentityContract)
+    suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     if mode == "--selftest" and result.wasSuccessful():
         print("selftest: title-only and partial-marker recovery are rejected")

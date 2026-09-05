@@ -10,7 +10,8 @@ import subprocess
 import sys
 import time
 
-from parallel_execution_lib import (ClaimConflict, LedgerError, claim_lease, ledger_root,
+from parallel_execution_lib import (ClaimConflict, LedgerError, ParallelWritesDisabled,
+                                    reject_parallel_write, claim_lease, ledger_root,
                                     load_json, run_modules, validate_module_id,
                                     validate_run_id, write_json_exclusive)
 
@@ -57,6 +58,7 @@ def _ensure_unique_host_worker(root, run_id_value, host, host_worker_id, cwd):
 
 
 def _host_manifest(project, run_id_value, module_id, host, host_worker_id, cwd):
+    reject_parallel_write()
     if host not in HOSTS:
         raise LedgerError("不支持的 Desktop host")
     if not isinstance(host_worker_id, str) or not HOST_WORKER_ID.match(host_worker_id):
@@ -98,6 +100,7 @@ def _host_manifest(project, run_id_value, module_id, host, host_worker_id, cwd):
 
 
 def register(project, run_id_value, module_id, host, host_worker_id, cwd):
+    reject_parallel_write()
     project = os.path.abspath(project)
     validate_run_id(run_id_value)
     validate_module_id(module_id)
@@ -124,6 +127,12 @@ def main(argv):
     try:
         result = register(args.project, args.run, args.module, args.host, args.host_worker_id,
                           args.cwd)
+    except ParallelWritesDisabled as error:
+        if args.format == "json":
+            print(json.dumps({"ok": False, "code": error.code, "message": str(error)}, ensure_ascii=False))
+        else:
+            print("parallel-desktop-register: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except ClaimConflict as error:
         print(json.dumps({"ok": False, "code": "CONFLICT", "message": str(error)}, ensure_ascii=False), file=sys.stderr)
         return 1

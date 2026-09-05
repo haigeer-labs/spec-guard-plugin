@@ -10,8 +10,9 @@ import time
 import sys
 
 from parallel_cli_adapters import CliTimeout, command_for, run_worker
-from parallel_execution_lib import (LedgerError, current_head, ledger_root, load_json,
-                                    validate_record, write_json_exclusive)
+from parallel_execution_lib import (LedgerError, ParallelWritesDisabled, reject_parallel_write,
+                                    current_head, ledger_root,
+                                    validate_record, write_json_exclusive, load_ledger_json)
 from parallel_worktree_lib import load_worker_manifest, verify_worker, worker_path
 
 
@@ -65,6 +66,7 @@ def _replace_record(path, record):
 
 
 def start_worker(project, worker_id, host, timeout_seconds=None):
+    reject_parallel_write()
     project = os.path.abspath(project)
     manifest = load_worker_manifest(project, worker_id)
     if current_head(project) != manifest["baseSha"]:
@@ -109,7 +111,12 @@ def inspect_worker(project, worker_id):
     project = os.path.abspath(project)
     try:
         manifest = load_worker_manifest(project, worker_id)
-        record = load_json(process_record_path(project, worker_id), "worker process record")
+        if manifest["owner"] == "host":
+            return dict(verify_worker(project, manifest), workerId=worker_id)
+        runtime = verify_worker(project, manifest)
+        if runtime.get("ok") is not True:
+            raise LedgerError("worker 资源无法核验: %s" % runtime.get("reason", "unknown"))
+        record = load_ledger_json(ledger_root(project), "processes", worker_id + ".json")
         _validate_process_record(record)
         for field in ("runId", "baseSha", "workerId", "moduleId", "worktreePath"):
             if record[field] != manifest[field]:
@@ -125,8 +132,10 @@ def inspect_worker(project, worker_id):
                     "reason": record["reason"]}
     except (LedgerError, OSError, ValueError, KeyError) as error:
         return {"ok": False, "workerId": worker_id, "state": "unknown", "reason": str(error)}
-    return {"ok": True, "workerId": worker_id, "state": record["state"],
-            "returncode": record["returncode"]}
+    return {"ok": True, "workerId": worker_id,
+            "state": "unverified" if record["state"] == "completed" else record["state"],
+            "recordedState": record["state"], "returncode": record["returncode"],
+            "reason": "旧版进程退出记录；任务验收与可回收性未核验"}
 
 
 def main(argv):
@@ -148,6 +157,12 @@ def main(argv):
             result = start_worker(args.project, args.worker, args.host, args.timeout_seconds)
         else:
             result = inspect_worker(args.project, args.worker)
+    except ParallelWritesDisabled as error:
+        if args.format == "json":
+            print(json.dumps({"ok": False, "code": error.code, "message": str(error)}, ensure_ascii=False))
+        else:
+            print("parallel-cli: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-cli: %s" % error, file=sys.stderr)
         return 1
@@ -156,7 +171,7 @@ def main(argv):
     else:
         detail = " (%s)" % result["reason"] if result.get("reason") else ""
         print("%s: %s%s" % (result["workerId"], result["state"], detail))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

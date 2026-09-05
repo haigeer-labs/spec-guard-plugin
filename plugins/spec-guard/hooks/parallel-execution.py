@@ -11,17 +11,20 @@ import sys
 from parallel_execution_lib import (
     ClaimConflict,
     LedgerError,
+    ParallelWritesDisabled,
     claim_lease,
     current_head,
     ledger_root,
     lease_status,
     load_json,
+    load_run,
     origin_remote,
     run_id,
     validate_record,
     validate_run_id,
     write_json_exclusive,
     run_modules,
+    reject_parallel_write,
 )
 
 
@@ -56,6 +59,7 @@ def _eligible_modules(report, map_order):
 
 
 def create_run(project, safety_report_path):
+    reject_parallel_write()
     project = os.path.abspath(project)
     report = load_json(safety_report_path, "safety report")
     map_path = os.path.join(project, "spec", "CAPABILITY-MAP.md")
@@ -88,6 +92,7 @@ def create_run(project, safety_report_path):
 
 
 def claim_module(project, run_id_value, module_id):
+    reject_parallel_write()
     project = os.path.abspath(project)
     validate_run_id(run_id_value)
     path = os.path.join(ledger_root(project), "runs", run_id_value + ".json")
@@ -101,13 +106,51 @@ def status_run(project, run_id_value):
     try:
         validate_run_id(run_id_value)
         root = ledger_root(project)
-        run = load_json(os.path.join(root, "runs", run_id_value + ".json"), "run")
+        run = load_run(root, run_id_value)
         modules = run_modules(run)
     except LedgerError as error:
         return {"ok": False, "runId": run_id_value, "state": "unknown", "reason": str(error), "modules": []}
     states = [lease_status(root, run, module_id) for module_id in modules]
+    from parallel_worktree_lib import load_worker_manifest, verify_worker
+    for state in states:
+        if state["state"] != "claimed":
+            continue
+        try:
+            manifest = load_worker_manifest(project, state["workerId"])
+            status = verify_worker(project, manifest)
+            if status.get("ok") is not True:
+                raise LedgerError(status.get("reason", "worker 资源无法核验"))
+        except (LedgerError, OSError, ValueError, KeyError) as error:
+            state.update(state="unknown", reason=str(error))
     return {"ok": all(item["state"] != "unknown" for item in states), "runId": run["runId"],
             "baseSha": run["baseSha"], "modules": states}
+
+
+def status_details(project, run_id_value):
+    """Aggregate read-only diagnostics without hiding a failed child query."""
+    result = status_run(project, run_id_value)
+    result["workers"] = []
+    from parallel_worktree_lib import load_worker_manifest, verify_worker
+    spec = importlib.util.spec_from_file_location("parallel_cli_status", os.path.join(os.path.dirname(__file__), "parallel-cli.py"))
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    for module in result["modules"]:
+        worker_id = module.get("workerId")
+        if not worker_id:
+            continue
+        try:
+            manifest = load_worker_manifest(project, worker_id)
+            runtime = verify_worker(project, manifest)
+            entry = {"workerId": worker_id, "runtime": runtime}
+            if manifest["owner"] != "host":
+                entry["process"] = cli.inspect_worker(project, worker_id)
+            if not runtime.get("ok") or not entry.get("process", {"ok": True}).get("ok"):
+                result["ok"] = False
+        except (LedgerError, OSError, ValueError, KeyError) as error:
+            entry = {"workerId": worker_id, "state": "unknown", "reason": str(error)}
+            result["ok"] = False
+        result["workers"].append(entry)
+    return result
 
 
 def main(argv):
@@ -126,6 +169,7 @@ def main(argv):
     status.add_argument("--project", default=".")
     status.add_argument("--run", required=True)
     status.add_argument("--format", choices=("text", "json"), default="text")
+    status.add_argument("--details", action="store_true", help="汇总只读 worker 与 process 诊断")
     args = parser.parse_args(argv)
     try:
         if args.command == "create-run":
@@ -133,7 +177,14 @@ def main(argv):
         elif args.command == "claim-module":
             result = claim_module(args.project, args.run, args.module)
         else:
-            result = status_run(args.project, args.run)
+            result = status_details(args.project, args.run) if args.details else status_run(args.project, args.run)
+    except ParallelWritesDisabled as error:
+        result = {"ok": False, "code": error.code, "message": str(error)}
+        if args.format == "json":
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        else:
+            print("parallel-execution: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except ClaimConflict as error:
         result = {"ok": False, "code": "CONFLICT", "message": str(error)}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
@@ -141,7 +192,7 @@ def main(argv):
     except (LedgerError, OSError, ValueError, KeyError) as error:
         print("parallel-execution: %s" % error, file=sys.stderr)
         return 1
-    if args.format == "json":
+    if args.format == "json" or (args.command == "status" and args.details):
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     else:
         if args.command == "create-run":
@@ -155,7 +206,7 @@ def main(argv):
             for item in result["modules"]:
                 detail = " (%s)" % item["reason"] if "reason" in item else ""
                 print("%s: %s%s" % (item["moduleId"], item["state"], detail))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

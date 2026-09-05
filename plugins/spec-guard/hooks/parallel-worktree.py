@@ -8,8 +8,9 @@ import os
 import subprocess
 import sys
 
-from parallel_execution_lib import (ClaimConflict, LedgerError, claim_lease, ledger_root,
-                                    load_json, validate_run_id)
+from parallel_execution_lib import (ClaimConflict, LedgerError, ParallelWritesDisabled,
+                                    claim_lease, ledger_root, load_json, reject_parallel_write,
+                                    validate_run_id)
 from parallel_worktree_lib import (load_worker_manifest, provision, reclaim, verify_worker,
                                    worker_path)
 
@@ -24,6 +25,7 @@ def _git_common_dir(project):
 
 
 def provision_worker(project, run_id_value, module_id):
+    reject_parallel_write()
     project = os.path.abspath(project)
     validate_run_id(run_id_value)
     root = ledger_root(project)
@@ -36,11 +38,15 @@ def provision_worker(project, run_id_value, module_id):
 
 
 def inspect_worker(project, worker_id):
-    manifest = load_worker_manifest(project, worker_id)
-    return verify_worker(project, manifest)
+    try:
+        manifest = load_worker_manifest(project, worker_id)
+        return dict(verify_worker(project, manifest), workerId=worker_id)
+    except (LedgerError, OSError, ValueError, KeyError) as error:
+        return {"ok": False, "workerId": worker_id, "state": "unknown", "reason": str(error)}
 
 
 def reclaim_worker(project, worker_id, merged, confirm):
+    reject_parallel_write()
     manifest = load_worker_manifest(project, worker_id)
     return reclaim(project, manifest, merged=merged, confirm=confirm)
 
@@ -71,6 +77,13 @@ def main(argv):
             result = inspect_worker(args.project, args.worker)
         else:
             result = reclaim_worker(args.project, args.worker, args.merged, args.confirm)
+    except ParallelWritesDisabled as error:
+        result = {"ok": False, "code": error.code, "message": str(error)}
+        if args.format == "json":
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        else:
+            print("parallel-worktree: %s: %s" % (error.code, error), file=sys.stderr)
+        return 1
     except ClaimConflict as error:
         result = {"ok": False, "code": "CONFLICT", "message": str(error)}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
@@ -83,10 +96,11 @@ def main(argv):
     elif args.command == "provision":
         print("已创建 worker %s" % result["manifest"]["workerId"])
     elif args.command == "verify":
-        print("%s: %s" % (args.worker, result["state"]))
+        detail = " (%s)" % result["reason"] if result.get("reason") else ""
+        print("%s: %s%s" % (args.worker, result["state"], detail))
     else:
         print("%s: %s" % (result["workerId"], result["state"]))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

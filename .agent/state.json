@@ -1,0 +1,34 @@
+{
+  "tracker": "github",
+  "issueTypes": false,
+  "activeModule": "audit-safety-containment",
+  "updatedAt": "2026-09-05T07:01:18.773Z",
+  "initiative": {
+    "title": "Spec Guard 整体审计整改与收尾",
+    "issue": 138,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "f9fc2cd9eaaf"
+  },
+  "modules": {
+    "audit-safety-containment": {
+      "issue": 139,
+      "rowDigest": "07ea48827b43"
+    },
+    "audit-map-consistency": {
+      "issue": 140,
+      "rowDigest": "c3305cecdfbb"
+    },
+    "audit-tracker-integrity": {
+      "issue": 141,
+      "rowDigest": "0fee064a2a19"
+    },
+    "audit-history-integrity": {
+      "issue": 142,
+      "rowDigest": "c17243822328"
+    },
+    "audit-release-evidence": {
+      "issue": 143,
+      "rowDigest": "2bf6547904c1"
+    }
+  }
+}

@@ -35,8 +35,8 @@ settings → Install Extension…** 后选取。安装页面会展示工具与�
 | `write_operation` | 返回需要确认的下一步 | 否，永不执行 |
 
 `setup`、创建/刷新 Issue、MR 创建/合并、history import、lifecycle、`next`、`deliver`、Desktop worker
-登记与 teardown 没有 MCP 工具入口。请在 Claude Code CLI、Codex CLI 或 Codex 桌面版中明确说明影响范围
-并确认后执行。
+登记与 teardown 没有 MCP 工具入口。普通串行写入请在 Claude Code CLI、Codex CLI 或 Codex 桌面版中明确说明影响范围
+并确认后执行；实验性并行写操作（包括 Desktop 登记）已暂停，切换宿主也不能重新开启。
 
 ## 四端功能矩阵
 
@@ -49,38 +49,28 @@ settings → Install Extension…** 后选取。安装页面会展示工具与�
 
 ## Desktop 原生 worktree worker 登记
 
-Spec Guard 只支持 **register-only**：用户先在 Codex Desktop 或 Claude Code Desktop 创建并选择一个原生
-linked worktree，然后才可以将该既有 worker 登记进一个已存在的并行 run。插件不会创建、隐藏、归档或删除
-Desktop task/session/worktree，也不会用会话标题、pending client ID 或目录名猜测 worker 身份。
+审计整改后的源码已暂停实验性 Desktop 登记，以及并行创建、启动、汇合与回收。登记命令保留为
+PARALLEL_WRITES_DISABLED 拒绝入口；目前尚未发布，旧安装不会自动更新。
 
-| 宿主 | 登记前必须由操作方取得 | 登记后的资源归属 |
-| --- | --- | --- |
-| Codex Desktop | 原生 task 的稳定 host worker ID，以及该 task 实际打开的 linked-worktree Git 根目录 | `owner=host`；由 Codex/Desktop 用户回收 |
-| Claude Code Desktop | 原生 task 的稳定 host worker ID，以及该 task 实际打开的 linked-worktree Git 根目录 | `owner=host`；由 Claude/Desktop 用户回收 |
+已存在的 host-owned worker 可以经 Codex ops 或 Claude Code 的 parallel-status 只读核验。
+展示 host、hostWorkerId、worktreePath、branch 和“完成与可回收性未核验”；不要求插件自有进程记录，
+也不依据 ownership、claimed 或旧 completed 判断可以删除。
 
-登记前，操作方需要从目标 worktree 读取并核对其 Git 根目录、common-dir、非 detached branch 和 HEAD；
-它还必须与 run 的 base SHA、目标 module 和尚未占用的 lease 同时匹配。主 checkout、submodule、detached
-worktree、没有稳定 host worker ID 或任一核对失败时，登记会失败，不会退回到 controller worktree 或创建新的
-Desktop 任务。
+Claude Code 桌面会话与本页的 Claude Desktop MCPB 是不同接入方式。MCPB 仍只暴露上表的检查和预览工具，
+没有并行状态或执行工具；本轮源码回归不等于两个桌面产品的原生 UI 验收。
 
-在 Claude Code 中，先展示并由用户确认同一个 run、module、host、stable ID 与 cwd，再使用：
+### 升级与旧会话
 
-```text
-/spec-guard:parallel-register-worker <run-id> <module-id> \
-  --host <codex-desktop|claude-desktop> --host-worker-id <stable-id> --cwd <absolute-linked-worktree-root>
-```
+先保存成果、核对仍运行的任务，由用户决定停止或重启宿主会话，并确认新版本加载。
+升级不会停止旧进程，已加载旧版本的会话不受新入口保证。保留 ledger、分支与 worktree 供人工核对，
+不要直接删除账本或回退已知不安全版本以恢复实验写入。
 
-Codex 使用 `spec-guard-ops` 中同名的受控操作。登记成功的 worker manifest 记为 `owner=host`；
-`parallel-status` 只显示“宿主可回收”，`parallel-reclaim` 必须停止，绝不能调用 controller reclaim、
-`git worktree remove` 或 Desktop archive。
+### 历史验证边界（2026-09-05）
 
-### 原生 E2E 记录（2026-09-05）
-
-本机自动化 Git fixture 已验证登记器会写入 controller ledger、不会写入 Desktop worktree，并拒绝重复 lease、
-缺少稳定 ID、主 checkout、错误 module 与 detached HEAD。真实 Desktop UI 验证没有伪造成功：当前 Codex
-Desktop 项目 surface 受自动化访问策略限制，无法从插件可调用的公开接口取得目标 native worker 的 cwd 与稳定 ID；
-当前 Claude Desktop 会话也没有暴露可登记的目标项目 worktree/cwd 与稳定身份。因此两端在这台测试机上均按
-fail-closed 处理，未登记任何 host worker。待宿主 UI 能明确提供这两项值时，按上面的核对和确认流程重跑即可。
+早期 Git fixture 曾验证登记写入与部分拒绝场景，但没有完成原生 Desktop 登记 E2E：
+当时未取得可验证的目标 cwd 与稳定宿主任务 ID，两端没有成功登记记录。
+本次审计后该旧登记流程已暂停，即使未来能取得 ID/cwd，也不能据此重新开放写入口。
+当前验证重点是拒绝无副作用、旧记录只读核验及错误可观察。
 
 ## 验证
 

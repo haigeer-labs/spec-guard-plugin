@@ -154,24 +154,51 @@ python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
 子智能体、不启动独立聊天，报告降级原因并运行既有 `parallel-guidance` 生成用户手动管理的
 隔离 worktree 指引。任何 `--refresh` 仍需用户明确确认后才可透传。
 
+## `parallel-execute`
+
+实验性并行执行写操作已暂停，使用下面的统一拒绝入口。
+
+## `parallel-integrate`
+
+实验性并行汇合写操作已暂停，使用下面的统一拒绝入口。
+
+## `parallel-reclaim`
+
+实验性并行回收写操作已暂停，使用下面的统一拒绝入口。
+
 ## `parallel-register-worker`
 
-这是 Desktop 原生 linked-worktree worker 的 **register-only** 操作；它不是创建 Desktop task 或
-worktree 的能力。只有用户已经创建目标 worker、操作方能提供稳定 host worker ID 与该 worker 的实际
-Git 根目录，并且用户明确确认同一个 run/module/host/id/cwd 后，才可执行：
+实验性 Desktop 登记写操作已暂停。上述四个写入口统一执行：
 
 ```bash
-python3 "$ROOT/hooks/parallel-desktop-register.py" register \
-  --project "$PROJECT" --run <run-id> --module <module-id> \
-  --host <codex-desktop|claude-desktop> \
-  --host-worker-id <stable-host-worker-id> \
-  --cwd <absolute-linked-worktree-root> --format json
+python3 - "$ROOT/hooks" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from parallel_execution_lib import ParallelWritesDisabled, reject_parallel_write
+try:
+    reject_parallel_write()
+except ParallelWritesDisabled as error:
+    print(json.dumps({"ok": False, "code": error.code, "message": str(error)}, ensure_ascii=False))
+    raise SystemExit(1)
+PY
 ```
 
-先展示目标 cwd 的 Git root、common-dir、HEAD 和 branch，并调用 `parallel-execution.py status` 预览
-目标 run。稳定 ID 不可得、cwd 不是 linked worktree、detached/submodule、base/module/lease 不匹配或
-登记失败时，停止并说明手工下一步；不得猜测 ID、改建 controller-owned worktree、创建宿主任务或重试
-领取。成功后只报告 `owner=host` 与“宿主可回收”；不得把该 worker 交给 controller reclaim。
+返回 PARALLEL_WRITES_DISABLED，不因旧确认参数、候选组或历史记录重新开放。
+保存已有成果、worktree 和账本；不要编写替代脚本、创建宿主任务、重领或清理来绕过暂停。
+升级不停止旧会话中的进程，由用户在保存成果和核对任务后决定停止或重启。
+
+## `parallel-status`
+
+只读汇总。RUN 必须取用户明确提供的 run ID，不能从不明记录猜测：
+
+```bash
+python3 "$ROOT/hooks/parallel-execution.py" status \
+  --project "$PROJECT" --run "$RUN" --details --format json
+```
+
+如实展示总体 ok 和退出码，失败不能忽略。旧 completed 显示 unverified 与 recordedState；
+claimed 只说明历史领取记录存在。owner=host 显示“完成与可回收性未核验”，不要求插件进程记录。
+查询成功不表示任务验收成功；保留旧资源供人工核对。
 
 ## `teardown`
 
@@ -209,10 +236,16 @@ Issue 并写回 state。不要再以 bridge prose 模拟 GitLab 同步。
 
 ## `next`
 
+如果当前上下文已经表明这是受管 worker（已知 manifest/宿主绑定或 spec-guard worker 分支），
+报告实验写流程暂停，先保存成果并只读核对。不得运行无任务绑定的 canonical next/deliver，
+不得修改 activeModule 或改领其他模块；完整自动检测与任务绑定属于后续 tracker 整改。
+
 按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要复制或自行改写外部 issue 筛选逻辑。
 
 ## `deliver`
+
+已知受管 worker 使用上一节的暂停边界，保留成果和记录，不自动汇合或推进 activeModule。
 
 按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要在此 skill 中复制 GitHub、GitLab 或交付流程。

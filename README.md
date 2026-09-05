@@ -344,7 +344,8 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 | `/spec-guard:parallel-readiness` | 只读分析能力图中的并行候选；默认不联网，`--refresh` 须经确认且仍不等于安全并行 |
 | `/spec-guard:parallel-safety-gate` | 审查显式路径/API/资源边界；仅 `manual-parallel-eligible`，不自动执行 |
 | `/spec-guard:parallel-guidance` | 为可人工并行模块生成 worker 命名与汇合清单；不自动创建或回收 |
-| `/spec-guard:parallel-register-worker` | 经本次确认，将用户已创建、且可验证 cwd 与稳定宿主 ID 的 Desktop linked worktree 登记为 `owner=host`；仅登记，不创建或回收 |
+| `/spec-guard:parallel-status` | 只读检查旧 run/worker/进程记录；查询失败返回非零，旧完成记录显示未核验 |
+| `/spec-guard:parallel-execute`、`parallel-integrate`、`parallel-reclaim`、`parallel-register-worker` | 实验性写操作已暂停，返回 `PARALLEL_WRITES_DISABLED`，保留旧资源 |
 | `spec-guard-ops:parallel-subagent-preflight`（Codex） | 经用户确认后，以原生子智能体并行做模块只读预检；不并行写代码 |
 | `/spec-guard:sync-map` | 能力图 → 当前 tracker 的任务结构 |
 | `/spec-guard:next` | 取下一个可执行任务 |
@@ -372,9 +373,24 @@ Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `li
 当前父会话才会创建原生子智能体进行**只读预检**，再等待并汇总结果。它不等于隔离 worktree，也不等于允许并行写入代码；没有原生子智能体能力时，流程会回退到
 `parallel-guidance` 的人工 worktree 指引。
 
-用户已经在 Codex Desktop 或 Claude Code Desktop 创建的 native linked worktree 可以通过
-`parallel-register-worker` 作一次受控登记；必须同时拿到实际 cwd 和稳定宿主 ID，无法验证时会拒绝而不是猜测。
-登记后的 `owner=host` worker 只能由宿主/用户回收。详见 [Desktop worker 登记](docs/claude-desktop.md#desktop-原生-worktree-worker-登记)。
+本分支的审计整改暂停了实验性并行写操作，包括创建 run/lease/worktree、启动 CLI Agent、Desktop 登记、
+汇合与回收；完整自动并行执行器尚未提供。该变化尚未发布，已安装版本不会随源码提交自动更新。
+普通串行工作流及只读 readiness/safety/guidance 保留。详情见 [Desktop 与旧 worker 处理](docs/claude-desktop.md#desktop-原生-worktree-worker-登记)。
+
+| 使用方式 | 本次整改后的并行能力边界 |
+|---|---|
+| Codex CLI | ops 提供只读诊断；写入口统一暂停 |
+| Codex 桌面版 | 使用相同 ops 与脚本；写入口统一暂停 |
+| Claude Code CLI | slash 命令提供只读诊断；写入口统一暂停 |
+| Claude Code 桌面会话 | 加载本插件时使用相同拒绝边界；本轮未做原生 UI 完整验收 |
+
+Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行或旧 worker 状态工具。
+上述源码与命令回归不等于四端原生 E2E 或安装验收。
+
+升级前先保存已有成果，核对仍运行的任务；由用户决定停止或重启宿主会话，并确认新版本确实加载。
+新代码不会停止旧进程，也不能接管已经加载旧版本的会话。保留旧 ledger、分支和 worktree，勿直接删除
+账本或回退到已知不安全版本以继续实验写流程。旧 `completed` 仅代表记录中的进程退出成功；
+`claimed` 和 `owner=host` 都不证明已验收或可回收。查询成功仅表示读取成功。
 
 ### 典型流程
 

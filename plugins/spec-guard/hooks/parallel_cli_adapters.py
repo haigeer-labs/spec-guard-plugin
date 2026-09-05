@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import math
 
-from parallel_execution_lib import LedgerError
+from parallel_execution_lib import LedgerError, reject_parallel_write
 
 
 class CliTimeout(LedgerError):
@@ -28,6 +28,7 @@ def command_for(host, worktree_path, executable):
 
 def run_worker(host, worktree_path, timeout_seconds=None):
     """在已验证的 worktree 中同步运行固定的宿主 CLI。"""
+    reject_parallel_write()
     executable = {"codex-cli": "codex", "claude-cli": "claude"}.get(host)
     if executable is None:
         raise LedgerError("不支持的 CLI host")

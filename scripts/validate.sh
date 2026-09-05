@@ -90,6 +90,10 @@ echo "═══ GitLab sync-map regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-sync-map-gitlab.sh || F=1
 echo ""
 
+echo "═══ GitLab tracker binding and selection regression ═══"
+/bin/bash plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh --selftest || F=1
+echo ""
+
 echo "═══ GitLab bridge regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-gitlab-bridge.sh || F=1
 echo ""

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- **GitLab tracker 恢复、worktree binding 与 `/next` 选择收紧。** 能力图投影仅从完整 marker
+  恢复；每个 worktree 显式保存本地 tracker/module/task context，复制或失配即停止。GitLab
+  `/next` 只按计划 IID、完整 marker、远端 opened 状态、assignee 与本地 closing commit 选择；
+  binding 不是 lease，且不启用自动并行或真实实例写入 E2E 声明。
 - **统一严格能力图与边界诊断。** 并列 Build order 现由共享解析器验证，GitLab 同步、Desktop
   预览及 GitHub/Codex 新建入口共享其顺序和失败语义；旧摘要的表格行序兼容语义不变。
   并行候选仍只代表 Depends on 依赖层，未核验任务状态或运行资源，不能立即领取或执行。

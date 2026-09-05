@@ -11,11 +11,10 @@ and host instructions remain thin routes to that shared result.
 
 ## Task List
 
-1. T1: Add read-only semantic audit for legacy guessed history fields.
-2. T2: Add append-only evidence-backed correction event and schema validation.
-3. T3: Align Claude/Codex routes, migration contract and focused regressions.
-4. Checkpoint: Run history, host and full validation; record stub versus real
-   tracker evidence limits.
+- [#185 — T1: Add a read-only semantic audit](https://github.com/yizhongkaimail-collab/spec-guard-plugin/issues/185)
+- [#186 — T2: Add an append-only correction path](https://github.com/yizhongkaimail-collab/spec-guard-plugin/issues/186)
+- [#187 — T3: Align Codex and Claude history-integrity routes](https://github.com/yizhongkaimail-collab/spec-guard-plugin/issues/187)
+- [#188 — Checkpoint: Review and deliver history integrity remediation](https://github.com/yizhongkaimail-collab/spec-guard-plugin/issues/188)
 
 ## Verification
 

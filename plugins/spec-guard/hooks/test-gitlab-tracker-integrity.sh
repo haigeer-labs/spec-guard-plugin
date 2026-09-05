@@ -62,6 +62,13 @@ class ProjectionIdentityContract(unittest.TestCase):
         ]))
         self.assertIsNone(recover_exact_issue(page, marker, project_id=17, page_complete=True))
 
+    def test_issue_without_description_is_an_unmatched_candidate(self):
+        marker = initiative_marker(GOAL)
+        page = parse_issue_page(json.dumps([
+            {"iid": 7, "project_id": 17, "title": "title-only", "description": None},
+        ]))
+        self.assertIsNone(recover_exact_issue(page, marker, project_id=17, page_complete=True))
+
     def test_multiple_or_incomplete_candidates_fail_closed(self):
         marker = initiative_marker(GOAL)
         page = parse_issue_page(json.dumps([self.issue(7, marker), self.issue(8, marker)]))

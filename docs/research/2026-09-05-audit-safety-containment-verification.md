@@ -74,3 +74,15 @@
 ### 审阅边界
 
 没有运行真实付费 Agent、没有推送、发布、合并、删除分支或清理用户遗留资源。T4 起必须独立封闭 Agent 启动；在 T4–T8 与后续 checkpoint 完成前，不得将本模块称为“完整自动并行执行器”或建议生产使用旧写命令。
+
+## 2026-09-05：T4–T6 与 Checkpoint B / Issues #148–#151
+
+代码基线：`851508b`（包含 #148 `475a4fa`、#149 `739cad4`）。
+
+- T4：start_worker/run_worker 和两个宿主 CLI start 请求均先拒绝。读取 manifest、发现可执行文件、启动进程的失败桩证明这些操作没有发生；历史进程状态由独立 fixture 写入，查询前后字节不变。
+- T5：Desktop register 与内部构造入口均先拒绝。同目录、同宿主任务 ID、两个 run、两个模块和两种宿主的 8 个并发 CLI 请求全部失败，没有新增 lease/manifest。
+- T6：修复文件名与内容 runId 错配时错误返回 available 的反例；关联 worker 的 module/run/base/ID 必须一致。账本 JSON 通过目录描述符和 O_NOFOLLOW 读取，拒绝文件/父目录符号链接；外部 canary 测试证明内容未被读取。查询错误返回非零，原记录保留。
+
+Checkpoint B：通过。C1–C6 的 8 个脚本各自退出 0；C7 完整 validate 退出 0，phase 129/0、verify 72/0、Codex adapter 10/0、smoke selftest 退出 0。每个子进程均等待到实际退出码，未以“命令已启动”判通过。日志在本机 `/private/tmp/checkpoint-b-*.log` 和 `/private/tmp/spec-guard-checkpoint-b-validate.log`，可能随临时目录清理；本记录保留结果摘要。
+
+剩余范围：T7 仍需修正 worker/process 只读语义和读取链；T8–T10 仍需收口用户命令及升级说明。底层写入口拒绝不意味着已加载的旧会话或旧进程停止，也不构成发布验收。

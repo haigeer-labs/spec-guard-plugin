@@ -535,6 +535,80 @@ class ReadinessDependencyLayers(unittest.TestCase):
             self.assertIn("parallel-readiness:", result.stderr)
 
 
+class BoundaryCliDiagnostics(unittest.TestCase):
+    def setUp(self):
+        ReadinessDependencyLayers.setUp(self)
+        self.path.write_text(TABLE + "\nBuild order: " + ORDER + "\n")
+
+    git = ReadinessDependencyLayers.git
+
+    def write_boundary(self, module, paths):
+        data = dict({field: [] for field in FIELDS}, paths=paths)
+        (self.project / "spec" / (module + ".md")).write_text(
+            "## Parallel Boundary\n```json\n" + json.dumps(data) + "\n```\n")
+
+    def run_cli(self, script, output_format):
+        before = {str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}
+        result = subprocess.run([sys.executable, str(hooks / script), "--project", str(self.project),
+                                 "--format", output_format], capture_output=True, text=True)
+        self.assertEqual({str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}, before)
+        return result
+
+    def test_both_formats_preserve_conflict_and_uncertainty(self):
+        for left, right, classification, categories in ((["src/", "Src/a"], ["src/a"], "sequential-required", {"paths", "path-alias"}),
+                                                        (["Src/a"], ["src/a"], "needs-review", {"path-alias"}),
+                                                        (["src/a"], ["src-old/b"], "manual-parallel-eligible", set())):
+            self.write_boundary("billing", left)
+            self.write_boundary("notifications", right)
+            for script in ("parallel-safety-gate.py", "parallel-guidance.py"):
+                with self.subTest(script=script, classification=classification):
+                    result = self.run_cli(script, "json")
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    report = json.loads(result.stdout)
+                    group = report["groups"][0]
+                    self.assertEqual(group["classification"], classification)
+                    self.assertEqual({e["category"] for e in group["evidence"]}, categories)
+                    self.assertEqual(group["pathDeclarations"]["billing"][0]["raw"], sorted(left)[0])
+                    self.assertIn("不证明物理隔离", group["scopeNotice"])
+                    if script == "parallel-guidance.py":
+                        self.assertEqual(len(group["workers"]), 2 if classification == "manual-parallel-eligible" else 0)
+                    text = self.run_cli(script, "text")
+                    self.assertEqual(text.returncode, 0, text.stderr)
+                    for expected in [classification, "billing", "notifications", "不证明物理隔离", "新鲜度", "未核验任务状态"] + list(categories):
+                        self.assertIn(expected, text.stdout)
+                    for evidence in group["evidence"]:
+                        if "reason" in evidence:
+                            self.assertIn(evidence["reason"], text.stdout)
+                    if classification != "manual-parallel-eligible":
+                        self.assertNotIn("codex/parallel/", text.stdout)
+
+    def test_boundary_errors_retain_specific_reason(self):
+        self.write_boundary("billing", ["../outside"])
+        self.write_boundary("notifications", ["src/b"])
+        for script in ("parallel-safety-gate.py", "parallel-guidance.py"):
+            result = self.run_cli(script, "json")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            group = json.loads(result.stdout)["groups"][0]
+            self.assertEqual(group["classification"], "needs-review")
+            self.assertTrue(any("../outside" in e.get("reason", "") for e in group["evidence"]), group)
+            text = self.run_cli(script, "text")
+            self.assertIn("../outside", text.stdout)
+
+    def test_bad_or_unreadable_map_has_no_success_or_traceback(self):
+        for content in (b"bad map", b"\xff", None):
+            if content is None:
+                self.path.unlink()
+            else:
+                self.path.write_bytes(content)
+            for script in ("parallel-safety-gate.py", "parallel-guidance.py"):
+                for output_format in ("json", "text"):
+                    result = self.run_cli(script, output_format)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn(script[:-3] + ":", result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+
+
 class SyncPreflightInstructions(unittest.TestCase):
     def test_actual_instruction_blocks_gate_github_writes(self):
         with tempfile.TemporaryDirectory(prefix="sg-sync-instructions-") as temp:

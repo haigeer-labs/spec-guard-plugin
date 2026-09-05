@@ -184,14 +184,31 @@ def gate_report(project, refresh=False):
     readiness = readiness_report(project, refresh=refresh)
     results = []
     for group in readiness["candidateGroups"]:
-        boundaries = {}
+        boundaries, errors = {}, {}
         for module_id in group["modules"]:
             try:
                 boundaries[module_id] = parse_boundary(
                     os.path.join(project, "spec", module_id + ".md")
                 )
-            except (BoundaryError, OSError):
+            except (BoundaryError, OSError, UnicodeError) as error:
                 boundaries[module_id] = None
-        results.append(dict(group, **classify_group(boundaries, project=project)))
+                errors[module_id] = str(error)
+        result = classify_group(boundaries, project=project)
+        for item in result["evidence"]:
+            if item["category"] == "invalid-boundary" and item["modules"][0] in errors:
+                item["reason"] = errors[item["modules"][0]]
+        results.append(dict(group, **result))
     return {"ok": True, "base": readiness["base"], "groups": results,
-            "warnings": readiness["warnings"]}
+            "warnings": readiness["warnings"], "notice": readiness.get("notice", "")}
+
+
+def group_text(group):
+    """安全门与人工指引使用同一份可追溯诊断，不把空 worker 列表当成无结果。"""
+    lines = ["- layer %s: %s [%s]" % (group["layer"], ", ".join(group["modules"]), group["classification"])]
+    if group.get("scopeNotice"):
+        lines.append("  " + group["scopeNotice"])
+    for module, paths in sorted(group.get("pathDeclarations", {}).items()):
+        lines.append("  %s 路径: %s" % (module, json.dumps(paths, ensure_ascii=False, sort_keys=True)))
+    for item in group.get("evidence", []):
+        lines.append("  证据: " + json.dumps(item, ensure_ascii=False, sort_keys=True))
+    return "\n".join(lines)

@@ -28,7 +28,7 @@ sys.path.insert(0, hooks)
 from parallel_execution_lib import (ParallelWritesDisabled, claim_lease, ledger_root,
                                     run_id)
 import parallel_worktree_lib
-from test_parallel_fixture import materialize_worker
+from test_parallel_fixture import materialize_worker, write_record
 spec = importlib.util.spec_from_file_location("parallel_execution_test", os.path.join(hooks, "parallel-execution.py"))
 parallel_execution = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(parallel_execution)
@@ -189,6 +189,38 @@ with ThreadPoolExecutor(max_workers=4) as executor:
         assert result.returncode == 1 and result.stderr == "", result
         assert json.loads(result.stdout)["code"] == "PARALLEL_WRITES_DISABLED", result.stdout
 assert snapshot() == before, "concurrent Desktop registration changed old resources"
+
+# Read-only status must reject foreign identities and symlinks without reading the target.
+run_path = os.path.join(root, "runs", run["runId"] + ".json")
+write_record(run_path, run)
+assert parallel_execution.status_run(project, run["runId"])["ok"] is True
+for invalid in ("../outside", run["runId"] + "\n"):
+    assert parallel_execution.status_run(project, invalid)["ok"] is False
+write_record(run_path, dict(run, runId="e" * 64))
+assert parallel_execution.status_run(project, run["runId"])["ok"] is False
+write_record(run_path, run)
+canary = os.path.join(os.path.dirname(project), "external-canary.json")
+write_record(canary, run)
+canary_inode = os.stat(canary).st_ino
+original_json_load = json.load
+def checked_json_load(handle, *args, **kwargs):
+    assert os.fstat(handle.fileno()).st_ino != canary_inode, "external canary was read"
+    return original_json_load(handle, *args, **kwargs)
+os.unlink(run_path)
+os.symlink(canary, run_path)
+with patch.object(json, "load", checked_json_load):
+    assert parallel_execution.status_run(project, run["runId"])["ok"] is False
+os.unlink(run_path)
+write_record(run_path, run)
+runs_dir = os.path.dirname(run_path)
+os.rename(runs_dir, runs_dir + "-saved")
+os.symlink(runs_dir + "-saved", runs_dir)
+assert parallel_execution.status_run(project, run["runId"])["ok"] is False
+os.unlink(runs_dir)
+os.rename(runs_dir + "-saved", runs_dir)
+before = snapshot()
+missing = parallel_execution.status_run(project, "f" * 64)
+assert missing["ok"] is False and snapshot() == before
 PY
 
 printf 'audit-safety-containment regression passed\n'

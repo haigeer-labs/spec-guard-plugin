@@ -17,6 +17,7 @@ from parallel_execution_lib import (
     ledger_root,
     lease_status,
     load_json,
+    load_run,
     origin_remote,
     run_id,
     validate_record,
@@ -105,7 +106,7 @@ def status_run(project, run_id_value):
     try:
         validate_run_id(run_id_value)
         root = ledger_root(project)
-        run = load_json(os.path.join(root, "runs", run_id_value + ".json"), "run")
+        run = load_run(root, run_id_value)
         modules = run_modules(run)
     except LedgerError as error:
         return {"ok": False, "runId": run_id_value, "state": "unknown", "reason": str(error), "modules": []}
@@ -166,7 +167,7 @@ def main(argv):
             for item in result["modules"]:
                 detail = " (%s)" % item["reason"] if "reason" in item else ""
                 print("%s: %s%s" % (item["moduleId"], item["state"], detail))
-    return 0
+    return 0 if result.get("ok") is True else 1
 
 
 if __name__ == "__main__":

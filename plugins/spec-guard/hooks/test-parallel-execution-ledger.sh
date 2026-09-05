@@ -108,7 +108,7 @@ import sys
 
 script, project = sys.argv[1:]
 sys.path.insert(0, os.path.dirname(script))
-from test_parallel_fixture import write_record
+from test_parallel_fixture import materialize_worker, write_record
 from parallel_execution_lib import ledger_root, run_id
 
 # Build a legacy ledger without calling production write paths: create-run and
@@ -141,6 +141,9 @@ for module_id in ("alpha", "beta"):
     }
     paths[module_id] = os.path.join(lease_path, "manifest.json")
     write_record(paths[module_id], manifest)
+    worker_id = manifest["workerId"]
+    materialize_worker(project, dict(manifest, owner="spec-guard", gitCommonDir=os.path.dirname(os.path.dirname(os.path.dirname(root))),
+                                    worktreePath=os.path.join(root, "worktrees", worker_id), branch="spec-guard/" + worker_id))
 
 status_command = ["python3", script, "status", "--project", project, "--run", run["runId"], "--format", "json"]
 healthy = subprocess.run(status_command, capture_output=True, text=True)
@@ -151,6 +154,20 @@ assert [item["state"] for item in healthy_status["modules"]] == ["claimed", "cla
 human_status = subprocess.run(status_command[:-2], capture_output=True, text=True)
 assert human_status.returncode == 0 and "alpha: claimed" in human_status.stdout, human_status
 
+run_path = os.path.join(root, "runs", run["runId"] + ".json")
+write_record(run_path, dict(run, runId="f" * 64))
+mismatch = subprocess.run(status_command, capture_output=True, text=True)
+assert mismatch.returncode == 1 and json.loads(mismatch.stdout)["state"] == "unknown", mismatch.stdout
+write_record(run_path, run)
+
+worker_path = os.path.join(root, "workers", run["runId"][:12] + "-alpha-1.json")
+with open(worker_path, encoding="utf-8") as handle:
+    worker_record = json.load(handle)
+write_record(worker_path, dict(worker_record, moduleId="beta"))
+mismatch = subprocess.run(status_command, capture_output=True, text=True)
+assert mismatch.returncode == 1 and json.loads(mismatch.stdout)["modules"][0]["state"] == "unknown", mismatch.stdout
+write_record(worker_path, worker_record)
+
 alpha_path = paths["alpha"]
 with open(alpha_path, encoding="utf-8") as handle:
     expired_manifest = json.load(handle)
@@ -159,7 +176,7 @@ with open(alpha_path, "w", encoding="utf-8") as handle:
     json.dump(expired_manifest, handle)
 expired_before = (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns)
 expired = subprocess.run(status_command, capture_output=True, text=True)
-assert expired.returncode == 0, expired.stderr
+assert expired.returncode == 1, expired.stderr
 assert json.loads(expired.stdout)["modules"][0]["state"] == "unknown", expired.stdout
 assert (open(alpha_path, "rb").read(), os.stat(alpha_path).st_mtime_ns) == expired_before
 
@@ -168,13 +185,13 @@ with open(beta_path, "w", encoding="utf-8") as handle:
     handle.write("{")
 malformed_before = (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns)
 malformed = subprocess.run(status_command, capture_output=True, text=True)
-assert malformed.returncode == 0, malformed.stderr
+assert malformed.returncode == 1, malformed.stderr
 assert json.loads(malformed.stdout)["modules"][1]["state"] == "unknown", malformed.stdout
 assert (open(beta_path, "rb").read(), os.stat(beta_path).st_mtime_ns) == malformed_before
 
 os.unlink(alpha_path)
 interrupted = subprocess.run(status_command, capture_output=True, text=True)
-assert interrupted.returncode == 0, interrupted.stderr
+assert interrupted.returncode == 1, interrupted.stderr
 assert json.loads(interrupted.stdout)["modules"][0]["state"] == "unknown", interrupted.stdout
 PY
 

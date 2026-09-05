@@ -8,6 +8,7 @@ import json
 import os
 import re
 import subprocess
+import stat
 import time
 
 
@@ -90,12 +91,12 @@ def run_id(remote, base_sha, goal_digest, module_digests):
 
 
 def validate_module_id(module_id):
-    if not isinstance(module_id, str) or not MODULE_ID.match(module_id):
+    if not isinstance(module_id, str) or not MODULE_ID.fullmatch(module_id):
         raise LedgerError("module id 必须是 kebab-case")
 
 
 def validate_run_id(value):
-    if not isinstance(value, str) or not RUN_ID.match(value):
+    if not isinstance(value, str) or not RUN_ID.fullmatch(value):
         raise LedgerError("runId 无效")
 
 
@@ -130,6 +131,53 @@ def load_json(path, label):
             return json.load(handle)
     except (OSError, ValueError) as error:
         raise LedgerError("%s 无法读取: %s" % (label, error))
+
+
+def load_ledger_json(root, *parts):
+    """Read regular ledger files without following symlinks, including parent directories."""
+    if any(not isinstance(part, str) or not part or part in (".", "..") or
+           os.path.sep in part for part in parts):
+        raise LedgerError("账本路径无效")
+    common = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(root))))
+    path = os.path.join(common, "spec-guard", "parallel", "v%d" % SCHEMA_VERSION, *parts)
+    directory = None
+    try:
+        # root derives from the canonical Git common-dir; do not realpath untrusted records.
+        directory = os.open(os.path.sep, os.O_RDONLY | os.O_DIRECTORY)
+        components = os.path.abspath(path).split(os.path.sep)[1:]
+        for component in components[:-1]:
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
+            os.close(directory)
+            directory = child
+        descriptor = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        with os.fdopen(descriptor, encoding="utf-8") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise LedgerError("账本记录不是普通文件")
+            return json.load(handle)
+    except (OSError, ValueError) as error:
+        raise LedgerError("账本记录无法安全读取: %s" % error)
+    finally:
+        if directory is not None:
+            os.close(directory)
+
+
+def load_run(root, requested_id):
+    validate_run_id(requested_id)
+    run = load_ledger_json(root, "runs", requested_id + ".json")
+    run_modules(run)
+    if run["runId"] != requested_id:
+        raise LedgerError("run 请求、文件名与内容身份不匹配")
+    return run
+
+
+def validate_worker_link(run, worker, worker_id, module_id):
+    validate_record(worker, ("schemaVersion", "runId", "baseSha", "workerId", "moduleId"))
+    expected = re.escape(run["runId"][:12] + "-" + module_id) + r"-[1-9][0-9]*"
+    if (not isinstance(worker_id, str) or not re.fullmatch(expected, worker_id) or
+            worker["workerId"] != worker_id or worker["runId"] != run["runId"] or
+            worker["moduleId"] != module_id or worker["baseSha"] != run["baseSha"] or
+            module_id not in run_modules(run)):
+        raise LedgerError("worker 与 run/module 身份不匹配")
 
 
 def write_json_exclusive(path, value):
@@ -200,12 +248,19 @@ def run_modules(run):
 
 def lease_status(root, run, module_id):
     """只读地将 lease 映射为可安全使用的状态。"""
-    lease_path = os.path.join(root, "leases", run["runId"], "module-" + module_id)
-    if not os.path.lexists(lease_path):
-        return {"moduleId": module_id, "state": "available"}
-    manifest_path = os.path.join(lease_path, "manifest.json")
     try:
-        manifest = load_json(manifest_path, "lease manifest")
+        run_modules(run)
+        validate_module_id(module_id)
+        path = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(root))))
+        for component in ("spec-guard", "parallel", "v1", "leases", run["runId"], "module-" + module_id):
+            path = os.path.join(path, component)
+            try:
+                mode = os.lstat(path).st_mode
+            except FileNotFoundError:
+                return {"moduleId": module_id, "state": "available"}
+            if not stat.S_ISDIR(mode):
+                raise LedgerError("lease 目录布局无法安全核验")
+        manifest = load_ledger_json(root, "leases", run["runId"], "module-" + module_id, "manifest.json")
         validate_record(manifest, ("schemaVersion", "runId", "baseSha", "moduleId", "workerId", "owner", "createdAt", "renewedAt", "status"))
         if (manifest["runId"] != run["runId"] or manifest["baseSha"] != run["baseSha"] or
                 manifest["moduleId"] != module_id or not isinstance(manifest["workerId"], str) or
@@ -214,6 +269,11 @@ def lease_status(root, run, module_id):
             raise LedgerError("lease manifest 身份无效")
         if manifest["status"] != "active":
             raise LedgerError("lease 状态不可用: %s" % manifest["status"])
-    except LedgerError as error:
+        validate_worker_link(run, manifest, manifest["workerId"], module_id)
+        worker = load_ledger_json(root, "workers", manifest["workerId"] + ".json")
+        validate_worker_link(run, worker, manifest["workerId"], module_id)
+        if worker.get("owner") not in ("host", "spec-guard"):
+            raise LedgerError("worker owner 无法核验")
+    except (LedgerError, OSError) as error:
         return {"moduleId": module_id, "state": "unknown", "reason": str(error)}
     return {"moduleId": module_id, "state": "claimed", "workerId": manifest["workerId"]}

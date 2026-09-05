@@ -184,6 +184,9 @@ report = json.loads(result.stdout)
 assert remote_before != published
 assert report["base"] == {"ref": "origin/trunk", "sha": published, "fresh": True}, report
 assert not report["warnings"], report
+assert "未核验任务状态" in report["notice"], report
+assert "不表示可立即领取或执行" in report["notice"], report
+assert all(group["classification"] == "candidate-only" for group in report["candidateGroups"]), report
 assert subprocess.check_output(["git", "-C", project, "rev-parse", "HEAD"], text=True).strip() == head_before
 
 subprocess.run(["git", "-C", project, "remote", "set-url", "origin", project + "/../missing.git"], check=True)

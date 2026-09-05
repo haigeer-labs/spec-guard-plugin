@@ -70,6 +70,7 @@ def report(project, refresh=False):
         "ok": True,
         "base": {"ref": ref, "sha": sha, "fresh": refresh},
         "candidateGroups": candidate_groups(parsed),
+        "notice": "候选仅来自 Depends on 依赖层；未核验任务状态或运行资源，不表示可立即领取或执行。",
         "warnings": [] if refresh else [
             "尚未验证远端新鲜度；传 --refresh 后才可称为最新主线。"
         ],
@@ -82,6 +83,7 @@ def text_report(data):
         "并行开发候选分析（不是安全并行判定）",
         "基线: %s @ %s" % (base["ref"], base["sha"]),
         "新鲜度: 已验证" if base["fresh"] else "新鲜度: 未验证",
+        data["notice"],
     ]
     if data["candidateGroups"]:
         lines.append("候选组:")

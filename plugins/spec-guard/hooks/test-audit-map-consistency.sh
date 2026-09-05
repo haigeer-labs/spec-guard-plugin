@@ -332,6 +332,71 @@ class DesktopMapPreview(unittest.TestCase):
         self.assertIn("未写入任何远端或本地状态", result["content"][0]["text"])
 
 
+class ReadinessDependencyLayers(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="sg-readiness-")
+        self.addCleanup(self.directory.cleanup)
+        self.project = Path(self.directory.name) / "project with spaces"
+        self.project.mkdir()
+        (self.project / "spec").mkdir()
+        (self.project / ".agent").mkdir()
+        (self.project / ".agent/state.json").write_text('{"activeModule":"identity"}')
+        self.path = self.project / "spec/CAPABILITY-MAP.md"
+        self.path.write_text(TABLE + "\nBuild order: " + ORDER + "\n")
+        self.git("init", "-q")
+        self.git("add", ".")
+        self.git("-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture")
+        self.sha = self.git("rev-parse", "HEAD")
+        self.git("update-ref", "refs/remotes/origin/trunk", self.sha)
+        self.git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk")
+
+    def git(self, *args):
+        return subprocess.check_output(["git", "-C", str(self.project)] + list(args), text=True).strip()
+
+    def run_readiness(self, output_format="json"):
+        # 包含真实 refs、索引、state 和未提交图；只读分析不能修改这些文件。
+        before = {str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}
+        result = subprocess.run([sys.executable, str(hooks / "parallel-readiness.py"),
+                                 "--project", str(self.project), "--format", output_format],
+                                capture_output=True, text=True)
+        self.assertEqual({str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}, before)
+        return result
+
+    def test_candidates_follow_dependencies_not_display_groups(self):
+        for order, expected in ((ORDER, ["billing", "notifications"]),
+                                ("identity → billing → notifications → reporting", ["billing", "notifications"]),
+                                ("identity → notifications, billing → reporting", ["notifications", "billing"])):
+            with self.subTest(order=order):
+                self.path.write_text(TABLE + "\nBuild order: " + order + "\n")
+                result = self.run_readiness()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(report["candidateGroups"], [{"layer": 1, "modules": expected,
+                                                            "classification": "candidate-only"}])
+                self.assertEqual(report["base"], {"ref": "origin/trunk", "sha": self.sha, "fresh": False})
+                self.assertTrue(any("尚未验证远端新鲜度" in warning for warning in report["warnings"]))
+
+    def test_json_and_text_do_not_claim_execution_readiness(self):
+        result = self.run_readiness()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertIn("未核验任务状态", report["notice"])
+        self.assertIn("不表示可立即领取或执行", report["notice"])
+        text = self.run_readiness("text")
+        self.assertEqual(text.returncode, 0, text.stderr)
+        self.assertIn(report["notice"], text.stdout)
+        self.assertIn("新鲜度: 未验证", text.stdout)
+
+    def test_invalid_graph_fails_without_success_output(self):
+        self.path.write_text(TABLE.replace("Messages | identity", "Messages | billing") +
+                             "\nBuild order: " + ORDER + "\n")
+        for output_format in ("json", "text"):
+            result = self.run_readiness(output_format)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("parallel-readiness:", result.stderr)
+
+
 class SyncPreflightInstructions(unittest.TestCase):
     def test_actual_instruction_blocks_gate_github_writes(self):
         with tempfile.TemporaryDirectory(prefix="sg-sync-instructions-") as temp:

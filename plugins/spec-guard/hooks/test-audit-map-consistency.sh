@@ -5,6 +5,7 @@ HOOKS="$(cd "$(dirname "$0")" && pwd)"
 PYTHONDONTWRITEBYTECODE=1 python3 - "$HOOKS" <<'PY'
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -265,6 +266,69 @@ else:
         self.assertEqual(state["activeModule"], "identity")
         self.assertEqual(state["modules"]["notifications"]["issue"], 3)
         self.assertEqual(len(posts), 5)  # 不创建额外组内关系或额外任务。
+
+
+class DesktopMapPreview(unittest.TestCase):
+    def setUp(self):
+        GitlabMapInput.setUp(self)
+        subprocess.run(["git", "init", "-q", str(self.project)], check=True)
+        self.state.write_text(json.dumps({"tracker": "github"}))
+        self.path.write_text("# Capability Map: Desktop test\n\n## 目标\n\nPreview only.\n\n## 模块\n\n" +
+                             TABLE + "\nBuild order: identity → notifications, billing → reporting\n")
+        self.node = shutil.which("node")
+        self.assertIsNotNone(self.node, "MCP regression requires Node")
+
+    def preview(self, restricted_path=False):
+        request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+            "name": "sync_map_preview", "arguments": {"project": str(self.project)}}}
+        before = {str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}
+        result = subprocess.run([self.node, str(hooks.parent / "mcp/claude_desktop_server.mjs")],
+                                input=json.dumps(request) + "\n", capture_output=True, text=True,
+                                env=dict(os.environ, GLAB_CALL_LOG=str(self.log),
+                                         PATH=str(self.bin) + ("" if restricted_path else os.pathsep + os.environ["PATH"])))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        response = json.loads(result.stdout)
+        self.assertEqual(response["id"], 1)
+        self.assertEqual({str(p.relative_to(self.project)): p.read_bytes() for p in self.project.rglob("*") if p.is_file()}, before)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+        self.assertFalse(any("POST" in call or "--confirm" in call for call in calls), calls)
+        return response["result"]
+
+    def test_github_preview_uses_declared_order(self):
+        result = self.preview()
+        self.assertIs(result["isError"], False, result)
+        text = result["content"][0]["text"]
+        names = [line.split(": ", 1)[1].split(" — ", 1)[0] for line in text.splitlines() if line.startswith("- Module:")]
+        self.assertEqual(names, ["identity", "notifications", "billing", "reporting"])
+
+    def test_bad_graph_is_an_mcp_error(self):
+        self.path.write_text(self.path.read_text().replace("Messages | identity", "Messages | billing"))
+        result = self.preview()
+        self.assertIs(result["isError"], True, result)
+        self.assertNotIn("No local or remote writes were performed.", result["content"][0]["text"])
+
+    def test_python_failure_never_falls_back_to_regex(self):
+        valid = {"ok": True, "modules": [{"id": "alpha", "responsibility": "A"}], "order": ["alpha"]}
+        for output, code in ((None, 0), ("not JSON", 0), ('{"ok":false,"error":"bad graph"}', 0),
+                             ('{"ok":true}', 0), ('{"ok":true,"modules":[],"order":[]}', 0),
+                             (json.dumps(valid), 1),
+                             (json.dumps(dict(valid, order=["unknown"])), 0),
+                             (json.dumps(dict(valid, modules=valid["modules"] * 2, order=["alpha", "alpha"])), 0),
+                             (json.dumps(dict(valid, modules=[None])), 0)):
+            with self.subTest(output=output, code=code):
+                stub = self.bin / "python3"
+                if output is not None:
+                    stub.write_text("#!" + sys.executable + "\nprint(" + repr(output) + ")\nraise SystemExit(" + str(code) + ")\n")
+                    stub.chmod(0o755)
+                result = self.preview(restricted_path=True)
+                self.assertIs(result["isError"], True, result)
+                self.assertTrue(result["content"][0]["text"])
+
+    def test_gitlab_mcp_preview_still_cannot_write(self):
+        self.state.write_text(json.dumps({"tracker": "gitlab", "initiative": {}, "modules": {}}))
+        result = self.preview()
+        self.assertIs(result["isError"], False, result)
+        self.assertIn("未写入任何远端或本地状态", result["content"][0]["text"])
 
 
 unittest.main(verbosity=2)

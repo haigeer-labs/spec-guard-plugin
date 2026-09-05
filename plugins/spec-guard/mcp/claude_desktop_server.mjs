@@ -60,12 +60,33 @@ function githubSyncPreview(project) {
   const map = readFileSync(mapPath, "utf8");
   if (/- \[ \]/.test(map)) return textResult("Capability Map review is incomplete; preview stopped.", true);
   const title = map.match(/^# Capability Map:\s*(.+)$/m);
-  const section = map.match(/^## 模块\s*\n\n(.+?)(?=\n\nBuild order:|\n---|(?![\s\S]))/ms);
-  if (!title || !section) return textResult("Capability Map must contain a title and module table.", true);
-  const modules = section[1].split("\n").filter((line) => line.startsWith("|")).map((row) => row.split("|").slice(1, -1).map((cell) => cell.trim()))
-    .filter(([moduleId]) => moduleId && moduleId !== "Module id" && moduleId !== "---" && !moduleId.startsWith("example-"));
-  if (!modules.length) return textResult("Capability Map has no real modules.", true);
-  return textResult([`Initiative: ${title[1].trim()}`, "GitHub projection preview:", ...modules.map(([moduleId, responsibility]) => `- Module: ${moduleId} — ${responsibility}`), "No local or remote writes were performed."].join("\n"));
+  if (!title) return textResult("Capability Map must contain a title.", true);
+  const result = spawnSync("python3", [join(root, "hooks", "capability-map.py"), mapPath], {
+    cwd: project,
+    encoding: "utf8",
+  });
+  if (result.error) return textResult(`Could not run capability-map.py: ${result.error.message}`, true);
+  if (result.status !== 0) return textResult(`Capability Map validation failed: ${result.stdout || result.stderr || "no output"}`, true);
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    return textResult("capability-map.py returned invalid JSON.", true);
+  }
+  // 只核对跨进程输出的形态；图、依赖和声明组的语义由共享 Python 解析器验证。
+  if (parsed?.ok !== true || !Array.isArray(parsed.modules) || !parsed.modules.length ||
+      !Array.isArray(parsed.order) || parsed.modules.some((row) =>
+        !row || typeof row.id !== "string" || !row.id || row.id.startsWith("example-") ||
+        typeof row.responsibility !== "string")) {
+    return textResult("capability-map.py returned no valid module projection.", true);
+  }
+  const byId = new Map(parsed.modules.map((row) => [row.id, row]));
+  if (byId.size !== parsed.modules.length || parsed.order.length !== byId.size ||
+      new Set(parsed.order).size !== byId.size || parsed.order.some((id) => !byId.has(id))) {
+    return textResult("capability-map.py returned an inconsistent module order.", true);
+  }
+  const modules = parsed.order.map((id) => byId.get(id));
+  return textResult([`Initiative: ${title[1].trim()}`, "GitHub projection preview:", ...modules.map(({ id, responsibility }) => `- Module: ${id} — ${responsibility}`), "No local or remote writes were performed."].join("\n"));
 }
 
 function syncMapPreview(project) {

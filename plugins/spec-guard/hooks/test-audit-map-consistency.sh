@@ -123,5 +123,76 @@ class MapContract(unittest.TestCase):
             self.assertTrue(data["error"])
 
 
+class DigestCompatibility(unittest.TestCase):
+    # 黄金值取自 44e3546 的真实 digest + parser；不是用被测实现重算期望。
+    sample = """# Capability Map: sample
+
+## Goal
+
+Protect old digests.
+
+## 模块
+
+| Module id | Responsibility | Depends on |
+|---|---|---|
+| `second` | 第二模块 | first |
+| first | 根模块 | — |
+"""
+    golden = {"rows": [{"id": "second", "rowDigest": "d6b94af161e6"},
+                       {"id": "first", "rowDigest": "499ae133d946"}],
+              "order": ["second", "first"], "goalDigest": "23acd1f8517a", "placeholder": False}
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="sg-digest-")
+        self.addCleanup(self.directory.cleanup)
+        self.path = Path(self.directory.name) / "map.md"
+
+    def digest(self, command, *extra):
+        result = subprocess.run([sys.executable, str(hooks / "spec-digest.py"), command,
+                                 str(self.path), *map(str, extra)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_legacy_goldens_and_order_meaning(self):
+        for order in ("", "\nBuild order: first → second\n", "\nBuild order: `first` -> `second`\n"):
+            with self.subTest(order=order):
+                self.path.write_text(self.sample + order, encoding="utf-8")
+                before = self.path.read_bytes()
+                self.assertEqual(self.digest("compute"), self.golden)
+                if order:
+                    self.assertEqual(parse_map(self.path).order, ["first", "second"])
+                else:
+                    with self.assertRaises(MapError):
+                        parse_map(self.path)
+                self.assertEqual(self.path.read_bytes(), before)
+
+    def test_formatting_does_not_change_digest(self):
+        self.path.write_bytes((self.sample.replace("\n", "  \r\n") +
+                               "\r\nBuild order: first → second\r\n").encode("utf-8"))
+        self.assertEqual(self.digest("compute"), self.golden)
+
+    def test_real_drift_remains_visible_without_writes(self):
+        state = Path(self.directory.name) / "state.json"
+        state.write_text(json.dumps({"initiative": {"goalDigest": self.golden["goalDigest"]},
+                         "modules": {row["id"]: {"issue": index + 1, "rowDigest": row["rowDigest"]}
+                                     for index, row in enumerate(self.golden["rows"])}}))
+        original_state = state.read_bytes()
+        for sample, goal_stale, rows_stale in (
+            (self.sample, False, []),
+            (self.sample.replace("Protect old digests.", "Detect real changes."), True, []),
+            (self.sample.replace("第二模块", "新的职责"), False, ["second"]),
+            (self.sample.replace("第二模块 | first", "第二模块 | —"), False, ["second"]),
+        ):
+            with self.subTest(goal_stale=goal_stale, rows_stale=rows_stale):
+                self.path.write_text(sample, encoding="utf-8")
+                before = self.path.read_bytes()
+                result = self.digest("check", state)
+                self.assertIs(result["ok"], True)
+                self.assertEqual(result["goalStale"], goal_stale)
+                self.assertEqual(result["rowsStale"], rows_stale)
+                self.assertEqual(state.read_bytes(), original_state)
+                self.assertEqual(self.path.read_bytes(), before)
+
+
 unittest.main(verbosity=2)
 PY

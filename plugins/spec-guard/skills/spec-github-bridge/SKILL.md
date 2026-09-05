@@ -334,6 +334,10 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
 
 ## 操作三：取下一个任务
 
+对当前 GitHub 项目先运行 `python3 plugins/spec-guard/hooks/workspace_binding.py inspect --project . --format json`。
+只有 `code=ok` 才查询或选择 sub-issue；缺失、失配或依赖未解除时停止并引导用户显式
+`/spec-guard:bind-workspace`，不得自动写入 binding 或重选其他模块。
+
     MODULE_ISSUE=$(python3 -c "import json;d=json.load(open('.agent/state.json'));print(d['modules'][d['activeModule']]['issue'])")
 
     # ⚠️ 必须用 REST sub_issues。`gh issue list` **没有 --parent 这个 flag**
@@ -453,6 +457,9 @@ Task List，不要攒到最后一起回写。** 理由和操作一那条完全�
 ---
 
 ## 操作四：交付（模块级 PR）
+
+在任何 `gh` 写入、PR 创建、Issue 关闭或合并之前，先消费同一 `workspace_binding.py inspect`
+JSON 结果；只有 `code=ok` 能继续。失败时保持只读并提示显式绑定，绝不在交付路径修复 binding。
 
 粒度是**模块**，不是 task。一个模块一条分支，跑完整个 plan 再收口。
 

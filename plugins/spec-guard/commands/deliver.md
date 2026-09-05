@@ -10,6 +10,15 @@ allowed-tools: Bash, Read, Write
 
 普通分支才执行以下既有流程：
 
+若 `.agent/state.json` 的 `tracker` 是 `github` 或 `gitlab`，在创建、更新、关闭或合并任何远端对象前，先运行：
+
+```bash
+python3 plugins/spec-guard/hooks/workspace_binding.py inspect --project . --format json
+```
+
+只有 `code=ok` 可继续。任何其他结构化结果都必须停止交付；向用户说明修复方式，缺失 binding 时指向
+`/spec-guard:bind-workspace`，但不得在 `/deliver` 自动创建、修复或替换 binding。
+
 交付粒度是**模块**，不是单个 task。模块完成校验、默认分支解析与远端交付命令由所选 bridge 定义；不要在此处调用另一 tracker 的 CLI。
 
 交付前 invoke code-review-and-quality 做五轴自查；有 Critical 级别发现时不要交付，先修。

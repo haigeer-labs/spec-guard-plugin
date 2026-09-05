@@ -94,6 +94,10 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 
 ## 操作三：`/next` 选择下一个任务
 
+先运行 `python3 plugins/spec-guard/hooks/workspace_binding.py inspect --project . --format json`。只有
+`code=ok` 才继续；其他结果停止在任何 `glab` 选择、认领或写入之前。缺失 binding 时只引导
+`/spec-guard:bind-workspace`，不得自动修复。
+
 读取 `.agent/state.json` 的 `activeModule` 与对应的 `modules.<id>.issue`，再用
 `glab api 'projects/<project-id>/issues/<iid>'` 确认该 Issue 仍为 `opened`。从该模块
 `plan.md` 的 GitLab Issue 索引中逐条查询：只选择 `opened` 的 task，按计划出现顺序给出
@@ -106,6 +110,9 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 流程。
 
 ## 操作四：`/deliver` 模块级 Merge Request
+
+先运行同一 `workspace_binding.py inspect` 检查，只有 `code=ok` 才能创建、合并或关闭 GitLab
+对象；失败时停止并保留原记录，不要把 binding 当成可自动恢复的 tracker 缓存。
 
 1. 先执行 `code-review-and-quality` 的五轴检查和仓库测试；失败时不要创建 MR。
 2. 确认当前分支仅属于 `activeModule`，工作区干净，并将本模块关闭 task 的 IID 写入

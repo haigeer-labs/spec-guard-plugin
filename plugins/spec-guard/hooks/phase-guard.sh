@@ -631,6 +631,25 @@ else
   NEXT="/spec-guard:next 取下一个任务"
 fi
 
+# 远端 tracker 的 next/deliver 必须先有当前 worktree 自己的明确绑定。这里
+# 只读调用 shared helper；能力图还未达到严格格式时不猜测，也不把旧项目的
+# Phase 0 夹具误报成 binding 问题。缺失或失配只给迁移方向，绝不自动创建记录。
+if { [ "$TRACKER" = "github" ] || [ "$TRACKER" = "gitlab" ]; } \
+   && [ -n "$MODULE" ] && [ -f "spec/CAPABILITY-MAP.md" ] \
+   && grep -q '^Build order:' "spec/CAPABILITY-MAP.md" 2>/dev/null \
+   && [ -f "${SELF_DIR}/hooks/workspace_binding.py" ]; then
+  BINDING_JSON=$(python3 "${SELF_DIR}/hooks/workspace_binding.py" inspect --project "$ROOT" --format json 2>/dev/null || true)
+  BINDING_CODE=$(printf '%s' "$BINDING_JSON" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("code", "context-unknown"))
+except Exception: print("context-unknown")
+' 2>/dev/null)
+  if [ "$BINDING_CODE" != "ok" ]; then
+    broken "当前 worktree 没有可用的 tracker binding（${BINDING_CODE}）；/next 与 /deliver 必须在选择或写入前停止"
+    NEXT="先检查 /spec-guard:bind-workspace；确认 tracker、initiative 与 module 后显式绑定当前 worktree，再继续"
+  fi
+fi
+
 # ── 组装事实 ───────────────────────────────────────────────
 [ -n "$MODULE" ] && add "活跃模块: $MODULE${MODULE_ISSUE:+ (issue #$MODULE_ISSUE)}"
 add "tracker: $TRACKER"

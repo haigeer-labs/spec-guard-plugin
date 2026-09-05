@@ -250,12 +250,18 @@ Issue 并写回 state。不要再以 bridge prose 模拟 GitLab 同步。
 报告实验写流程暂停，先保存成果并只读核对。不得运行无任务绑定的 canonical next/deliver，
 不得修改 activeModule 或改领其他模块；完整自动检测与任务绑定属于后续 tracker 整改。
 
+对 `github`/`gitlab`，先运行 `python3 "$ROOT/hooks/workspace_binding.py" inspect --project "$PROJECT" --format json`。
+只有 `code=ok` 才按 `tracker` 路由；其他结果只报告并引导用户显式 `/spec-guard:bind-workspace`，不自动 enrol、修复或选择任务。`none` 保持本地流程。
+
 按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要复制或自行改写外部 issue 筛选逻辑。
 
 ## `deliver`
 
 已知受管 worker 使用上一节的暂停边界，保留成果和记录，不自动汇合或推进 activeModule。
+
+对 `github`/`gitlab`，先运行 `python3 "$ROOT/hooks/workspace_binding.py" inspect --project "$PROJECT" --format json`。
+只有 `code=ok` 可继续交付；任何其他结果都停止远端写入并引导用户显式 `/spec-guard:bind-workspace`，不得自动替换记录。`none` 保持本地流程。
 
 按 `tracker` 路由：`github` 加载 `spec-guard:spec-github-bridge`，`gitlab` 加载
 `spec-guard:spec-gitlab-bridge`，`none` 保持本地流程。不要在此 skill 中复制 GitHub、GitLab 或交付流程。

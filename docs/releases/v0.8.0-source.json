@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "release": { "version": "0.8.0" },
+  "records": [
+    {
+      "subject": "release-evidence-validator",
+      "status": "source-verified",
+      "target": { "kind": "source-checkout", "id": "commit:15212b0" },
+      "observedAt": "2026-09-05T14:40:00Z",
+      "evidence": ["command:/bin/bash scripts/validate.sh"]
+    },
+    {
+      "subject": "release-package-validator",
+      "status": "source-verified",
+      "target": { "kind": "source-checkout", "id": "commit:15212b0" },
+      "observedAt": "2026-09-05T14:40:00Z",
+      "evidence": ["command:/bin/bash scripts/validate.sh"]
+    },
+    {
+      "subject": "host-support-matrix",
+      "status": "source-verified",
+      "target": { "kind": "source-checkout", "id": "commit:15212b0" },
+      "observedAt": "2026-09-05T14:40:00Z",
+      "evidence": ["command:/bin/bash scripts/validate.sh"]
+    },
+    {
+      "subject": "acceptance-journey-contract",
+      "status": "source-verified",
+      "target": { "kind": "source-checkout", "id": "commit:15212b0" },
+      "observedAt": "2026-09-05T14:40:00Z",
+      "evidence": ["command:/bin/bash scripts/validate.sh"]
+    }
+  ],
+  "journeys": [
+    {
+      "id": "github-first-use",
+      "kind": "github-project",
+      "confirmation": "required",
+      "status": "not-verified",
+      "target": { "kind": "tracker-project", "id": "not-run" },
+      "expectedSideEffects": ["create only user-approved test tracker data"],
+      "reason": "no GitHub test project was approved for this release evidence run"
+    },
+    {
+      "id": "gitlab-first-use",
+      "kind": "gitlab-project",
+      "confirmation": "required",
+      "status": "not-verified",
+      "target": { "kind": "tracker-project", "id": "not-run" },
+      "expectedSideEffects": ["create only user-approved test tracker data"],
+      "reason": "no GitLab test project was approved for this release evidence run"
+    },
+    {
+      "id": "manual-dual-worktree",
+      "kind": "manual-worktrees",
+      "confirmation": "required",
+      "status": "not-verified",
+      "target": { "kind": "worktree-pair", "id": "not-run" },
+      "expectedSideEffects": ["write only within the two approved worktree paths"],
+      "reason": "no two-worktree session was approved for this release evidence run"
+    },
+    {
+      "id": "fresh-install",
+      "kind": "fresh-install",
+      "confirmation": "required",
+      "status": "not-verified",
+      "target": { "kind": "installed-session", "id": "not-run" },
+      "expectedSideEffects": ["install only the approved plugin version"],
+      "reason": "no installation or new host session was approved for this release evidence run"
+    },
+    {
+      "id": "offline-degraded",
+      "kind": "degraded-environment",
+      "confirmation": "required",
+      "status": "not-verified",
+      "target": { "kind": "environment", "id": "offline-not-run" },
+      "expectedSideEffects": ["make no external writes"],
+      "reason": "a controlled degraded environment was not run in this release evidence pass"
+    }
+  ]
+}

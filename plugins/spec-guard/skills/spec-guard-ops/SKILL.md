@@ -154,6 +154,25 @@ python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
 子智能体、不启动独立聊天，报告降级原因并运行既有 `parallel-guidance` 生成用户手动管理的
 隔离 worktree 指引。任何 `--refresh` 仍需用户明确确认后才可透传。
 
+## `parallel-register-worker`
+
+这是 Desktop 原生 linked-worktree worker 的 **register-only** 操作；它不是创建 Desktop task 或
+worktree 的能力。只有用户已经创建目标 worker、操作方能提供稳定 host worker ID 与该 worker 的实际
+Git 根目录，并且用户明确确认同一个 run/module/host/id/cwd 后，才可执行：
+
+```bash
+python3 "$ROOT/hooks/parallel-desktop-register.py" register \
+  --project "$PROJECT" --run <run-id> --module <module-id> \
+  --host <codex-desktop|claude-desktop> \
+  --host-worker-id <stable-host-worker-id> \
+  --cwd <absolute-linked-worktree-root> --format json
+```
+
+先展示目标 cwd 的 Git root、common-dir、HEAD 和 branch，并调用 `parallel-execution.py status` 预览
+目标 run。稳定 ID 不可得、cwd 不是 linked worktree、detached/submodule、base/module/lease 不匹配或
+登记失败时，停止并说明手工下一步；不得猜测 ID、改建 controller-owned worktree、创建宿主任务或重试
+领取。成功后只报告 `owner=host` 与“宿主可回收”；不得把该 worker 交给 controller reclaim。
+
 ## `teardown`
 
 这是破坏性操作。先明确告知会删除 `AGENTS.md` 中完整的 Codex 约定块，并要求用户确认。

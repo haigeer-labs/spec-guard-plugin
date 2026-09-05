@@ -344,6 +344,7 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 | `/spec-guard:parallel-readiness` | 只读分析能力图中的并行候选；默认不联网，`--refresh` 须经确认且仍不等于安全并行 |
 | `/spec-guard:parallel-safety-gate` | 审查显式路径/API/资源边界；仅 `manual-parallel-eligible`，不自动执行 |
 | `/spec-guard:parallel-guidance` | 为可人工并行模块生成 worker 命名与汇合清单；不自动创建或回收 |
+| `/spec-guard:parallel-register-worker` | 经本次确认，将用户已创建、且可验证 cwd 与稳定宿主 ID 的 Desktop linked worktree 登记为 `owner=host`；仅登记，不创建或回收 |
 | `spec-guard-ops:parallel-subagent-preflight`（Codex） | 经用户确认后，以原生子智能体并行做模块只读预检；不并行写代码 |
 | `/spec-guard:sync-map` | 能力图 → 当前 tracker 的任务结构 |
 | `/spec-guard:next` | 取下一个可执行任务 |
@@ -370,6 +371,10 @@ Codex 使用 `spec-guard-ops` 的 `verify-history`、`history-migration` 与 `li
 `parallel-subagent-preflight` 是 **Codex 专用** 操作：只有 safety gate 合格且用户明确确认后，
 当前父会话才会创建原生子智能体进行**只读预检**，再等待并汇总结果。它不等于隔离 worktree，也不等于允许并行写入代码；没有原生子智能体能力时，流程会回退到
 `parallel-guidance` 的人工 worktree 指引。
+
+用户已经在 Codex Desktop 或 Claude Code Desktop 创建的 native linked worktree 可以通过
+`parallel-register-worker` 作一次受控登记；必须同时拿到实际 cwd 和稳定宿主 ID，无法验证时会拒绝而不是猜测。
+登记后的 `owner=host` worker 只能由宿主/用户回收。详见 [Desktop worker 登记](docs/claude-desktop.md#desktop-原生-worktree-worker-登记)。
 
 ### 典型流程
 

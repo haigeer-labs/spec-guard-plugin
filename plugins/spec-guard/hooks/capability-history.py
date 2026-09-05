@@ -12,6 +12,7 @@ from capability_map import MapError, parse_map
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CHECKPOINT_ID = re.compile(r"^\d{8}T\d{6}Z-\d{4}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+AUDIT_TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 EVENTS = {"created", "paused", "resumed", "completed", "abandoned", "superseded"}
 MODULE_STATUS = {"not-started", "in-progress", "completed", "abandoned", "unknown"}
 TERMINAL = {"completed", "abandoned", "superseded"}
@@ -124,6 +125,35 @@ def check_initiative(initiative):
         previous = event_type
 
 
+def check_correction(correction, initiatives):
+    if not isinstance(correction, dict) or correction.get("type") != "history-correction":
+        fail("invalid history correction")
+    initiative_id = correction.get("initiativeId")
+    if initiative_id not in initiatives:
+        fail("correction initiative not found")
+    checkpoint_id = correction.get("checkpointId")
+    if not isinstance(checkpoint_id, str) or not CHECKPOINT_ID.fullmatch(checkpoint_id):
+        fail("invalid correction checkpoint id")
+    module_id = correction.get("moduleId")
+    if module_id is not None and (not isinstance(module_id, str) or not ID.fullmatch(module_id)):
+        fail("invalid correction module id")
+    if correction.get("field") not in {"responsibility", "dependsOn", "status", "event.at"}:
+        fail("invalid correction field")
+    if not AUDIT_TIME.fullmatch(correction.get("auditedAt", "")):
+        fail("invalid correction audit time")
+    if not isinstance(correction.get("auditReportSha256"), str) or not SHA256.fullmatch(correction["auditReportSha256"]):
+        fail("invalid correction audit report digest")
+    if "before" not in correction or "after" not in correction:
+        fail("correction before and after are required")
+    sources = correction.get("sources")
+    if not isinstance(sources, list) or not sources:
+        fail("correction sources are required")
+    for source in sources:
+        if (not isinstance(source, dict) or source.get("kind") != "audit-finding" or
+                not isinstance(source.get("code"), str) or not source["code"]):
+            fail("invalid correction source")
+
+
 def validate_data(data):
     if not isinstance(data, dict) or data.get("schemaVersion") != 1:
         fail("unsupported capability history schema")
@@ -136,6 +166,11 @@ def validate_data(data):
         if initiative["id"] in ids:
             fail("duplicate initiative id")
         ids.add(initiative["id"])
+    corrections = data.get("corrections", [])
+    if not isinstance(corrections, list):
+        fail("corrections must be an array")
+    for correction in corrections:
+        check_correction(correction, ids)
     return data
 
 
@@ -355,11 +390,62 @@ def audit(data, root_path):
             "summary": {"findings": len(findings), "byCode": counts}}
 
 
+def load_json(path, description):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        fail("invalid %s: %s" % (description, error))
+
+
+def find_audit_finding(report, correction):
+    if report.get("schemaVersion") != 1 or report.get("readOnly") is not True:
+        fail("invalid audit report")
+    for finding in report.get("findings", []):
+        if not isinstance(finding, dict):
+            continue
+        same_identity = all(finding.get(key) == correction.get(key)
+                            for key in ("initiativeId", "checkpointId", "moduleId", "field"))
+        if same_identity and finding.get("actual") == correction["before"] and finding.get("expected") == correction["after"]:
+            return finding
+    fail("correction does not match an audit finding")
+
+
+def append_correction(ledger_path, audit_path, correction_path):
+    data = load(ledger_path)
+    report = load_json(audit_path, "audit report")
+    correction = load_json(correction_path, "correction")
+    if not isinstance(correction, dict):
+        fail("invalid correction")
+    check_correction(correction, {item["id"] for item in data["initiatives"]})
+    if correction.get("auditReportSha256") != digest(audit_path):
+        fail("correction audit report digest differs")
+    finding = find_audit_finding(report, correction)
+    codes = {source["code"] for source in correction.get("sources", [])
+             if isinstance(source, dict) and source.get("kind") == "audit-finding"}
+    if finding["code"] not in codes:
+        fail("correction source does not cite audit finding")
+    if correction["field"] == "status" and correction["after"] != "unknown":
+        fail("status correction must retain unknown")
+    corrections = data.setdefault("corrections", [])
+    if correction in corrections:
+        fail("correction already recorded")
+    corrections.append(correction)
+    validate_data(data)
+    write_atomic(ledger_path, data)
+
+
 def main(argv):
-    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "audit", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
-        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | audit <file> <project-root> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
+    if len(argv) < 2 or argv[0] not in {"validate", "status", "verify", "audit", "correct", "active", "checkpoint", "verify-checkpoint", "create", "ensure", "append"}:
+        print("usage: capability-history.py validate <file> | status <file> <initiative-id> | verify <file> <project-root> | audit <file> <project-root> | correct --confirm <ledger> <audit-report> <correction> | checkpoint <file> <initiative-id> | verify-checkpoint <file> <project-root> <initiative-id> | create <ledger> <initiative> | ensure <ledger> <initiative> | append <ledger> <initiative-id> <event>", file=sys.stderr)
         return 2
     try:
+        if argv[0] == "correct":
+            if len(argv) != 5 or argv[1] != "--confirm":
+                return 2
+            append_correction(argv[2], argv[3], argv[4])
+            print("ok")
+            return 0
         if argv[0] == "create":
             if len(argv) != 3:
                 return 2

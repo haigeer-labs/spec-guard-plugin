@@ -142,6 +142,35 @@ else
   bad "正：语义审计报告猜测字段且不改写账本"
 fi
 
+CORRECTION="$TMP/correction.json"
+AUDIT_REPORT_SHA="$(shasum -a 256 "$TMP/audit-report.json" | awk '{print $1}')"
+write_history "$CORRECTION" "{\"type\":\"history-correction\",\"initiativeId\":\"a\",\"checkpointId\":\"$CHECKPOINT\",\"moduleId\":\"payment-api\",\"field\":\"status\",\"before\":\"completed\",\"after\":\"unknown\",\"auditedAt\":\"2026-09-05T12:00:00Z\",\"auditReportSha256\":\"$AUDIT_REPORT_SHA\",\"sources\":[{\"kind\":\"audit-finding\",\"code\":\"status-unsupported\"}]}"
+CORRECTION_BEFORE="$(shasum -a 256 "$AUDIT" | awk '{print $1}')"
+if python3 "$HISTORY" correct --confirm "$AUDIT" "$TMP/audit-report.json" "$CORRECTION" >/dev/null 2>&1 \
+  && python3 "$HISTORY" validate "$AUDIT" >/dev/null 2>&1 \
+  && python3 - "$AUDIT" <<'PY'
+import json, sys
+ledger = json.load(open(sys.argv[1], encoding="utf-8"))
+assert ledger["initiatives"][0]["events"][0]["checkpoint"]["modules"][0]["status"] == "completed"
+assert ledger["corrections"][0]["after"] == "unknown"
+PY
+then
+  ok "正：确认的修正只追加证据事件，不重写 checkpoint"
+else
+  bad "正：确认的修正只追加证据事件，不重写 checkpoint"
+fi
+CORRECTION_AFTER="$(shasum -a 256 "$AUDIT" | awk '{print $1}')"
+BAD_CORRECTION="$TMP/bad-correction.json"
+write_history "$BAD_CORRECTION" "{\"type\":\"history-correction\",\"initiativeId\":\"a\",\"checkpointId\":\"$CHECKPOINT\",\"moduleId\":\"payment-api\",\"field\":\"status\",\"before\":\"completed\",\"after\":\"completed\",\"auditedAt\":\"2026-09-05T12:00:00Z\",\"auditReportSha256\":\"$AUDIT_REPORT_SHA\",\"sources\":[{\"kind\":\"audit-finding\",\"code\":\"status-unsupported\"}]}"
+if [ "$CORRECTION_BEFORE" != "$CORRECTION_AFTER" ] \
+  && ! python3 "$HISTORY" correct "$AUDIT" "$TMP/audit-report.json" "$BAD_CORRECTION" >/dev/null 2>&1 \
+  && ! python3 "$HISTORY" correct --confirm "$AUDIT" "$TMP/audit-report.json" "$BAD_CORRECTION" >/dev/null 2>&1 \
+  && [ "$CORRECTION_AFTER" = "$(shasum -a 256 "$AUDIT" | awk '{print $1}')" ]; then
+  ok "反：未确认或把 unknown 升级为完成的修正均不写入"
+else
+  bad "反：未确认或把 unknown 升级为完成的修正均不写入"
+fi
+
 NEW_INIT="$TMP/new-initiative.json"
 write_history "$NEW_INIT" '{"id":"new","title":"New","startedAt":"2026-09-02T09:00:00Z","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/new/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}'
 LEDGER="$TMP/ledger.json"

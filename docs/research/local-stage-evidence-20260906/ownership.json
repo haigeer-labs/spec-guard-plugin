@@ -1,0 +1,87 @@
+[
+  {
+    "file": "history-ledger.md",
+    "sha256": "d17ca82d35416bd73150900ddf64579dc0a858de6743ee679b1a29a58986a938",
+    "matches": [
+      {
+        "initiative": "capability-history",
+        "event": "completed",
+        "checkpoint": "20260903T074408Z-0001",
+        "path": "spec/history/capability-history/20260903T074408Z-0001/history-ledger.md",
+        "topMatchesLedger": true,
+        "snapshotMatchesLedger": true
+      }
+    ]
+  },
+  {
+    "file": "history-migration.md",
+    "sha256": "3cd4416da741311961f67e4e97281e77bbf149672ea00922b25ec56131ccb015",
+    "matches": [
+      {
+        "initiative": "capability-history",
+        "event": "completed",
+        "checkpoint": "20260903T074408Z-0001",
+        "path": "spec/history/capability-history/20260903T074408Z-0001/history-migration.md",
+        "topMatchesLedger": true,
+        "snapshotMatchesLedger": true
+      }
+    ]
+  },
+  {
+    "file": "history-verification.md",
+    "sha256": "de013b534faf85f4eaed396e4a4895c1551420a722a3b9f7416e495792639269",
+    "matches": [
+      {
+        "initiative": "capability-history",
+        "event": "completed",
+        "checkpoint": "20260903T074408Z-0001",
+        "path": "spec/history/capability-history/20260903T074408Z-0001/history-verification.md",
+        "topMatchesLedger": true,
+        "snapshotMatchesLedger": true
+      }
+    ]
+  },
+  {
+    "file": "history-workflow-integration.md",
+    "sha256": "2d9b9605e19bbf679aa842d408ea51207fc97848d491f2c1e65f7995afcf3566",
+    "matches": [
+      {
+        "initiative": "capability-history",
+        "event": "completed",
+        "checkpoint": "20260903T074408Z-0001",
+        "path": "spec/history/capability-history/20260903T074408Z-0001/history-workflow-integration.md",
+        "topMatchesLedger": true,
+        "snapshotMatchesLedger": true
+      }
+    ]
+  },
+  {
+    "file": "initiative-lifecycle.md",
+    "sha256": "55cd533b7ea4303c166a63624aec39b68079ce3b00ccd178ca90586235ee6cdb",
+    "matches": [
+      {
+        "initiative": "capability-history",
+        "event": "completed",
+        "checkpoint": "20260903T074408Z-0001",
+        "path": "spec/history/capability-history/20260903T074408Z-0001/initiative-lifecycle.md",
+        "topMatchesLedger": true,
+        "snapshotMatchesLedger": true
+      }
+    ]
+  },
+  {
+    "file": "parallel-guidance.md",
+    "sha256": "dbfdedca31818b1ee875e37326a8d76e17921a9780e203147c0f99ff312a49c6",
+    "matches": []
+  },
+  {
+    "file": "parallel-readiness.md",
+    "sha256": "4f56ed5c2d07ebd6bee9e4563963a71bfc584033b4a5a01877f28a3300ef70c3",
+    "matches": []
+  },
+  {
+    "file": "parallel-safety-gate.md",
+    "sha256": "204f8845d6ae8c89ccdf13b3253c3bcd0ee12ed68694850d4f298b03feb37aa4",
+    "matches": []
+  }
+]

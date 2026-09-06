@@ -1,0 +1,68 @@
+[
+  {
+    "command": "/bin/bash scripts/validate.sh",
+    "exit": 0,
+    "tail": [
+      "test_explicit_bind_is_worktree_local_and_deterministic (__main__.WorkspaceBindingContract) ... ok",
+      "test_missing_bad_non_git_and_unresolved_dependency_are_not_safe (__main__.WorkspaceBindingContract) ... ok",
+      "test_task_binding_requires_a_verified_expected_previous_value (__main__.WorkspaceBindingContract) ... ok",
+      "",
+      "----------------------------------------------------------------------",
+      "Ran 13 tests in 4.200s",
+      "",
+      "OK"
+    ]
+  },
+  {
+    "command": "/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh",
+    "exit": 0,
+    "tail": [
+      "  ✅ 正：报出仍在引用旧路径的文件（不自动改）",
+      "  ✅ 反：目标已存在 → 不覆盖、源文件留在原地、退出码非零",
+      "  ✅ 反：--dry-run --migrate → 只打印，不动文件",
+      "",
+      "═══ Claude 命令命名空间 ═══",
+      "  ✅ Claude 命令、模板与 hook 建议都使用 /spec-guard: 命名空间",
+      "",
+      "  总计 134 通过 / 0 失败"
+    ]
+  },
+  {
+    "command": "/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh",
+    "exit": 0,
+    "tail": [
+      "  ✅ 反：state.json 坏掉 → 不报任何指纹分歧",
+      "  ✅ 目录不存在时干净报错",
+      "",
+      "═══ 远端 host 判定（与 phase-guard 共用）═══",
+      "  ✅ 正：SSH host 别名 github-collab: 认成 github",
+      "  ✅ 正：gitlab.com 路径里的 github 不影响 GitLab 判定",
+      "",
+      "  总计 73 通过 / 0 失败"
+    ]
+  },
+  {
+    "command": "/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh",
+    "exit": 0,
+    "tail": [
+      "  ✅ manifest skills 错误 fixture 被拒绝",
+      "  ✅ manifest hooks 错误 fixture 被拒绝",
+      "  ✅ hooks 只注册 UserPromptSubmit，并优先使用 PLUGIN_ROOT",
+      "  ✅ 仅设 PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON",
+      "  ✅ 仅设 CLAUDE_PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON",
+      "  ✅ Codex 显式操作 skill 与 bridge digest 依赖约束正确",
+      "",
+      "10 passed, 0 failed"
+    ]
+  },
+  {
+    "command": "/bin/bash evals/codex-plugin-smoke.sh --selftest",
+    "exit": 0,
+    "tail": [
+      "  ✅ 收到 spec-guard hook 注入的当前阶段",
+      "  ⏭  hook 未信任或未执行：在新会话用 /hooks 审核并信任",
+      "  ❌ hook 已执行，但输出未包含有效的当前阶段事实",
+      "  ✅ selftest: 0=通过、1=行为失败、2=环境未就绪"
+    ]
+  }
+]

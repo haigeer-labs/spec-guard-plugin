@@ -1,0 +1,20 @@
+[
+  {
+    "pluginId": "spec-guard@spec-guard-marketplace",
+    "name": "spec-guard",
+    "marketplaceName": "spec-guard-marketplace",
+    "version": "0.8.0",
+    "installed": true,
+    "enabled": true,
+    "source": {
+      "source": "local",
+      "path": "/Users/vilin/Documents/gs/spec-guard-plugin/plugins/spec-guard"
+    },
+    "marketplaceSource": {
+      "sourceType": "local",
+      "source": "/Users/vilin/Documents/gs/spec-guard-plugin"
+    },
+    "installPolicy": "AVAILABLE",
+    "authPolicy": "ON_INSTALL"
+  }
+]

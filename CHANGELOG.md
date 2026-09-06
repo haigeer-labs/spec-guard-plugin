@@ -1,13 +1,15 @@
 # Changelog
 
-## [0.9.0] - 本地候选（尚未发布）
+## [0.9.0]
+
+### 本地工作流与产物一致性
 
 - 正确识别尚未激活 tracker 的本地验证阶段；setup-convention 提供显式上下文预览/写入，GitLab 直接同步入口同样拒绝本地阶段。
 - 图外 spec 按历史内容已验证、历史归属可证但内容未验证、真正无归属分别报告；本地 pause/resume 保存图中已有 spec/plan。
 - 阶段交接、失败、授权和取消使用共享检查点预告规则，已有授权不重复询问。
 - 本地 setup 从子目录调用时正确解析项目根目录；显式 CLAUDE_PROJECT_DIR 仍优先。
 
-### 已有未发布基线
+### Tracker、历史与安全边界
 
 - **GitLab tracker 恢复、worktree binding 与 `/next` 选择收紧。** 能力图投影仅从完整 marker
   恢复；每个 worktree 显式保存本地 tracker/module/task context，复制或失配即停止。GitLab
@@ -18,15 +20,20 @@
   并行候选仍只代表 Depends on 依赖层，未核验任务状态或运行资源，不能立即领取或执行。
 - **收紧人工并行边界检查。** 路径按组件比较并保留原始/规范值；非法路径、空声明、链接、
   权限、大小写/Unicode 别名和无项目上下文都保守降级。文本与 JSON 均保留冲突和不确定原因，
-  非 eligible 组不生成 worker 建议。本项尚未发布，且不解除 `PARALLEL_WRITES_DISABLED`。
+  非 eligible 组不生成 worker 建议，不解除 `PARALLEL_WRITES_DISABLED`。
 - 暂停实验性并行写入口：run/lease、worktree、CLI Agent 启动、Desktop 登记、汇合与回收均返回
   `PARALLEL_WRITES_DISABLED`，保留已有资源；普通串行与只读候选分析继续可用。
 - 旧 run/worker/process 读取校验文件名、身份关联和路径；查询失败返回非零。旧 completed 显示
   unverified 并保留 recordedState，宿主管理不等同于可回收。
 - 升级不停止旧进程、不接管已加载旧版本的会话。先保存成果、核对任务并由用户决定停止或重启，
-  确认新版本加载；不自动清理旧 ledger 或 worktree。本项尚未发布，不构成四端原生 E2E 验收。
-
+  确认新版本加载；不自动清理旧 ledger 或 worktree。不构成四端原生 E2E 验收。
 - **历史与发布证据完整性。** 历史语义审计、证据补正与发布验收记录分层验证，包清单校验不替代安装或宿主实测。
+
+### 开发验证
+
+- **隔离 pre-push 的 Git 仓库环境。** 检查运行前清除仓库级环境变量，避免临时仓库测试修改真实仓库的 bare、身份或 remote 配置；任一检查失败仍阻止推送。
+- 已完成源码五项规定回归、候选包内容核对与本地夹具验证。pre-push 新增普通 checkout、linked worktree 和检查失败阻断的真实本地 Git push 回归。
+- 已安装的旧 pre-push 需要显式重新运行 `scripts/install-git-hooks.sh` 才能更新；拉取源码不会自动替换已安装 hook。
 
 ### 已知限制
 

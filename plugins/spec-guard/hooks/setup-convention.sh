@@ -16,6 +16,13 @@
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
+# Explicit local setup bypasses tracker authentication and ordinary installation writes.
+for argument in "$@"; do
+  if [ "$argument" = --local-validation ]; then
+    exec python3 "$(dirname "${BASH_SOURCE[0]}")/local_context.py" "$@"
+  fi
+done
+
 MODE="${1:-github}"
 HOST=claude
 DRY=false

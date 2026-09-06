@@ -1,0 +1,12 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "issue": null,
+    "title": "Local Workflow Integrity",
+    "map": "spec/CAPABILITY-MAP.md"
+  },
+  "issueTypes": false,
+  "modules": {},
+  "activeModule": "workflow-checkpoint-preview",
+  "workflowStage": "local-validation"
+}

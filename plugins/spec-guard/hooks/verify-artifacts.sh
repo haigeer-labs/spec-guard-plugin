@@ -173,8 +173,11 @@ is_gitlab_remote() {  # $1=remote url
 }
 
 # ── tracker 判定（与 phase-guard 同一套顺序）────────────────
+LOCAL_STAGE_RESULT=$(python3 "${SELF_DIR}/hooks/local_validation.py" "${ROOT}" 2>/dev/null) \
+  || LOCAL_STAGE_RESULT="invalid|本地阶段校验器不可用，不能确认上下文"
+LOCAL_STAGE="${LOCAL_STAGE_RESULT%%|*}"
 TRACKER=$(jread "${STATE}" "d.get('tracker')")
-if [ -z "${TRACKER}" ]; then
+if [ -z "${TRACKER}" ] && [ "${LOCAL_STAGE}" = absent ]; then
   R=$(git remote get-url origin 2>/dev/null || echo "")
   if [ -z "${R}" ]; then TRACKER="none"
   elif is_github_remote "${R}"; then TRACKER="github"
@@ -188,10 +191,18 @@ echo "═══ 产物落地校验 ═══"
 echo "  tracker=${TRACKER}${MODULE:+  activeModule=${MODULE}}"
 echo ""
 
+if [ "${LOCAL_STAGE}" = valid ]; then
+  ok "本地验证上下文有效（不代表执行或交付获准）"
+  skip "tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过"
+elif [ "${LOCAL_STAGE}" != absent ]; then
+  bad "本地验证阶段不可用：${LOCAL_STAGE_RESULT#*|}"
+fi
+
 # 只读诊断：远端 tracker 的 worktree 必须先显式绑定才可进入 next/deliver。
 # 不在这里创建、修复或覆盖 binding；能力图尚未有严格 Build order 的旧项目保留
 # 原有迁移路径，不能凭不完整输入制造误报。
-if { [ "${TRACKER}" = "github" ] || [ "${TRACKER}" = "gitlab" ]; } \
+if [ "${LOCAL_STAGE}" = absent ] \
+   && { [ "${TRACKER}" = "github" ] || [ "${TRACKER}" = "gitlab" ]; } \
    && [ -n "${MODULE}" ] && [ -f "spec/CAPABILITY-MAP.md" ] \
    && grep -q '^Build order:' "spec/CAPABILITY-MAP.md" 2>/dev/null \
    && [ -f "${SELF_DIR}/hooks/workspace_binding.py" ]; then
@@ -261,7 +272,9 @@ echo ""
 #   所以 phase-guard 那边整个不报。
 echo "── A2. 能力图 ↔ 投影的指纹 ──"
 DIGEST_PY="${SELF_DIR}/hooks/spec-digest.py"
-if [ ! -f "${MAP}" ] || [ ! -f "${STATE}" ]; then
+if [ "${LOCAL_STAGE}" != absent ]; then
+  skip "本地阶段不校验远端投影（不代表通过）"
+elif [ ! -f "${MAP}" ] || [ ! -f "${STATE}" ]; then
   skip "缺能力图或 state.json，跳过"
 elif [ "${TRACKER}" != "github" ] && [ "${TRACKER}" != "gitlab" ]; then
   skip "tracker=${TRACKER}，当前 tracker 不写远端映射指纹"
@@ -321,8 +334,23 @@ else
   ORPHAN=$(comm -13 <(printf '%s\n' "${MAP_IDS}" | sort) <(printf '%s\n' "${SPECS}" | sort) | grep . || true)
   MISSING=$(comm -23 <(printf '%s\n' "${MAP_IDS}" | sort) <(printf '%s\n' "${SPECS}" | sort) | grep . || true)
   if [ -n "${ORPHAN}" ]; then
-    bad "spec/ 里有能力图上没有的模块: $(printf '%s' "${ORPHAN}" | tr '\n' ' ')"
-    printf '     上游原话：the map, not filename guessing, is the index of what exists\n'
+    ORPHAN_ARGS=()
+    while IFS= read -r orphan; do ORPHAN_ARGS+=("$orphan"); done <<< "$ORPHAN"
+    HISTORY_RESULT=$(python3 "${SELF_DIR}/hooks/artifact_history.py" "$ROOT" "${ORPHAN_ARGS[@]}" 2>/dev/null)
+    HISTORY_RC=$?
+    if [ -z "$HISTORY_RESULT" ]; then
+      bad "历史证据检查未运行，不能豁免图外 spec"
+    else
+      while IFS= read -r result; do
+        case "$result" in
+          OK\|*) ok "${result#OK|}" ;;
+          WARN\|*) warn "${result#WARN|}" ;;
+          BAD\|*) bad "${result#BAD|}" ;;
+          *) bad "历史证据检查返回未知结果" ;;
+        esac
+      done <<< "$HISTORY_RESULT"
+      [ "$HISTORY_RC" -eq 0 ] || bad "历史归属校验失败，未豁免图外产物"
+    fi
   fi
   [ -n "${MISSING}" ] && printf '  ℹ  能力图上还没写 spec 的模块: %s（按 build order 逐个补）\n' \
     "$(printf '%s' "${MISSING}" | tr '\n' ' ')"
@@ -374,9 +402,13 @@ else
     else
       ok "${PLAN} 的 Task List 不是 checklist"
     fi
-    grep -qi "tracked in" "${PLAN}" \
-      && ok "${PLAN} 注明了 tracker 位置" \
-      || warn "${PLAN} 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪"
+    if [ "${LOCAL_STAGE}" != absent ]; then
+      skip "本地阶段没有已激活的 tracker 任务索引（不代表通过）"
+    else
+      grep -qi "tracked in" "${PLAN}" \
+        && ok "${PLAN} 注明了 tracker 位置" \
+        || warn "${PLAN} 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪"
+    fi
   else
     ok "${PLAN} 存在"
   fi
@@ -385,7 +417,9 @@ echo ""
 
 # ── E. GitHub 层（探测失败就整段跳过，绝不误报）────────────
 echo "── E. GitHub 层 ──"
-if [ "${TRACKER}" != "github" ]; then
+if [ "${LOCAL_STAGE}" != absent ]; then
+  skip "本地阶段不查询 GitHub（不代表通过）"
+elif [ "${TRACKER}" != "github" ]; then
   skip "tracker=${TRACKER}，不涉及 GitHub"
 elif ! command -v gh >/dev/null 2>&1; then
   skip "gh 未安装，跳过（不代表通过）"
@@ -614,7 +648,9 @@ fi
 
 echo ""
 echo "── F. GitLab 层 ──"
-if [ "${TRACKER}" != "gitlab" ]; then
+if [ "${LOCAL_STAGE}" != absent ]; then
+  skip "本地阶段不查询 GitLab（不代表通过）"
+elif [ "${TRACKER}" != "gitlab" ]; then
   skip "tracker=${TRACKER}，不涉及 GitLab"
 elif ! command -v glab >/dev/null 2>&1; then
   skip "glab 未安装，跳过（不代表通过）"

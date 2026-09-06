@@ -2,6 +2,11 @@
 description: 把评审通过的能力图落成当前 tracker 的任务结构
 allowed-tools: Bash, Read, Write
 ---
+
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+若 state 含 `workflowStage`，先停止远端创建/刷新，说明本地阶段尚未退出；
+退出阶段和激活 tracker 需要明确范围授权，不能为修复提示自动清除字段。
+
 先区分新建/补充与仅刷新旧摘要；仅刷新时直接加载相应 bridge 的刷新规则，不运行下面的新建/补充入口。
 新建/补充时读取 `.agent/state.json` 的 `tracker`。GitLab 使用确定性脚本，不依赖模型转述 bridge：
 

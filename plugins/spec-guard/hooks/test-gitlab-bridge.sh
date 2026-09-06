@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/bin"
+export CLAUDE_PROJECT_DIR="$WORK"
 cat > "$WORK/bin/glab" <<'EOF'
 #!/usr/bin/env bash
 case "$1:$2" in

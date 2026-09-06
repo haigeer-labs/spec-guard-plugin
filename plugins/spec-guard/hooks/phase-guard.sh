@@ -241,7 +241,14 @@ add()    { FACTS="${FACTS}  - $1"$'\n'; }
 broken() { BROKEN="${BROKEN}  ⚠ $1"$'\n'; }
 
 # ── 1. 活跃模块 ────────────────────────────────────────────
-TRACKER=$(detect_tracker)
+LOCAL_STAGE_RESULT=$(python3 "${SELF_DIR}/hooks/local_validation.py" "$ROOT" 2>/dev/null) \
+  || LOCAL_STAGE_RESULT="invalid|本地阶段校验器不可用，不能确认上下文"
+LOCAL_STAGE="${LOCAL_STAGE_RESULT%%|*}"
+if [ "$LOCAL_STAGE" = absent ]; then
+  TRACKER=$(detect_tracker)
+else
+  TRACKER=$(jread "$STATE" "d.get('tracker')")
+fi
 MODULE=""; MODULE_ISSUE=""
 if [ -f "$STATE" ]; then
   MODULE=$(jread "$STATE" "d.get('activeModule')")
@@ -302,7 +309,7 @@ fi
 #     2. 已落 ≥ 1 个 —— 能力图刚写完还没同步是 Phase 0 的正常中间态，不是断链。
 #     3. 指纹字段缺失一律不报 —— 老项目的 state.json 没有 goalDigest/rowDigest，
 #        不能因此挨断链（这条在 spec-digest.py 里，输出 null / 空数组）。
-if [ "$HAS_MAP" = true ] && [ "$TRACKER" = "github" ] && [ -f "$STATE" ] \
+if [ "$LOCAL_STAGE" = absent ] && [ "$HAS_MAP" = true ] && [ "$TRACKER" = "github" ] && [ -f "$STATE" ] \
    && command -v python3 >/dev/null 2>&1 && [ -f "${SELF_DIR}/hooks/spec-digest.py" ]; then
   SYNC_JSON=$(python3 "${SELF_DIR}/hooks/spec-digest.py" check \
     "spec/CAPABILITY-MAP.md" "$STATE" 2>/dev/null || true)
@@ -350,7 +357,7 @@ fi
 
 # ── 4. GitHub 层 ───────────────────────────────────────────
 OPEN_TASKS="?"; TOTAL_TASKS="?"; ASSIGNED=""; GH_OK=false
-if command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
+if [ "$LOCAL_STAGE" = absent ] && command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
   # 必须用 REST sub_issues：`gh issue list` **没有** --parent 这个 flag
   # （--parent 只在 gh issue create 上）。早期版本用了它，结果每次都失败、
   # 静默落进「gh 不可用」降级分支 —— GitHub 层从来没真正跑过。
@@ -457,7 +464,14 @@ fi
 DONE_LIST=$(printf '%s' "${DONE_NUMS}" | sed 's/^/#/' | tr '\n' ' ')
 
 # ── 状态机判定 ─────────────────────────────────────────────
-if [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -eq 0 ]; then
+if [ "$LOCAL_STAGE" = valid ]; then
+  PHASE="LOCAL_VALIDATION (tracker 尚未激活)"
+  NEXT="按 tasks/${MODULE}/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入"
+elif [ "$LOCAL_STAGE" != absent ]; then
+  PHASE="LOCAL_VALIDATION_INVALID"
+  broken "本地验证阶段不可用：${LOCAL_STAGE_RESULT#*|}"
+  NEXT="先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker"
+elif [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -eq 0 ]; then
   PHASE="IDLE"
   NEXT="/spec —— 还没有任何规格"
 
@@ -665,6 +679,8 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 # 纯参数展开，不 fork。
 [ -f "${SELF_DIR}/hooks/spec-digest.py" ] \
   && add "spec-digest: ${SELF_DIR}/hooks/spec-digest.py"
+[ -f "${SELF_DIR}/references/workflow-checkpoints.md" ] \
+  && add "checkpoint-rules: ${SELF_DIR}/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"

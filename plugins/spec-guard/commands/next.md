@@ -2,6 +2,8 @@
 description: 从当前 tracker 取下一个可执行任务并开始实现
 allowed-tools: Bash, Read, Write
 ---
+
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
 先检查当前分支。若它是 `spec-guard/<worker-id>`，这是 controller-owned worker checkout：先用
 `parallel-worktree.py verify` 复验 manifest，并从 manifest 读取唯一 `moduleId`；验证失败立即停止。
 验证成功也**不得继续执行下面的 canonical `/next` 路由**：共享 `.agent/state.json` 只有一个
@@ -9,6 +11,9 @@ allowed-tools: Bash, Read, Write
 moduleId，说明实验写流程暂停，保存成果并只读核对；不要继续领取、汇合或回收。
 
 普通分支才执行以下既有流程：
+
+先检查 state 的 `workflowStage`：字段存在时停止取任务，说明当前为本地验证或未知阶段；
+不得自动清除字段、创建 tracker 映射或建议用绑定绕过。先按当前 plan 展示成果及下一步。
 
 若 `.agent/state.json` 的 `tracker` 是 `github` 或 `gitlab`，在加载 bridge、选择、认领或写入任何任务前，先运行：
 

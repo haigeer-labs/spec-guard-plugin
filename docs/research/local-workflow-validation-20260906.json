@@ -1,0 +1,291 @@
+{
+  "checks": [
+    {
+      "command": "/bin/bash scripts/validate.sh",
+      "exit": 0,
+      "seconds": 68.26
+    },
+    {
+      "command": "/bin/bash plugins/spec-guard/hooks/test-phase-guard.sh",
+      "exit": 0,
+      "seconds": 45.32
+    },
+    {
+      "command": "/bin/bash plugins/spec-guard/hooks/test-verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 29.27
+    },
+    {
+      "command": "/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh",
+      "exit": 0,
+      "seconds": 0.68
+    },
+    {
+      "command": "/bin/bash evals/codex-plugin-smoke.sh --selftest",
+      "exit": 0,
+      "seconds": 0.1
+    }
+  ],
+  "comparison": [
+    {
+      "tracker": "github",
+      "version": "source",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.398,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "github",
+      "version": "source",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.222,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": []
+    },
+    {
+      "tracker": "github",
+      "version": "codex-cache",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.276,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **SPECED**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/plugins/cache/spec-guard-marketplace/spec-guard/0.8.0/hooks/spec-digest.py\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: v0.8.0\\n\\n**检测到断链：**\\n  ⚠ activeModule=[alpha] 但 .agent/state.json 里没有它的 issue —— 链路在此断开\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: /spec-guard:sync-map 把能力图和模块落成 issue\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "github",
+      "version": "codex-cache",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.547,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  一个模块 issue 都还没落，Phase 0 尚未同步\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⚠️  tasks/alpha/plan.md 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪\n\n── E. GitHub 层 ──\n  ⏭  gh 未认证，跳过（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  tracker=github，不涉及 GitLab\n\n═══ 6 通过 / 1 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/gh"
+      ]
+    },
+    {
+      "tracker": "github",
+      "version": "claude-installed",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.273,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **SPECED**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.claude/plugins/cache/spec-guard-marketplace/spec-guard/0.7.51/hooks/spec-digest.py\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: v0.7.51\\n\\n**检测到断链：**\\n  ⚠ activeModule=[alpha] 但 .agent/state.json 里没有它的 issue —— 链路在此断开\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: /spec-guard:sync-map 把能力图和模块落成 issue\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "github",
+      "version": "claude-installed",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.283,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  一个模块 issue 都还没落，Phase 0 尚未同步\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⚠️  tasks/alpha/plan.md 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪\n\n── E. GitHub 层 ──\n  ⏭  gh 未认证，跳过（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  tracker=github，不涉及 GitLab\n\n═══ 6 通过 / 1 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/gh"
+      ]
+    },
+    {
+      "tracker": "gitlab",
+      "version": "source",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.181,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "gitlab",
+      "version": "source",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.18,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": []
+    },
+    {
+      "tracker": "gitlab",
+      "version": "codex-cache",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.142,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **SPECED (gitlab)**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/plugins/cache/spec-guard-marketplace/spec-guard/0.8.0/hooks/spec-digest.py\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: v0.8.0\\n\\n**检测到断链：**\\n  ⚠ activeModule=[alpha] 在 .agent/state.json 里没有对应的 gitlab 条目号 —— 链路在此断开\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 在 gitlab 里为 [alpha] 建条目，把号写进 .agent/state.json 的 modules.alpha.issue\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "gitlab",
+      "version": "codex-cache",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.347,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  一个模块 issue 都还没落，Phase 0 尚未同步\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⚠️  tasks/alpha/plan.md 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪\n\n── E. GitHub 层 ──\n  ⏭  tracker=gitlab，不涉及 GitHub\n\n── F. GitLab 层 ──\n  ⏭  glab 未认证或 API 不可用，跳过（不代表通过）\n\n═══ 6 通过 / 1 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/glab"
+      ]
+    },
+    {
+      "tracker": "gitlab",
+      "version": "claude-installed",
+      "script": "phase-guard.sh",
+      "exit": 0,
+      "seconds": 0.143,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **SPECED (gitlab)**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.claude/plugins/cache/spec-guard-marketplace/spec-guard/0.7.51/hooks/spec-digest.py\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: v0.7.51\\n\\n**检测到断链：**\\n  ⚠ activeModule=[alpha] 在 .agent/state.json 里没有对应的 gitlab 条目号 —— 链路在此断开\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 在 gitlab 里为 [alpha] 建条目，把号写进 .agent/state.json 的 modules.alpha.issue\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git",
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/git"
+      ]
+    },
+    {
+      "tracker": "gitlab",
+      "version": "claude-installed",
+      "script": "verify-artifacts.sh",
+      "exit": 0,
+      "seconds": 0.244,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  一个模块 issue 都还没落，Phase 0 尚未同步\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⚠️  tasks/alpha/plan.md 没写「Tasks tracked in ...」—— 跨会话续接会找不到任务在哪\n\n── E. GitHub 层 ──\n  ⏭  tracker=gitlab，不涉及 GitHub\n\n── F. GitLab 层 ──\n  ⏭  glab 未认证或 API 不可用，跳过（不代表通过）\n\n═══ 6 通过 / 1 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": [
+        "/var/folders/z7/9k7373td4cg934n14qkvblpc0000gq/T/sg-local-stage-xycavhdr/bin/glab"
+      ]
+    },
+    {
+      "case": "current-worktree",
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=workflow-checkpoint-preview\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 3 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ 历史内容已验证: history-ledger\n  ✅ 历史内容已验证: history-migration\n  ✅ 历史内容已验证: history-verification\n  ✅ 历史内容已验证: history-workflow-integration\n  ✅ 历史内容已验证: initiative-lifecycle\n  ⚠️  历史归属可证，内容未验证: parallel-guidance\n  ⚠️  历史归属可证，内容未验证: parallel-readiness\n  ⚠️  历史归属可证，内容未验证: parallel-safety-gate\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/workflow-checkpoint-preview/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 11 通过 / 3 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": []
+    },
+    {
+      "case": "historical-six-map",
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=execution-host-guidance\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 6 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ 历史内容已验证: history-ledger\n  ✅ 历史内容已验证: history-migration\n  ✅ 历史内容已验证: history-verification\n  ✅ 历史内容已验证: history-workflow-integration\n  ✅ 历史内容已验证: initiative-lifecycle\n  ⚠️  历史归属可证，内容未验证: parallel-guidance\n  ⚠️  历史归属可证，内容未验证: parallel-readiness\n  ⚠️  历史归属可证，内容未验证: parallel-safety-gate\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/execution-host-guidance/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 11 通过 / 3 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "calls": []
+    }
+  ],
+  "logs": {
+    "codex-plugin-smoke.sh.log": "  ✅ 收到 spec-guard hook 注入的当前阶段\n  ⏭  hook 未信任或未执行：在新会话用 /hooks 审核并信任\n  ❌ hook 已执行，但输出未包含有效的当前阶段事实\n  ✅ selftest: 0=通过、1=行为失败、2=环境未就绪\n",
+    "test-codex-adapter.sh.log": "═══ Codex 适配器回归测试 ═══\n  ✅ Codex manifest 身份、版本、描述、skills/hooks 精确注册\n  ✅ manifest name 错误 fixture 被拒绝\n  ✅ manifest version 错误 fixture 被拒绝\n  ✅ manifest description 错误 fixture 被拒绝\n  ✅ manifest skills 错误 fixture 被拒绝\n  ✅ manifest hooks 错误 fixture 被拒绝\n  ✅ hooks 只注册 UserPromptSubmit，并优先使用 PLUGIN_ROOT\n  ✅ 仅设 PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON\n  ✅ 仅设 CLAUDE_PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON\n  ✅ Codex 显式操作 skill 与 bridge digest 依赖约束正确\n\n10 passed, 0 failed\n",
+    "test-phase-guard.sh.log": "═══ phase-guard 回归测试 ═══\n  ✅ 空仓库\n  ✅ 远端严格项目缺 binding → 只读迁移诊断\n  ✅ 缺 binding 的下一步指向显式绑定\n  ✅ 只有能力图\n  ✅ MAP_ONLY 保留 /spec，不被 binding 覆盖\n  ✅ MAP_ONLY 的下一步仍是 /spec\n  ✅ MAP_ONLY 不要求绑定 worktree\n  ✅ 有 spec 但无 state.json\n  ✅ 终态 history + 遗留 spec → 已归档，不报断链\n  ✅ 活跃 history + 遗留 spec → 仍报断链\n  ✅ 根目录SPEC + 无 state.json\n  ✅ todo并存+无plan\n  ✅ 干净待交付\n  ✅ 有改动\n  ✅ 本地模式齐全\n  ✅ 本地模式缺plan\n  ✅ 有 spec 但刻意无活跃模块 → 不报断链\n  ✅ activeModule 有值但无 issue → 真断链\n  ✅ 断链文案指名 activeModule\n  ✅ gitlab 齐全 → PLANNED (gitlab)\n  ✅ GitLab PLANNED 路由到 spec-gitlab-bridge\n  ✅ jira 齐全 → PLANNED (jira)\n  ✅ gitlab 缺条目号 → 真断链\n  ✅ 非 GitHub tracker 不出现 GitHub 专属建议\n  ✅ GitLab.com 未声明 tracker → GitLab 模式\n  ✅ 自建 GitLab 由 glab 确认\n  ✅ 未启用仓库静默\n  ✅ 目录不存在不崩\n  ✅ 模块分支干净 → 继续取任务，不报断链\n  ✅ 模块分支有改动 → 提交，不是开 PR\n  ✅ 模块内 task 全部落 commit → 该开模块 PR 了\n  ✅ 模块分支：注入已做完的 task 号（#11），没有牵连未做的 #12\n  ✅ 落了 1/2 个 task → 仍在取任务，不报断链\n  ✅ 模块分支无 closing commit：说「还没有」，不列号\n  ✅ BASE 取不到时不排除任何 task（不能判成模块已完成）\n  ✅ 默认分支 develop：靠 origin/HEAD 认出 base，号照样算得出\n  ✅ 只剩 origin/develop（本地分支已删）也认得出 base\n  ✅ 本地 main 的常见情形不受影响\n  ✅ 同一个号出现两次只算一个 task（不能提前判 MODULE_READY）\n  ✅ 重复的 Closes #11 只数一次\n  ✅ plan 写了但一个 sub-issue 都没建 → 不是 MODULE_DONE\n  ✅ 建过且全部关闭 → MODULE_DONE\n  ✅ 已认领却停在默认分支 → 真断链照报\n  ✅ module id 带数字仍认模块分支（feat/oauth2 的 2 不是 issue 号）\n  ✅ task 分支仍按 issue 号判定（老约定不回归）\n  ✅ module id=a 时 master 不算模块分支（子串陷阱）\n  ✅ 本地模式 activeModule 为空 → 刻意空闲，不是断链\n  ✅ 本地模式有活跃模块却缺 plan → 真断链照报\n  ✅ 无 state.json → 报的是真问题，不拼空模块名\n  ✅ 前10行超大的已归档 todo.md 仍被豁免\n  ✅ 同样大但没归档声明的 todo.md 照报并存\n  ✅ 第 10 行之后的「已归档」不算数\n  ✅ 零足迹：注入「先加载 spec-github-bridge」\n  ✅ Claude 声明块适配器：不报零足迹且照常注入当前阶段\n  ✅ 旧版 Claude 约定标题仍独立激活\n  ✅ Codex AGENTS.md 声明块：照常注入当前阶段且不报 Claude 零足迹\n  ✅ Codex state-only：照常注入阶段，不泄露 Claude 指引\n  ✅ 普通 AGENTS.md 无完整 Codex 标记仍静默\n  ✅ 本地模式零足迹：给的是「把块写回去」而不是「加载 github skill」\n  ✅ 未安装时自报「开发副本」\n  ✅ 从安装路径解析出版本号\n  ✅ hook 崩溃时输出合法 JSON 并说明失败\n  ✅ 静默退 0 时确实无输出（未启用的正常表现）\n  ✅ 无 jq 无 python3 时静默（不吐半截 JSON）\n  ✅ 同步态：什么都不报\n  ✅ ① 能力图加了 payments → 报出是哪个，不只是数量\n  ✅ ① 改名（数量不变）→ 仍报出来（旧版按数量比查不到）\n  ✅ ③ 改职责描述 → 报对应 issue 正文过期\n  ✅ ② 改「## 目标」段 → 报 Epic 正文过期\n  ✅ 三处同时改 → 三条都报，各说各的\n  ✅ 反：老 state.json 没存指纹 → 目标段和职责都改了也不报（向后兼容）\n  ✅ 反：能力图没有「## 目标」段 → 不拿存着的指纹硬比\n  ✅ 反：一个都还没落（Phase 0 中间态）→ 不报\n  ✅ 反：本地模式 tracker=none → 不报\n  ✅ 反：gitlab + 已手写条目号 → 不报（/sync-map 是 GitHub 专属）\n  ✅ 反：能力图删了一行、issue 还在 → 不报（分不出刻意还是手滑）\n  ✅ 有 key 没 issue 号 → 算没落成，报出来\n  ✅ 反：state.json 坏掉 → 不报（探测失败就降级）\n  ✅ 反：能力图还是 example-* 占位符 → 不报\n\n═══ 休眠项目的迁移提示 ═══\n  ✅ 正：根目录有 SPEC-<模块>.md → 提示\n  ✅ 正：根目录有小写 capability-map.md → 提示\n  ✅ 正：根目录有大写 CAPABILITY-MAP.md → 提示\n  ✅ 正：tasks/ 下两个模块的 plan.md → 提示\n  ✅ 反：根上只有 SPEC.md（agent-skills 合法单模块形态）→ 不提示\n  ✅ 反：只有一个模块的 plan.md → 不提示\n  ✅ 反：什么产物都没有的空项目 → 不提示\n  ✅ 反：有 .spec-guard-ignore → 静音\n  ✅ 反：约定已激活（声明块）→ 走正常状态机，不出这条提示\n  ✅ 反：约定已激活（state.json 零足迹）→ 不出这条提示\n  ✅ 正：远端是 GitHub → 建议 github 模式\n  ✅ 反：无 origin 远端 → 建议 local 模式，不指向必然失败的 github\n  ✅ 正：SSH host 别名 github-collab: 认成 GitHub\n  ✅ 反：gitlab.com/me/github-tools 不算 GitHub（那是仓库名不是宿主）\n  ✅ 反向断言不是空的：激活后照常注入「当前阶段」\n\n═══ setup-convention 回归 ═══\n  ✅ GitLab 无 glab 时阻止初始化且不写项目文件\n  ✅ dry-run 零写入\n  ✅ Codex 写 AGENTS.md 专属块，不建 CLAUDE.md，state.json 合法\n  ✅ Codex GitLab 写 GitLab bridge 与 tracker，不写本地 todo 流程\n  ✅ Claude GitLab 写 GitLab bridge 与 tracker，不写本地 todo 流程\n  ✅ Codex --replace 不碰 AGENTS.md 标记外内容\n  ✅ Codex --dry-run 零写入\n  ✅ Codex local + --no-instructions 被拒（退 2）\n  ✅ Codex + --no-claude-md 被拒（退 2 且零写入）\n  ✅ Codex + --no-instructions 不写 AGENTS.md，仍建立合法 state.json\n  ✅ 原 CLAUDE.md 内容保留\n  ✅ state.json 合法且带 issueTypes 能力位\n  ✅ 幂等（声明块不重复）\n  ✅ local + --no-claude-md 被拒（退 2 且零写入）\n  ✅ 声明块保持精简（github 16 行 / local 14 行，上限 20）\n  ✅ --no-claude-md 不写声明块，但建了 state.json\n  ✅ 零足迹下 hook 仍由 state.json 激活\n  ✅ --replace 换掉块内旧内容（      52 →       22 行）\n  ✅ --replace 不碰标记外的内容\n  ✅ --replace 后标记仍只有一对\n  ✅ 不加 --replace 时已有块原样不动\n  ✅ teardown --dry-run 零写入\n  ✅ teardown 后 CLAUDE.md 逐字回到原样\n  ✅ teardown 后 hook 真的静默\n  ✅ state.json 改名保留（issue 映射不丢）\n  ✅ 没装过的项目退 2（幂等）\n  ✅ --keep-state 保留 state.json,hook 仍激活（零足迹模式）\n  ✅ Codex teardown 只移除 Codex 块，保留 Claude 块和 state.json\n  ✅ 子目录里跑 teardown 仍作用于项目根\n  ✅ 子目录里跑 setup 仍落在项目根\n  ✅ 不设 CLAUDE_PLUGIN_ROOT 时自检仍然真跑\n  ✅ teardown → setup 往返:issue 映射无损\n  ✅ tracker 不符时拒绝恢复、也不新建（.disabled 原样保留）\n\n═══ setup-convention --migrate ═══\n  ✅ 反：不加 --migrate → 只报告，根上的文件原样不动\n  ✅ 正：--migrate → SPEC-<mod>.md 与能力图都进了 spec/\n  ✅ 正：迁过来的能力图是原内容，没被模板覆盖\n  ✅ 正：报出仍在引用旧路径的文件（不自动改）\n  ✅ 反：目标已存在 → 不覆盖、源文件留在原地、退出码非零\n  ✅ 反：--dry-run --migrate → 只打印，不动文件\n\n═══ Claude 命令命名空间 ═══\n  ✅ Claude 命令、模板与 hook 建议都使用 /spec-guard: 命名空间\n\n  总计 134 通过 / 0 失败\n",
+    "test-verify-artifacts.sh.log": "═══ verify-artifacts 回归测试 ═══\n  ✅ 远端严格项目缺 binding → verify 给可操作诊断\n  ✅ local 合规 → 零失败零警告\n  ✅ spec 文件名漂移被抓到\n  ✅ 未写的模块只提示不判失败\n  ✅   └ 且不计入失败\n  ✅ 模板占位符被警告\n  ✅ 非 kebab-case 被抓到\n  ✅ 评审未勾选被警告\n  ✅ 根目录 SPEC.md 被抓到\n  ✅ tasks/ 缺命名空间被抓到\n  ✅ todo.md 与 tracker 并存被抓到\n  ✅ 报违规时同时给出归档豁免办法\n  ✅ 归档 todo.md 不报并存违规\n  ✅ ARCHIVED 标记同样生效\n  ✅ 无标记的 todo.md 仍报违规\n  ✅ 第 10 行之后的「已归档」不算数\n  ✅ 根下归档 plan.md 不报命名空间违规\n  ✅ plan.md 里的 checkbox 被抓到\n  ✅ local 模式的 checkbox 不误报\n  ✅ 非 GitHub tracker 跳过 GitHub 层\n  ✅ GitLab 模块 Issue 映射进入本地指纹校验\n  ✅ GitLab plan 的 Issue 索引不是 checklist\n  ✅ GitLab 远端层校验 state 中的 initiative 与模块 Issue\n  ✅ GitLab.com remote 自动识别 GitLab\n  ✅ 自建 GitLab 由 glab 确认\n  ✅ 未启用约定退出码 2\n  ✅ 旧版 Claude 约定标题仍独立启用校验\n  ✅ Codex AGENTS.md 声明块独立启用校验\n  ✅ 普通 AGENTS.md 无完整 Codex 标记仍退 2\n  ✅ 模块分支比对的是模块 issue,不是分支里的数字\n  ✅ 数出模块分支上带 closing keyword 的 commit\n  ✅ task 分支仍按老规则比对分支 issue 号\n  ✅ plan 索引了 task 但一条 sub-issue 都没有 → 判失败\n  ✅ 落库数与索引数对不上 → 警告\n  ✅ 数一致时放行（不制造新误报）\n  ✅ 读不到 sub-issue 时 skip\n  ✅ 读不到 issue 正文时 skip，不发绿灯\n  ✅ 正文确为 spec 全文时照样 warn\n  ✅ 认不出默认分支时 skip 一行，不静默\n  ✅ 默认分支 develop 时照样比对得出来\n  ✅ Epic 正文是能力图全文时 warn\n  ✅ Epic 正文是摘要时放行\n  ✅ 读不到 Epic 正文时 skip，不发绿灯\n  ✅ 重跑留下的第二个 Epic 被抓到\n  ✅ 无重复时放行\n  ✅ 不同名的 initiative 同时开着不报\n  ✅ 记着的 Epic 已关闭时 skip，不猜\n  ✅ 读不到 issue 列表时 skip，不发绿灯\n  ✅ 201 条截断列表里没找到同名项 → skip，不报 ✅\n  ✅ 200 条以内无同名项仍报 ✅\n  ✅ 标题只差空白数量不报重复\n  ✅ 标题逐字相同仍报重复\n  ✅ state.json 空着而 GitHub 上已有 Epic → warn\n  ✅ 没有孤儿 Epic 时放行\n  ✅ 前10行超大的已归档 todo.md 仍被豁免\n  ✅ 同样大但没归档声明的 todo.md 照报并存\n  ✅ 零足迹：只有 state.json 也生效\n  ✅ 两个信号都没有仍退 2\n  ✅ 指纹：同步态报「都已落成 issue」\n  ✅ 指纹：同步态报「目标段一致」\n  ✅ 指纹：加了模块 → 报出是哪个\n  ✅ 指纹：改目标段 → 报 Epic 正文摘要过期\n  ✅ 指纹：改职责 → 报对应 issue 正文摘要过期\n  ✅ 指纹：能力图删了行 → warn 而不是 bad（手动跑时人能判断）\n  ✅ 反：老 state.json 没存指纹 → 不报目标段过期\n  ✅ 反：老 state.json 没存指纹 → 不报职责过期\n  ✅ 反：tracker=none → 整段 skip，不发绿灯也不报\n  ✅ 反：一个都还没落 → skip（Phase 0 中间态）\n  ✅ 反：还是 example-* 占位符 → skip\n  ✅ 反：state.json 坏掉 → 不报任何指纹分歧\n  ✅ 目录不存在时干净报错\n\n═══ 远端 host 判定（与 phase-guard 共用）═══\n  ✅ 正：SSH host 别名 github-collab: 认成 github\n  ✅ 正：gitlab.com 路径里的 github 不影响 GitLab 判定\n\n  总计 73 通过 / 0 失败\n",
+    "validate.sh.log": "═══ 结构 ═══\n  ✅ .claude-plugin/marketplace.json\n  ✅ plugins/spec-guard/.claude-plugin/plugin.json\n  ✅ plugins/spec-guard/hooks/hooks.json\n  ✅ plugins/spec-guard/hooks/phase-guard.sh\n\n═══ JSON 语法 ═══\n  ✅ ./plugins/spec-guard/hooks/hooks.json\n  ✅ ./plugins/spec-guard/.claude-plugin/plugin.json\n  ✅ ./plugins/spec-guard/manifest.json\n  ✅ ./plugins/spec-guard/.codex-plugin/plugin.json\n  ✅ ./spec/CAPABILITY-HISTORY.json\n  ✅ ./docs/research/local-stage-evidence-20260906/ownership.json\n  ✅ ./docs/research/local-stage-evidence-20260906/transcripts.json\n  ✅ ./docs/research/local-stage-evidence-20260906/results.json\n  ✅ ./docs/research/local-stage-evidence-20260906/plugin-content.json\n  ✅ ./docs/research/local-stage-evidence-20260906/lifecycle-local-probe.json\n  ✅ ./docs/research/local-stage-evidence-20260906/regressions.json\n  ✅ ./docs/research/local-stage-evidence-20260906/regression-transcripts.json\n  ✅ ./docs/research/local-stage-evidence-20260906/codex-installation.json\n  ✅ ./docs/releases/v0.8.0-source.json\n  ✅ ./.claude-plugin/marketplace.json\n  ✅ ./.agent/state.json\n  ✅ ./.agent/history/gitlab-workflow-hardening/20260904T013109Z-0001/state.json\n  ✅ ./.agent/history/94/20260905T053825Z-0001/state.json\n  ✅ ./.agent/history/parallel-subagent-preflight/20260903T213539Z-0001/state.json\n  ✅ ./.agent/history/parallel-order-conflict-guard/20260903T214142Z-0001/state.json\n  ✅ ./.agent/history/138/20260905T145513Z-0001/state.json\n  ✅ ./.agent/history/parallel-readiness-guidance/20260903T210029Z-0001/state.json\n  ✅ ./.agent/history/capability-history/20260903T074408Z-0001/state.json\n  ✅ ./.agent/history/gitlab-tracker-support/20260903T153239Z-0001/state.json\n  ✅ ./.agent/history/70/20260903T185103Z-0001/state.json\n\n═══ marketplace ↔ Claude / Codex plugin 一致性 ═══\n  ✅ spec-guard v0.8.0\n\n═══ Shell 语法 ═══\n  ✅ ./evals/test-release-package.sh\n  ✅ ./evals/_preflight.sh\n  ✅ ./evals/codex-plugin-smoke.sh\n  ✅ ./evals/module-namespace.sh\n  ✅ ./evals/sync-map.sh\n  ✅ ./evals/test-release-evidence.sh\n  ✅ ./evals/skill-deferral.sh\n  ✅ ./evals/next-redo.sh\n  ✅ ./plugins/spec-guard/hooks/sync-map-gitlab.sh\n  ✅ ./plugins/spec-guard/hooks/test-claude-desktop-mcp.sh\n  ✅ ./plugins/spec-guard/hooks/initiative-lifecycle.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-guidance.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-workflow-integration.sh\n  ✅ ./plugins/spec-guard/hooks/verify-history.sh\n  ✅ ./plugins/spec-guard/hooks/test-history-verification.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-worktree-runtime.sh\n  ✅ ./plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh\n  ✅ ./plugins/spec-guard/hooks/test-audit-safety-containment.sh\n  ✅ ./plugins/spec-guard/hooks/phase-guard.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-readiness.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-safety-gate.sh\n  ✅ ./plugins/spec-guard/hooks/test-codex-adapter.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-execution-ledger.sh\n  ✅ ./plugins/spec-guard/hooks/test-phase-guard.sh\n  ✅ ./plugins/spec-guard/hooks/test-initiative-lifecycle.sh\n  ✅ ./plugins/spec-guard/hooks/gitlab-bridge.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-cli-execution.sh\n  ✅ ./plugins/spec-guard/hooks/test-desktop-worker-registration.sh\n  ✅ ./plugins/spec-guard/hooks/test-capability-history.sh\n  ✅ ./plugins/spec-guard/hooks/test-gitlab-bridge.sh\n  ✅ ./plugins/spec-guard/hooks/test-sync-map-gitlab.sh\n  ✅ ./plugins/spec-guard/hooks/verify-artifacts.sh\n  ✅ ./plugins/spec-guard/hooks/test-history-migration.sh\n  ✅ ./plugins/spec-guard/hooks/test-verify-artifacts.sh\n  ✅ ./plugins/spec-guard/hooks/test-audit-map-consistency.sh\n  ✅ ./plugins/spec-guard/hooks/teardown-convention.sh\n  ✅ ./plugins/spec-guard/hooks/setup-convention.sh\n  ✅ ./scripts/test-checkers.sh\n  ✅ ./scripts/validate.sh\n  ✅ ./scripts/install-git-hooks.sh\n\n═══ 可执行位 ═══\n  ⚠️  ./evals/test-release-package.sh 缺执行位（git update-index --chmod=+x ./evals/test-release-package.sh）\n  ⚠️  ./evals/_preflight.sh 缺执行位（git update-index --chmod=+x ./evals/_preflight.sh）\n  ✅ ./evals/codex-plugin-smoke.sh\n  ⚠️  ./evals/module-namespace.sh 缺执行位（git update-index --chmod=+x ./evals/module-namespace.sh）\n  ✅ ./evals/sync-map.sh\n  ⚠️  ./evals/test-release-evidence.sh 缺执行位（git update-index --chmod=+x ./evals/test-release-evidence.sh）\n  ⚠️  ./evals/skill-deferral.sh 缺执行位（git update-index --chmod=+x ./evals/skill-deferral.sh）\n  ✅ ./evals/next-redo.sh\n  ✅ ./plugins/spec-guard/hooks/sync-map-gitlab.sh\n  ✅ ./plugins/spec-guard/hooks/test-claude-desktop-mcp.sh\n  ✅ ./plugins/spec-guard/hooks/initiative-lifecycle.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-guidance.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-workflow-integration.sh\n  ✅ ./plugins/spec-guard/hooks/verify-history.sh\n  ✅ ./plugins/spec-guard/hooks/test-history-verification.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-worktree-runtime.sh\n  ✅ ./plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh\n  ✅ ./plugins/spec-guard/hooks/test-audit-safety-containment.sh\n  ✅ ./plugins/spec-guard/hooks/phase-guard.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-readiness.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-safety-gate.sh\n  ✅ ./plugins/spec-guard/hooks/test-codex-adapter.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-execution-ledger.sh\n  ✅ ./plugins/spec-guard/hooks/test-phase-guard.sh\n  ✅ ./plugins/spec-guard/hooks/test-initiative-lifecycle.sh\n  ✅ ./plugins/spec-guard/hooks/gitlab-bridge.sh\n  ✅ ./plugins/spec-guard/hooks/test-parallel-cli-execution.sh\n  ✅ ./plugins/spec-guard/hooks/test-desktop-worker-registration.sh\n  ✅ ./plugins/spec-guard/hooks/test-capability-history.sh\n  ✅ ./plugins/spec-guard/hooks/test-gitlab-bridge.sh\n  ✅ ./plugins/spec-guard/hooks/test-sync-map-gitlab.sh\n  ✅ ./plugins/spec-guard/hooks/verify-artifacts.sh\n  ✅ ./plugins/spec-guard/hooks/test-history-migration.sh\n  ✅ ./plugins/spec-guard/hooks/test-verify-artifacts.sh\n  ✅ ./plugins/spec-guard/hooks/test-audit-map-consistency.sh\n  ✅ ./plugins/spec-guard/hooks/teardown-convention.sh\n  ✅ ./plugins/spec-guard/hooks/setup-convention.sh\n  ⚠️  ./scripts/test-checkers.sh 缺执行位（git update-index --chmod=+x ./scripts/test-checkers.sh）\n  ✅ ./scripts/validate.sh\n  ✅ ./scripts/install-git-hooks.sh\n\n═══ bash 3.2 兼容（macOS 自带 bash）═══\n  ✅ 无 bash 3.2 多字节解析陷阱\n\n═══ gh --json 字段是否真实存在 ═══\n  ✅ gh --json 字段全部存在（校验了 15 个）\n\n═══ 管道 + grep -q（SIGPIPE 陷阱）═══\n  ✅ 无 `cmd | grep -q` SIGPIPE 陷阱\n\n═══ 用户可见输出里的命令名 ═══\n  ✅ 33 个用户可见文件，引用的命令与 skill 全部存在（对照：上游本人）\n\n═══ 校验器自身的回归 ═══\n═══ check-*.py 回归 ═══\n  ✅ bash32: $VAR 紧跟全角括号 → 报错\n  ✅ bash32: ${VAR} 写法 → 放行\n  ✅ grep-pipe: 管道 + grep -q → 报错\n  ✅ grep-pipe: herestring 写法 → 放行\n  ✅ grep-pipe: 注释里提到不算 → 放行\n  ✅ gh-json: 不存在的字段 → 报错\n  ✅ gh-json: 真实字段 → 放行\n  ✅ gh-json: gh 不可用时干净跳过\n  ✅ manifests: marketplace 与 plugin.json 名称不一致 → 报错\n  ✅ manifests: 名称一致 → 放行\n  ✅ codex manifest: 名称漂移 → 报错\n  ✅ codex manifest: 版本漂移 → 报错\n  ✅ codex manifest: skills 路径漂移 → 报错\n  ✅ codex manifest: hooks 路径漂移 → 报错\n  ✅ codex manifest: 名称和版本一致 → 放行\n  ✅ command-names: 模板引用不存在的命令 → 报错\n  ✅ command-names: 引用本插件真实命令 → 放行\n  ✅ command-names: Claude 插件命名空间命令 → 放行\n  ✅ command-names: 命名空间里的不存在命令 → 报错\n  ✅ tracker 路由命令强制加载 bridge 并禁止静默结束\n  ✅ command-names: hooks/test-*.sh 里的假路径被豁免\n  ✅ command-names: 非 test- 的 hook 仍然要查\n  ✅ command-names: 对照上游本人 → 放行\n  ✅ command-names: 上游删了 /plan → 报快照过期\n  ✅ check-bash32: 零个文件 → 不算通过\n  ✅ check-grep-pipe: 零个文件 → 不算通过\n  ✅ check-gh-json-fields: 零个文件 → 不算通过\n  ✅ readme-sync: README 与模板分叉 → 报错\n  ✅ readme-sync: 逐字节一致 → 放行\n  ✅ readme-sync: README 里缺 SYNC 标记 → 报错\n\n═══ mutation-check 的安全闸 ═══\n  ✅ mutation-check: 锁存在 → 拒跑\n  ⏭  mutation-check 用例跳过（变异目标里有未提交改动: plugins/spec-guard/hooks/phase-guard.sh plugins/spec-guard/hooks/verify-artifacts.sh ）—— 跳过不代表通过\n\n  总计 31 通过 / 0 失败\n\n═══ 指纹算法自检 ═══\n  ✅ 同步态：missing/rowsStale 空、goalStale=False\n  ✅ 加了模块 → missing=[payments]\n  ✅ 加了模块 → goalStale 仍为 False（目标段没动）\n  ✅ 改名（数量不变）→ missing=[katalog] + extra=[catalog]\n  ✅ 改职责 → rowsStale=[identity]，missing 为空\n  ✅ 改目标段 → goalStale=True，其余干净\n  ✅ 没存指纹 → goalStale=None、rowsStale 空（老项目不挨断链）\n  ✅ 能力图无「## 目标」段 → goalStale=None（不拿存着的指纹硬比）\n  ✅ 还是 example-* 占位符 → ok=False\n  ✅ 有 key 没 issue 号 → 算没落成（missing 含它）\n  ✅ 行尾空格 + CRLF 不改变 goalDigest\n  ✅ 目标段改一个字 → goalDigest 变\n  ✅ state.json 坏掉 → 输出「什么都别报」且退 0\n  ✅ 能力图不存在 → 输出「什么都别报」且退 0\n\n  spec-digest 自检：全部通过\n\n═══ 能力图一致性聚焦回归 ═══\ntest_bad_or_unreadable_map_has_no_success_or_traceback (__main__.BoundaryCliDiagnostics) ... ok\ntest_both_formats_preserve_conflict_and_uncertainty (__main__.BoundaryCliDiagnostics) ... ok\ntest_boundary_errors_retain_specific_reason (__main__.BoundaryCliDiagnostics) ... ok\ntest_bad_graph_is_an_mcp_error (__main__.DesktopMapPreview) ... ok\ntest_github_preview_uses_declared_order (__main__.DesktopMapPreview) ... ok\ntest_gitlab_mcp_preview_still_cannot_write (__main__.DesktopMapPreview) ... ok\ntest_python_failure_never_falls_back_to_regex (__main__.DesktopMapPreview) ... ok\ntest_formatting_does_not_change_digest (__main__.DigestCompatibility) ... ok\ntest_legacy_goldens_and_order_meaning (__main__.DigestCompatibility) ... ok\ntest_real_drift_remains_visible_without_writes (__main__.DigestCompatibility) ... ok\ntest_confirm_consumes_declared_order_not_table_order (__main__.GitlabMapInput) ... ok\ntest_invalid_graph_stops_confirm_before_writes (__main__.GitlabMapInput) ... ok\ntest_parallel_preview_is_ordered_and_read_only (__main__.GitlabMapInput) ... ok\ntest_component_overlap_and_raw_evidence (__main__.LexicalBoundaries) ... ok\ntest_distinct_components_are_not_parent_paths (__main__.LexicalBoundaries) ... ok\ntest_empty_boundaries_and_mixed_conflicts (__main__.LexicalBoundaries) ... ok\ntest_file_and_direct_input_share_validation (__main__.LexicalBoundaries) ... ok\ntest_ambiguous_tables_or_orders_fail (__main__.MapContract) ... ok\ntest_cli_contract_and_read_only (__main__.MapContract) ... ok\ntest_empty_root_dependency_is_valid (__main__.MapContract) ... ok\ntest_ignore_unrelated_tables_and_fenced_examples (__main__.MapContract) ... ok\ntest_invalid_dependencies_and_modules (__main__.MapContract) ... ok\ntest_invalid_orders (__main__.MapContract) ... ok\ntest_linear_ascii_and_ticks (__main__.MapContract) ... ok\ntest_parallel_order (__main__.MapContract) ... ok\ntest_table_header_is_required_and_validated (__main__.MapContract) ... ok\ntest_aliases_are_uncertain_without_rewriting_paths (__main__.PhysicalBoundaries) ... ok\ntest_no_context_is_not_physical_evidence (__main__.PhysicalBoundaries) ... ok\ntest_normal_existing_and_future_paths_are_limited_checks (__main__.PhysicalBoundaries) ... ok\ntest_permissions_and_non_directory_components_need_review (__main__.PhysicalBoundaries) ... ok\ntest_symlinks_do_not_reach_external_canary (__main__.PhysicalBoundaries) ... ok\ntest_candidates_follow_dependencies_not_display_groups (__main__.ReadinessDependencyLayers) ... ok\ntest_invalid_graph_fails_without_success_output (__main__.ReadinessDependencyLayers) ... ok\ntest_json_and_text_do_not_claim_execution_readiness (__main__.ReadinessDependencyLayers) ... ok\ntest_actual_instruction_blocks_gate_github_writes (__main__.SyncPreflightInstructions) ... ok\n\n----------------------------------------------------------------------\nRan 35 tests in 6.162s\n\nOK\n\n═══ 本地验证阶段（phase / verify 共用判据）═══\n............\n----------------------------------------------------------------------\nRan 12 tests in 9.498s\n\nOK\n......\n----------------------------------------------------------------------\nRan 6 tests in 0.748s\n\nOK\n........\n----------------------------------------------------------------------\nRan 8 tests in 4.637s\n\nOK\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.006s\n\nOK\n\n═══ Capability history ledger regression ═══\n═══ Capability history ledger regression ═══\n  ✅ 正：created → paused → resumed → completed 合法\n  ✅ 正：最后事件推导 initiative 状态\n  ✅ 反：首事件不是 created 被拒绝\n  ✅ 反：未暂停直接 resumed 被拒绝\n  ✅ 反：同一 checkpoint 重复 module id 被拒绝\n  ✅ 正：历史 map/spec/plan 与 SHA-256 一致\n  ✅ 反：历史 plan 被篡改时校验失败\n  ✅ 正：语义审计报告猜测字段且不改写账本\n  ✅ 正：语义审计覆盖无 checkpoint 的 resumed 时间\n  ✅ 正：确认的修正只追加证据事件，不重写 checkpoint\n  ✅ 反：未确认或把 unknown 升级为完成的修正均不写入\n  ✅ 反：补正引用不存在的事件时 schema 拒绝账本\n  ✅ 正：可从 created initiative 原子创建账本\n  ✅ 正：新建账本立即可读\n  ✅ 正：追加合法事件并更新派生状态\n  ✅ 反：非法追加不改写原账本\n\n16 passed, 0 failed\n\n═══ Initiative lifecycle regression ═══\n═══ Initiative lifecycle regression ═══\n  ✅ 正：pause --dry-run 只报告，不修改当前产物\n  ✅ 正：账本不存在时 pause 自动建账并归档当前工作区\n  ✅ 正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区\n  ✅ 正：已有其他 initiative 的账本可登记并完成新的 initiative\n  ✅ 正：resume 恢复最后 paused checkpoint 的全部当前产物\n  ✅ 反：损坏 checkpoint 时 resume 不覆盖当前工作区\n\n6 passed, 0 failed\n\n═══ History verification regression ═══\n\n═══ History migration regression ═══\n\n═══ GitLab sync-map regression ═══\ntest_ambiguous_marker_stops_without_post_or_overwrite (__main__.SyncMapGitLab) ... ok\ntest_atomic_state_write_never_reuses_a_predictable_temp_name (__main__.SyncMapGitLab) ... ok\ntest_lost_create_response_recovers_unique_marker (__main__.SyncMapGitLab) ... ok\ntest_preview_is_read_only (__main__.SyncMapGitLab) ... ok\ntest_repeat_reuses_verified_projection_and_digests (__main__.SyncMapGitLab) ... ok\ntest_stale_state_stops_without_post_or_overwrite (__main__.SyncMapGitLab) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 3.117s\n\nOK\n\n═══ GitLab tracker binding and selection regression ═══\ntest_rejects_foreign_marker_assignee_and_closing_commit (__main__.GitLabTaskSelectionContract) ... ok\ntest_selects_only_exact_open_plan_indexed_task_in_order (__main__.GitLabTaskSelectionContract) ... ok\ntest_unfinished_local_binding_returns_it_and_unknown_facts_fail_closed (__main__.GitLabTaskSelectionContract) ... ok\ntest_invalid_json_and_foreign_marker_response_fail_closed (__main__.ProjectionIdentityContract) ... ok\ntest_issue_without_description_is_an_unmatched_candidate (__main__.ProjectionIdentityContract) ... ok\ntest_marker_format_is_exact_and_input_is_strict (__main__.ProjectionIdentityContract) ... ok\ntest_multiple_or_incomplete_candidates_fail_closed (__main__.ProjectionIdentityContract) ... ok\ntest_title_or_partial_marker_never_recovers_identity (__main__.ProjectionIdentityContract) ... ok\ntest_unique_complete_marker_recovers_exact_issue (__main__.ProjectionIdentityContract) ... ok\ntest_copied_or_mapped_binding_fails_closed (__main__.WorkspaceBindingContract) ... ok\ntest_explicit_bind_is_worktree_local_and_deterministic (__main__.WorkspaceBindingContract) ... ok\ntest_missing_bad_non_git_and_unresolved_dependency_are_not_safe (__main__.WorkspaceBindingContract) ... ok\ntest_task_binding_requires_a_verified_expected_previous_value (__main__.WorkspaceBindingContract) ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 2.223s\n\nOK\nselftest: title-only and partial-marker recovery are rejected\n\n═══ GitLab bridge regression ═══\ngitlab-bridge merge retry regression passed\n\n═══ Codex 适配器回归 ═══\n═══ Codex 适配器回归测试 ═══\n  ✅ Codex manifest 身份、版本、描述、skills/hooks 精确注册\n  ✅ manifest name 错误 fixture 被拒绝\n  ✅ manifest version 错误 fixture 被拒绝\n  ✅ manifest description 错误 fixture 被拒绝\n  ✅ manifest skills 错误 fixture 被拒绝\n  ✅ manifest hooks 错误 fixture 被拒绝\n  ✅ hooks 只注册 UserPromptSubmit，并优先使用 PLUGIN_ROOT\n  ✅ 仅设 PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON\n  ✅ 仅设 CLAUDE_PLUGIN_ROOT 与 CLAUDE_PROJECT_DIR 时 phase-guard 注入当前阶段 JSON\n  ✅ Codex 显式操作 skill 与 bridge digest 依赖约束正确\n\n10 passed, 0 failed\n\n═══ 并行写入隔离与只读诊断回归 ═══\naudit-safety-containment regression passed\nparallel-execution-ledger regression passed\nparallel-worktree-runtime regression passed\nparallel-cli-execution regression passed\nparallel-workflow-integration regression passed\ndesktop-worker-registration regression passed\norigin/HEAD set to trunk\nparallel-readiness regression passed\nparallel-safety-gate regression passed\nparallel-guidance regression passed\n\n═══ Codex 真实宿主 smoke 判决器自检（不调用 Codex）═══\n  ✅ 收到 spec-guard hook 注入的当前阶段\n  ⏭  hook 未信任或未执行：在新会话用 /hooks 审核并信任\n  ❌ hook 已执行，但输出未包含有效的当前阶段事实\n  ✅ selftest: 0=通过、1=行为失败、2=环境未就绪\n\n═══ 发布证据记录回归 ═══\n  ✅ 正：同等级 source 与 not-verified 记录通过\n  ✅ 反：源码不能冒充真实宿主证据\n  ✅ 反：暂停的自动并行能力不能被声明为可用\n  ✅ 反：项目证据缺少目标身份被拒绝\n  ✅ 正：待确认的真实验收旅程可被如实记录\n  ✅ 反：未要求确认的真实验收旅程被拒绝\n  ✅ 反：项目旅程不能把源码冒充为目标\n  ✅ 反：降级环境不能伪造为已验证旅程\n  ✅ 正：发布矩阵单列各宿主且声明未验证边界\n  ✅ 正：真实验收旅程明确范围、确认边界与降级结果\n  ✅ 正：当前版本的源码证据记录可被普通质量门校验\n\n11 passed, 0 failed\n  ✅ 正：命名 artifact 的 manifest 与文件一致\n  ✅ 反：包内版本漂移被拒绝\n  ✅ 反：源码 checkout 不能冒充 artifact\n\n3 passed, 0 failed\n\n═══ 评测判决器自身的回归（不调模型）═══\n═══ next-redo 自检（不调模型）═══\n  ✅ 处理组取 #111 → 通过\n  ✅ 处理组把刚做完的 #110 又取一遍 → 不通过\n  ✅ 处理组取到被阻塞的 #112 → 不通过\n  ✅ 对照组就没取到 #110 → 没跑起来，不是结论\n  ✅ 处理组一次调用都没有 → 没跑起来\n  ✅ 两组都没调用 → 没跑起来\n  ✅ 取到不认识的号 → 没跑起来，不算通过\n  ✅ picked：认领优先于查看\n  ✅ picked：没认领时兜底取最后看过的那个，并标弱信号\n  ✅ picked：只列过 sub_issues 不算取到任何 task\n\n  总计 10 通过 / 0 失败\n═══ sync-map 自检（不调模型）═══\n  ✅ 全部达标 → 通过\n  ✅ Epic 正文灌了能力图全文 → 不通过\n  ✅ 模块 issue 少建一个 → 不通过\n  ✅ 依赖边一条都没建 → 不通过\n  ✅ state.json 没写回 → 不通过\n  ✅ 中途失败后 state.json 是空的 → 不通过\n  ✅ 一个 issue 都没建 → 没跑起来，不是结论\n  ✅ Epic/模块正文没有 spec-guard-sync 标记块 → 不通过（刷不回来）\n  ✅ 指纹一个都没写 → 不通过\n  ✅ 指纹写了但算错 → 不通过\n  ✅ crash 组写回了号但没带指纹 → 不通过\n  ✅ Epic 用 --body-file 指向临时文件 → 通过（不是违规）\n  ✅ Epic 用 --body-file 指向能力图本身 → 不通过\n  ✅ gh issue create --help 不算一次建 issue\n\n═══ refresh 判决器自检 ═══\n  ✅ 刷了有标记的、没动无标记的、没建 issue → 通过\n  ✅ 有标记的也没刷 → 不通过（刷新形同虚设）\n  ✅ 把无标记的 #102 重写了 → 不通过（实测数据被覆盖）\n  ✅ 刷新时顺手建了 issue → 不通过（那是补充不是刷新）\n  ✅ 一个 gh 都没调 → 没跑起来，不是结论\n\n  总计 19 通过 / 0 失败\n\n═══ README 内嵌声明块 ↔ templates ═══\n  ✅ README 内嵌的 claude-block-github 与模板一致（18 行）\n  ✅ README 内嵌的 claude-block-gitlab 与模板一致（18 行）\n  ✅ README 内嵌的 claude-block-local 与模板一致（16 行）\n\n═══ 命令 frontmatter ═══\n  ✅ plugins/spec-guard/commands/parallel-execute.md\n  ✅ plugins/spec-guard/commands/initiative-lifecycle.md\n  ✅ plugins/spec-guard/commands/parallel-reclaim.md\n  ✅ plugins/spec-guard/commands/history-integrity.md\n  ✅ plugins/spec-guard/commands/deliver.md\n  ✅ plugins/spec-guard/commands/parallel-register-worker.md\n  ✅ plugins/spec-guard/commands/next.md\n  ✅ plugins/spec-guard/commands/parallel-integrate.md\n  ✅ plugins/spec-guard/commands/phase.md\n  ✅ plugins/spec-guard/commands/sync-map.md\n  ✅ plugins/spec-guard/commands/setup-convention.md\n  ✅ plugins/spec-guard/commands/parallel-readiness.md\n  ✅ plugins/spec-guard/commands/teardown-convention.md\n  ✅ plugins/spec-guard/commands/bind-workspace.md\n  ✅ plugins/spec-guard/commands/parallel-safety-gate.md\n  ✅ plugins/spec-guard/commands/parallel-guidance.md\n  ✅ plugins/spec-guard/commands/verify-artifacts.md\n  ✅ plugins/spec-guard/commands/parallel-status.md\n\n校验通过 ✅\n"
+  },
+  "pluginFiles": {
+    ".claude-plugin/plugin.json": "caffa5fc84cdfc0deaed0da20750dda7c4d02861823e14f7840bd0499ae4eb63",
+    ".codex-plugin/plugin.json": "6b68b7a239f4f20fb780f4eceb922019c01e7b7b447ffd1d03a407e36820a5f8",
+    ".mcpbignore": "34b7b6551fce8a938c931d104fab1183d777bdb29ac92bdbdbda6845fc034fa5",
+    "commands/bind-workspace.md": "4a65d2c515ad21717aeda2b05a4a4e24980cb5630d1bfb26f9880d01b5d65605",
+    "commands/deliver.md": "8b51aff835d0ad959e64a3b4e5e8c338cab94a3982b97e55e29620eb5179e53c",
+    "commands/history-integrity.md": "74327812116a43a950303bba62d7a7e1842a98e10c6eedab360174c2a1edacdb",
+    "commands/initiative-lifecycle.md": "e2c051847a6879101ffcb3c59f5d560faa70464db63c4c8f2888a69fe1f13411",
+    "commands/next.md": "3bf434a2bb8f013c24843360380c11c81d06b5189c82f68e4bbec4e232a93ec9",
+    "commands/parallel-execute.md": "04f90d137e6a61719e1a9e5fdaf75dbacf367d80eb05f7dafb6fa6765e15e231",
+    "commands/parallel-guidance.md": "315ab8cc66f45f6cbae12420483b3fa3ca975ca047906dccb5c910226496b63a",
+    "commands/parallel-integrate.md": "a93b08df253b0b0d47e6ad99d26098d393905239ad677a23db132856c563556b",
+    "commands/parallel-readiness.md": "11b210adeb5f5eaa4245aa7b8c1ce8769eea801a96a1c020e4bec240366f6893",
+    "commands/parallel-reclaim.md": "096265cc2604512dbf848e5bf5d4afb04082d733fcd9843df815824066cca078",
+    "commands/parallel-register-worker.md": "0d771908d659ddc6b97cc77e4794001ba23c5d4ee9913720c5a93ff111fb4a46",
+    "commands/parallel-safety-gate.md": "b32e603d718a9a79397410071427417b79681c99f2ed6640d73ff3bbc6d7bdc8",
+    "commands/parallel-status.md": "70406a12ce7037ceaf4be2d4137c2463fcc97c9cc27a611f88691b3345465da4",
+    "commands/phase.md": "0249534fe01bf013f54097432e6d57e9d7eef3f744879faf77a6fff943966e91",
+    "commands/setup-convention.md": "5721ea0aeefb6436f064dfc6bd2323029cb6228385ffa3e46d9d6ae0ed743601",
+    "commands/sync-map.md": "2465bc41e582658d39286cd8c511e6dad738eb114f80c681993bff1bc6a5a329",
+    "commands/teardown-convention.md": "3a67931e1cdaa11ac8b7ad1eedc7c72ab04cfef7e17350d0b5d8e2f701313357",
+    "commands/verify-artifacts.md": "56e60bb6520306b5bfe837a8dda79555f62d7595b3e1b24cc98e70cc07a1806f",
+    "hooks/artifact_history.py": "f6b38d8470bfad96cb7bd2d56ae22a3b4427f3103d3d0b4e2a45518f86ef78f6",
+    "hooks/capability-history.py": "045be6a1491b8cdd07662567cc62262f8cfed10019002822023b1c4c5ebb2bfc",
+    "hooks/capability-map.py": "1abd87eedbb93d771669674baa180f913c0121876886bd3e1bd32095dd34daca",
+    "hooks/capability_map.py": "9849c855495b26cfedf6a74c18702353e94d234dac3ee089a523c63414a623ac",
+    "hooks/gitlab-bridge.sh": "fa33212db98abc3dee6eecfad62666b9fcbf87a700274a1ef43a8bea62d8d4bf",
+    "hooks/gitlab_tracker.py": "095b7bf3f5656fcded99f57f9e916d8dea8a0876e58f07734856491376f04977",
+    "hooks/history-migration.py": "58e3ff9fa99312b39b7725bdf6d083788ffad40ebd3d7c737f6bfb9b1cf71cff",
+    "hooks/hooks.json": "1d4e44815974f6701db0740f16d73c7c2570ab3704898a8dcf3c51b8cb30a2b7",
+    "hooks/initiative-lifecycle.sh": "7381ba121149432fa2648674f0543d585e7299639805f6ecfeb976cc214f840c",
+    "hooks/local_context.py": "ec43fbafba67ae4668cdb20a46a9d9499d048986b7cfb7eab6bef25e7bcbfcb7",
+    "hooks/local_validation.py": "a65a242b8d161cba7e71e31d5d78e26504e2bcc1339c5614415a80488c37f925",
+    "hooks/parallel-cli.py": "2f34324a55c13998a7c4f31da6ee9f74ba559a4611b7d1a179fb60072b348dbd",
+    "hooks/parallel-desktop-register.py": "73c0052c160a8a7c32abff9310c8b0bfe8a3efdde1edbcb49e6860f468eeaf98",
+    "hooks/parallel-execution.py": "d37e42444ef56ed81712474a9e8fd0408cbdc786f241661a14c9e66b12d5e5da",
+    "hooks/parallel-guidance.py": "6e2c4c96d7e6a28219c6c539edf9f57f3ec568cde9267c46596d33a925b6d9d4",
+    "hooks/parallel-readiness.py": "b0705353354a5b62df76518600d786c06856380cba5365fe0ebe343f05037df3",
+    "hooks/parallel-safety-gate.py": "0b302069b5f61e62012f9a76e8923b7bc60e798cd05780718ff63c927bcf79fe",
+    "hooks/parallel-worktree.py": "f5c6685eae59e03fdb9ee02e9811853e5dfdbb54d4747fb9f3845bb05d844628",
+    "hooks/parallel_cli_adapters.py": "c5dd62ebb7317c6867543c923817e0f69c2510d77cc84eb6475f0d0673b3a01d",
+    "hooks/parallel_execution_lib.py": "a4ccc2c56249c344b9e54ec108c3f85aa45c360aac5a0a833759324fadd189f4",
+    "hooks/parallel_guidance.py": "c85a9326e14527a50eaba68ac581414c786e6daf8bcd0a8ca211fed6d6089d28",
+    "hooks/parallel_safety_gate.py": "1e6dc575cd8bf133f9f456d1f430eb6b25fe94870426317d3d8f3014e20b4609",
+    "hooks/parallel_worktree_lib.py": "a6c3ac6ef88df2a4d43dab82e026fe75a3e236961e63f57d9426acb8c9081ef0",
+    "hooks/phase-guard.sh": "89843687fb88c824bfff8089ee765d7fbb1bbb113f3fcbe2451809172494e53e",
+    "hooks/setup-convention.sh": "2bd9614921cd3ec177dbc6ba6b112970078eff1d3fde21970fab4b4c4e6abe42",
+    "hooks/spec-digest.py": "567e499aea11cdfb47b7a795e0ca4e8dd1a4e38880aea2d025b67ee00eae887c",
+    "hooks/sync-map-gitlab.sh": "e252f1b7bf1059f8a89fe61e49bd35a192851dd7a3d81f83559e8c4cb8cf08d3",
+    "hooks/teardown-convention.sh": "03dd7c12b91e1c7fe61c840bc1d60bcbe13e3bb08d48fb4c4e05c3f257971a6d",
+    "hooks/test-audit-map-consistency.sh": "9d838c27f44b910be285e4db2030f7a82c929160ac286ea10df76878928a0ce9",
+    "hooks/test-audit-safety-containment.sh": "a517a317ff10dccb5ba85dbeebf7e6510c0230f3faec5f03a1ed77c3698df4ef",
+    "hooks/test-capability-history.sh": "359c76488caba449a9128a02e3bb3f7df50243f308f1e20a187f47b4c553d10d",
+    "hooks/test-claude-desktop-mcp.sh": "f03c0ccd97a01101951e262fa395c728a0c6ba0fcd12468cc5c46edb5f567681",
+    "hooks/test-codex-adapter.sh": "b398c2fc7d768f6a73116f347b50580208ef556156fb36a196131ed00378ada6",
+    "hooks/test-desktop-worker-registration.sh": "8db3820c8ba097aa0e5eea4a1832a23ea315f3a2ac31777e1258e677f9051a9d",
+    "hooks/test-gitlab-bridge.sh": "7a673f32709066f96e62fadda6f417c0a8c7271023ba1df34fdbfec567c51a38",
+    "hooks/test-gitlab-tracker-integrity.sh": "c998ef09e8958ce0377eac1f4411c16c1dcae3324709ff819f48236dcca6c75e",
+    "hooks/test-history-migration.sh": "0af00c0f30d7ae22f7bc20a21ae0d27e514a5f40a1a3af5ebd7e50e6105b9206",
+    "hooks/test-history-verification.sh": "bda1e3706748455601f7e9ff424d2f53790e72fa29a87ef0aecd45a343c2cab8",
+    "hooks/test-initiative-lifecycle.sh": "9d4d4035ee26d0115607d491871b18dc572a3cb252d659f968a3160c92f13631",
+    "hooks/test-parallel-cli-execution.sh": "ab4916dd395f9440e6d6b90333fba11f06394a9c18ac22f73a69333498698a87",
+    "hooks/test-parallel-execution-ledger.sh": "5ef070d5901decd53e6d3f2bebb172a02223baa0c3d82c237ba51f1c4f897084",
+    "hooks/test-parallel-guidance.sh": "9e9e32f2be42a6a5f9b2a7e83b1177cfef0c531582dd3adab6fdd4fea77fe4c1",
+    "hooks/test-parallel-readiness.sh": "2b5ff8e97ae2b2c3d26e63df6c3929bf10858350fd6d15806ae38bc8494d0733",
+    "hooks/test-parallel-safety-gate.sh": "5cb1e198f83205aad64a3c00f939a07a766ee07942f811360e3c3ed3ca70f5ed",
+    "hooks/test-parallel-workflow-integration.sh": "8805ab5dec37e7a530e7df9d3c384b152f17f1f76b72c8548d437579a012465a",
+    "hooks/test-parallel-worktree-runtime.sh": "86c2f51c5e7c72c56e1e4e06cd227ed8e14a81ddd350195b05743d078e48091f",
+    "hooks/test-phase-guard.sh": "f40f421aa046fb5517fd03153a68cb62abc7680a8cdfbb14da5616961a1e5802",
+    "hooks/test-sync-map-gitlab.sh": "c0a3e9961f89de06f28714b4f22a946445f5cb7c39a79e7583e5d18f7e2d21ae",
+    "hooks/test-verify-artifacts.sh": "5ef9b479b0589f56cfd6be05297c4b4bca3e33f707ba9c775ea41e0cb8923639",
+    "hooks/test_artifact_history.py": "ca5b579eb453500083ef43d41b6208cd68d2888e8b7df92969025d2d7099e6c9",
+    "hooks/test_local_context.py": "7594307c61d56a4f6f6ccfcbad3ecbf37feb09ffcd7e88974ea0ee91a10a6816",
+    "hooks/test_local_validation.py": "290512f7f89789135ee0b6fbc180837867de994789347be5e96f92c737bc8b5e",
+    "hooks/test_parallel_fixture.py": "b688b1cda0f95ba88de9cbd0df4e8bd08f3e492236d1679f715b80d01cf04ca2",
+    "hooks/test_workflow_checkpoints.py": "d10988d9909d493180973f725ca7e9ca2133e7cb1c15bdc36f201c314287ec6a",
+    "hooks/verify-artifacts.sh": "26fdbb6b37d8268ecc44a910bfcebd946047785efddd9f90c26c6174dd1692dc",
+    "hooks/verify-history.sh": "dda2d671928e4c1d492c7e0b00dda41404b27d4165e0576d544e9b1fc0627dcb",
+    "hooks/workspace_binding.py": "d8372e12d0570d363fea3db9c64528467b31cd4eb6c63e0c9a382329fea6bb37",
+    "manifest.json": "2cf0f5b81e187b06277bf6c21cecf4af54c35538a0e881c84ee31af436f7a75c",
+    "mcp/claude_desktop_server.mjs": "d4937d30b0ee184b94d35a7bf3e19ba0c6d7eda48376fcd4bce836e494c13b2c",
+    "references/workflow-checkpoints.md": "e82bad5fccb249b5e906511a1e2d8b29587b74da7bcca52ff5cf82166b8ec8d7",
+    "skills/spec-github-bridge/SKILL.md": "e70baa79ed4ff08de7238d57ade267f0b91cbee18aeb77113fac87762ec3ef7b",
+    "skills/spec-gitlab-bridge/SKILL.md": "898f2752923064134c0d7a360480e380855b894af139d66b68c1ca0eea6faf28",
+    "skills/spec-guard-ops/SKILL.md": "fd5a6a10b5a932054284f9d8269653c0230bd61d4675dc92bd8cfdfb182967e8",
+    "templates/CAPABILITY-MAP.md": "af7e3a43fa285316c87d0697f9eee06abb9159ebcc6bd0ca1ba83aac73ac0f0b",
+    "templates/claude-block-github.md": "ccc0ae8a2944f890382e2918b83fde4b9635349f357d77841e557b07339ad367",
+    "templates/claude-block-gitlab.md": "73dbc9d3d3b30dd07eae3d774360ea52ecfc908094643ee4b9bc798b9f358792",
+    "templates/claude-block-local.md": "c1de43e3202ea0f30f76a95095b8af528a3ad2c9ec3b183ef481ddf88ce8ded0",
+    "templates/codex-block-github.md": "d571a8bb8e5a1bb6c39307e0430690e8ca243811e91ccfbbd165ad3daff4960d",
+    "templates/codex-block-gitlab.md": "a73997b07d80b898b73b753b18d4237ec2fd818408cdaf88e72490c3a30dacbb",
+    "templates/codex-block-local.md": "5a2c9cb55ac563e03e473df2ea07e4362434d86f85356e0e21b0f2ad1beb4442"
+  }
+}

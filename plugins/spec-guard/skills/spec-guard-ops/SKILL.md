@@ -3,6 +3,8 @@ name: spec-guard-ops
 description: 在 Codex 中执行 spec-guard 的约定落地、状态探测、产物校验与清理操作。
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
 ## 公共环境
 
 所有确定性脚本操作都从 Codex 已启用插件清单和项目根解析路径：
@@ -38,6 +40,25 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/setup-convention.sh" github
 Codex 标记而要求升级时加 `--replace`。将脚本输出原样转述，成功后提醒提交 `AGENTS.md`、
 `.agent/state.json` 与新建目录。
 
+## `local-context`
+
+用户明确选择已有图/spec/plan 的本地验证阶段时，从同一插件目录调用现有 setup 入口：
+
+```bash
+CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/setup-convention.sh" github \
+  --local-validation --module=<module-id> --title="<initiative title>"
+```
+
+GitLab 使用 `gitlab`。默认只预览 state 前后差异；用户已确认这组标题、模块及本地范围后，
+用同样参数加 `--confirm` 写入；`--dry-run` 始终不写。已有授权直接承接，不重复询问。
+入口仅写 `.agent/state.json`，不创建图/spec/plan，不做认证或 tracker 操作。普通 setup
+继续创建初始空 state；本入口在 plan 就位后补齐上下文。已有远端映射、disabled state、
+非法上下文拒绝覆盖。需要切换模块时先确认当前范围已收口，再重读目标模块 spec/plan。
+
+`workflowStage` 存在时，sync/bind/next/deliver 都不可执行。退出本地阶段必须先预告并获准
+具体 tracker 激活范围；不能自动删字段消除提示。源码目录与实际加载目录可能不同，
+脚本测试成功不代表安装或宿主加载已更新。
+
 ## `phase`
 
 只读地查看当前阶段：
@@ -47,6 +68,11 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/phase-guard.sh"
 ```
 
 解析结果后说明阶段、事实、断链项和建议下一步；无输出表示项目尚未启用约定，不要创建文件。
+
+`LOCAL_VALIDATION` 表示 state 显式记录了当前本地验证模块，tracker 尚未激活；不等于
+空闲、已领取任务或获得执行许可。按当前 plan 的最新检查点说明成果、下一步与下次停点。
+`LOCAL_VALIDATION_INVALID` 时核对 state/spec/plan，不自动清字段或激活 tracker。
+源码结果和已安装插件结果分别报告，旧版 0.8.0 不支持该状态。
 
 ## `verify`
 

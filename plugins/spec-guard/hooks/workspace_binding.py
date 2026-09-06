@@ -109,6 +109,8 @@ def _issue(value, label, allow_null=False):
 def _facts(project, map_path, state_path):
     parsed = parse_map(map_path)
     state = _json_file(state_path, "state.json")
+    if "workflowStage" in state:
+        raise BindingError("workflowStage 尚未退出；本地阶段或未知阶段不能绑定、领取或交付 tracker 任务")
     tracker = state.get("tracker")
     if tracker not in ("github", "gitlab"):
         raise BindingError("state.json tracker 必须是 github 或 gitlab")

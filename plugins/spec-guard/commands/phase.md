@@ -3,6 +3,8 @@ description: 查看当前 agent-skills 链路状态
 allowed-tools: Bash
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
 跑一次链路探测并把结果**格式化**报给用户（不要原样贴 JSON）：
 
 ```bash

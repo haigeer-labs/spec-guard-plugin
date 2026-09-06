@@ -2,8 +2,13 @@
 description: 显式绑定当前 Git worktree 到一个 Spec Guard tracker 模块
 allowed-tools: Bash, Read
 ---
+
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
 这是一次本地上下文绑定，不会创建 Agent、worktree、分支、Issue、MR 或并行执行器。
 它也不是跨 worktree/machine 的锁。
+
+若 state 含 `workflowStage`，本地验证或未知阶段不能绑定；说明当前上下文与下一步，
+不要自动清除字段或建立远端映射。确定性脚本也会拒绝该状态。
 
 1. 在当前项目根目录运行以下只读检查，并展示 JSON 中的 `code`、模块和 tracker：
 

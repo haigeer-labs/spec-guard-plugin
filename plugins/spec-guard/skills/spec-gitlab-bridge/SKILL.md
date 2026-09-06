@@ -3,7 +3,17 @@ name: spec-gitlab-bridge
 description: 在 Spec Guard 产物与 GitLab Issues、Merge Requests 之间执行安全的 GitLab 工作流。
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
 # Spec Guard GitLab Bridge
+
+## 本地阶段优先检查
+
+在任何 tracker 认证或远端操作之前读 `.agent/state.json`。只要存在 `workflowStage` 字段，
+本 skill 的远端操作一至四全部停止（未知值同样拒绝），不自动删除字段或伪造 Issue。
+用户选择本地验证且图、模块 spec、plan 已就位时，加载 `spec-guard-ops` 的 `local-context`
+入口，明确标题和单个模块，以 setup-convention 预览/确认写入本地 state。未声明本地阶段
+则保持以下原有 tracker 门禁。本地阶段没有远端 Task List，不为满足索引要求创建 Issue。
 
 ## 前置检查（每次远端写入前）
 

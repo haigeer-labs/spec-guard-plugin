@@ -4,6 +4,12 @@ set -euo pipefail
 
 ACTION=${1:-}; shift || true
 case "$ACTION" in issue|relate|mr|merge) ;; *) echo 'usage: gitlab-bridge.sh <issue|relate|mr|merge> ...' >&2; exit 2;; esac
+project="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+local_stage=$(python3 "$(dirname "${BASH_SOURCE[0]}")/local_validation.py" "$project") || exit 1
+case "$local_stage" in
+  absent\|*) ;;
+  *) echo 'workflowStage 存在或上下文非法：禁止 GitLab 远端操作' >&2; exit 1 ;;
+esac
 command -v glab >/dev/null || { echo 'glab 未安装' >&2; exit 1; }
 if [ "${1:-}" = --help ]; then
   case "$ACTION" in

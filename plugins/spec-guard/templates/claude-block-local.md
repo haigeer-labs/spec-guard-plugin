@@ -11,3 +11,4 @@
 - `/build` 取任务：读 `.agent/state.json` 的 `activeModule`，从该模块的 `todo.md`
   取第一个未勾选项，**不跨模块取**
 - 切换 `activeModule` 前当前模块不能有进行中的 task；切换后重读该模块的 spec 和 plan
+- 阶段交接或停止时，加载 `spec-guard:spec-guard-ops` 的共享检查点规则，预告已授权下一步。

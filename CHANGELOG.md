@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- 正确识别尚未激活 tracker 的本地验证阶段；setup-convention 提供显式上下文预览/写入，GitLab 直接同步入口同样拒绝本地阶段。
+- 图外 spec 按历史内容已验证、历史归属可证但内容未验证、真正无归属分别报告；本地 pause/resume 保存图中已有 spec/plan。
+- 阶段交接、失败、授权和取消使用共享检查点预告规则，已有授权不重复询问。
+- 已知限制：安装/真实宿主交互尚未完成本版本验收；规则引用测试不是宿主行为证明。无内容快照的旧 spec 仅能证明归属。自动并行执行器仍暂停。
+
+
 ## [Unreleased]
 
 - **GitLab tracker 恢复、worktree binding 与 `/next` 选择收紧。** 能力图投影仅从完整 marker

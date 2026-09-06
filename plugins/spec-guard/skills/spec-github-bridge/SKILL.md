@@ -4,6 +4,16 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
   当需要把能力图落成 issue、取下一个任务、或交付一个任务时使用。
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
+## 本地阶段优先检查
+
+在任何 tracker 认证或远端操作之前读 `.agent/state.json`。只要存在 `workflowStage` 字段，
+本 skill 的远端操作一至四全部停止（未知值同样拒绝），不自动删除字段或伪造 Issue。
+用户选择本地验证且图、模块 spec、plan 已就位时，加载 `spec-guard-ops` 的 `local-context`
+入口，明确标题和单个模块，以 setup-convention 预览/确认写入本地 state。未声明本地阶段
+则保持以下原有 tracker 门禁。本地阶段没有远端 Task List，不为满足索引要求创建 Issue。
+
 ## 前置检查
 
 必须先确认：
@@ -68,9 +78,21 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 `.agent/state.json` 的字段**由本插件定义**。当前全部字段：
 
-    tracker  issueTypes  activeModule  updatedAt
+    tracker  issueTypes  activeModule  updatedAt  workflowStage（可选）
     initiative{ title issue map goalDigest }
     modules.<id>{ issue rowDigest }
+
+`workflowStage` 当前唯一显式值是 `local-validation`，用于已有能力图、当前模块 spec/plan、
+但尚未激活 tracker 的本地研究/验证。initiative.title 必须填写，initiative.issue 为 null，
+modules 为 `{}`，activeModule 仍是单一模块 ID。phase/verify 共用 hooks/local_validation.py
+验证；没有此字段保留原流程，未知值或不完整上下文报错。该状态不代表业务 task 领取、
+依赖满足或执行授权，不创建 todo.md，不伪造 Issue 编号。plan 记录本地范围与检查点，
+无需虚构 `Tasks tracked in ...` 索引。
+
+只要该字段存在，不能执行本 skill 的远端创建、刷新、取任务和交付流程，也不能绑定 worktree。
+先说明已完成成果、当前阶段和下一步；退出本地阶段并激活 tracker 须另有明确授权，
+不得为消除提示自动清除字段或创建 Issue。字段不是 controller ledger，不存 run/worker 状态。
+已安装旧版（例如 0.8.0）不识别本字段，源码验证通过不表示安装版已支持；不要直接修改插件缓存。
 
 **不要往里加插件不读的字段。** 已经发生过一次：某个项目的
 `modules.<id>` 里长出了 `dependsOn` —— 插件里零引用，谁也不读，而它是

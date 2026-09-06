@@ -13,3 +13,4 @@
 **动 spec、拆任务、取任务、交付之前，先加载 `spec-github-bridge` skill。**
 上面五条是「放哪里」，skill 才有「怎么做」：issue 落库、`--parent` / `--blocked-by`、
 归档标记、`/build auto` 连贯推进、模块级 PR 与合并策略。跳过它必然写出双真相源。
+- 阶段交接或停止时，加载 `spec-guard:spec-github-bridge` 的共享检查点规则，预告已授权下一步。

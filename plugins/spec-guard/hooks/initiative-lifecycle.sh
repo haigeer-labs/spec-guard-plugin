@@ -98,6 +98,23 @@ fi
 [ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] || { echo "缺少当前能力图" >&2; exit 1; }
 [ -f "$PROJECT/.agent/state.json" ] || { echo "缺少当前状态" >&2; exit 1; }
 
+# Resolve the copy/cleanup set once. Local modules have no remote projection.
+MODULES=$(python3 - "$PROJECT" "$(dirname "$HISTORY")" <<'PYMODULES'
+import json, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[2])
+from local_validation import inspect_stage
+from capability_map import parse_map
+root = Path(sys.argv[1])
+status, message = inspect_stage(root)
+if status == 'invalid':
+    raise SystemExit(message)
+state = json.loads((root / '.agent/state.json').read_text())
+ids = parse_map(root / 'spec/CAPABILITY-MAP.md').order if status == 'valid' else state.get('modules', {}).keys()
+print('\n'.join(ids))
+PYMODULES
+) || exit 1
+
 CHECKPOINT="$(date -u +%Y%m%dT%H%M%SZ)-0001"
 DEST="$PROJECT/spec/history/$INITIATIVE/$CHECKPOINT"
 [ ! -e "$DEST" ] || { echo "checkpoint 已存在" >&2; exit 1; }
@@ -114,7 +131,7 @@ while IFS= read -r MODULE; do
     mkdir -p "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE" || exit 1
     cp "$PROJECT/tasks/$MODULE/plan.md" "$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT/$MODULE/plan.md" || exit 1
   fi
-done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
+done <<< "$MODULES"
 EVENT="$(mktemp)"
 trap 'rm -f "$EVENT"' EXIT
 python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" "$HISTORY" <<'PY' || exit 1
@@ -163,6 +180,15 @@ event = {
 }
 json.dump(event, open(event_path, "w", encoding="utf-8"))
 PY
+# Verify this new checkpoint before recording completion or removing current files.
+# Unrelated legacy checkpoints are checked by verify-history, not this operation.
+python3 - "$HISTORY" "$EVENT" "$PROJECT" <<'PYVERIFY' || exit 1
+import json, runpy, sys
+sys.path.insert(0, __import__('os').path.dirname(sys.argv[1]))
+history = runpy.run_path(sys.argv[1])
+event = json.load(open(sys.argv[2], encoding='utf-8'))
+history['verify']({'initiatives': [{'events': [event]}]}, sys.argv[3])
+PYVERIFY
 CREATED_EVENT="$(mktemp)"
 trap 'rm -f "$EVENT" "$CREATED_EVENT"' EXIT
 python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
@@ -185,6 +211,6 @@ python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
 while IFS= read -r MODULE; do
   [ -n "$MODULE" ] || continue
   rm -f "$PROJECT/spec/$MODULE.md" "$PROJECT/tasks/$MODULE/plan.md"
-done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["modules"].keys()))' "$PROJECT/.agent/state.json")
+done <<< "$MODULES"
 rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 echo "已执行 $ACTION initiative=$INITIATIVE"

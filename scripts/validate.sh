@@ -70,6 +70,13 @@ echo "═══ 能力图一致性聚焦回归 ═══"
 /bin/bash plugins/spec-guard/hooks/test-audit-map-consistency.sh || F=1
 echo ""
 
+echo "═══ 本地验证阶段（phase / verify 共用判据）═══"
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s plugins/spec-guard/hooks -p test_local_validation.py || F=1
+python3 -B plugins/spec-guard/hooks/test_local_context.py || F=1
+python3 -B plugins/spec-guard/hooks/test_artifact_history.py || F=1
+python3 -B plugins/spec-guard/hooks/test_workflow_checkpoints.py || F=1
+echo ""
+
 echo "═══ Capability history ledger regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-capability-history.sh || F=1
 echo ""

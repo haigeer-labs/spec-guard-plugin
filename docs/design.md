@@ -269,6 +269,8 @@ PR       回答「这个模块交付了」    → 进 GitHub（Closes #<module-i
 ```
 IDLE            没有任何 spec                        → /spec
 IDLE(无活跃模块) 有 spec 但 activeModule 刻意为空       → 起新模块 / /spec
+LOCAL_VALIDATION 显式本地验证上下文，tracker 未激活    → 按最新授权检查点说明下一步
+LOCAL_VALIDATION_INVALID 阶段未知或本地上下文不完整 ⚠断链 → 核对 state/spec/plan
 MAP_ONLY        有能力图但没有模块 spec          ⚠断链 → /spec 递归
 SPECED          有 spec 但没有 issue 结构        ⚠断链 → /sync-map
 TRACKED         有 issue 但没有 plan.md          ⚠断链 → /plan
@@ -284,6 +286,18 @@ MODULE_DONE     模块无剩余 task                       → /next 推进模�
 ```
 
 ### 额外检测的三种违规
+
+本地阶段由可选 `workflowStage: "local-validation"` 声明；缺省保留旧状态机。共享
+`hooks/local_validation.py` 校验 tracker 为 github/gitlab、initiative 标题和固定能力图路径、
+单值 activeModule 属于严格能力图、当前 spec/plan 存在、initiative.issue=null、modules={}。
+phase/verify 不对该阶段查询 tracker 或要求绑定，相关检查标为跳过而非通过；不豁免
+spec 命名、plan checkbox 和 todo.md 规则。未知或损坏字段必须报告失败。
+workspace_binding 拒绝任何显式 workflowStage，防止伪造映射绕过本地阶段限制；该字段
+不构成运行许可，退出阶段和激活 tracker 需明确授权。详细完成记录和下一步在模块 plan
+检查点内，state 不复制业务任务状态。安装版 0.8.0 不支持此扩展，升级须另行完成。
+
+聚焦回归：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s plugins/spec-guard/hooks -p test_local_validation.py`。
+覆盖两个 hook 的同一正反判据，使用普通临时目录和 Git/tracker 桩，无 Git 仓库或远端请求。
 
 | 违规 | 为什么是问题 |
 |---|---|
@@ -353,3 +367,18 @@ MODULE_DONE     模块无剩余 task                       → /next 推进模�
   - `skills/planning-and-task-breakdown/SKILL.md` Output Files（tracker 扩展点）
   - `commands/build.toml` 第 30-31 行（spec 查找规则）
   - `docs/agents.md` 第 22、55 行（编排责任归属）
+
+
+## 本地上下文、历史产物与检查点
+
+本地验证的字段契约由 `hooks/local_validation.py` 共享读取；写入由现有 setup-convention 的
+`--local-validation --module=<id> --title=<title>` 分支执行，默认预览，加 `--confirm` 原子写入。
+该分支在认证前分流，只接受已有图/spec/plan，无远端映射；普通安装不猜测 activeModule。
+GitLab 确定性同步在客户端初始化前拒绝 workflowStage，命令/bridge 同样拒绝本地绑定、取任务和交付。
+
+verify 的图外文件判据复用历史 schema/摘要验证和图解析：完整快照匹配为 OK，仅有效历史图归属
+为 WARN 未验证，真正无归属或已有内容证据不符为 FAIL。无活跃图沿用旧行为。生命周期在本地阶段
+从能力图一次性取得复制/清理集合，并在删除当前产物前验证历史证据；不批量整理旧产物。
+
+串行阶段检查点唯一规则见 `plugins/spec-guard/references/workflow-checkpoints.md`；入口只引用，
+不复制五项说明。预告必须服从本轮实际路径与授权；取消使旧预告失效，继续不能恢复暂停的并行 initiative。

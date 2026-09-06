@@ -196,6 +196,7 @@ mkdir -p spec tasks .agent
 **动 spec、拆任务、取任务、交付之前，先加载 `spec-github-bridge` skill。**
 上面五条是「放哪里」，skill 才有「怎么做」：issue 落库、`--parent` / `--blocked-by`、
 归档标记、`/build auto` 连贯推进、模块级 PR 与合并策略。跳过它必然写出双真相源。
+- 阶段交接或停止时，加载 `spec-guard:spec-github-bridge` 的共享检查点规则，预告已授权下一步。
 <!-- END:agent-skills-convention -->
 ````
 <!-- SYNC:claude-block-github END -->
@@ -223,6 +224,7 @@ mkdir -p spec tasks .agent
 **动 spec、拆任务、取任务、交付之前，先加载 `spec-gitlab-bridge` skill。**
 上面五条是「放哪里」，skill 才有「怎么做」：issue 落库、可用的 relates-to 关联、
 归档标记、模块级 MR 与合并策略。跳过它必然写出双真相源。
+- 阶段交接或停止时，加载 `spec-guard:spec-gitlab-bridge` 的共享检查点规则，预告已授权下一步。
 <!-- END:agent-skills-convention -->
 ````
 <!-- SYNC:claude-block-gitlab END -->
@@ -248,6 +250,7 @@ mkdir -p spec tasks .agent
 - `/build` 取任务：读 `.agent/state.json` 的 `activeModule`，从该模块的 `todo.md`
   取第一个未勾选项，**不跨模块取**
 - 切换 `activeModule` 前当前模块不能有进行中的 task；切换后重读该模块的 spec 和 plan
+- 阶段交接或停止时，加载 `spec-guard:spec-guard-ops` 的共享检查点规则，预告已授权下一步。
 <!-- END:agent-skills-convention -->
 ````
 <!-- SYNC:claude-block-local END -->
@@ -277,6 +280,26 @@ mkdir -p spec tasks .agent
 
 本地模式把 `tracker` 改成 `"none"`。**这个文件要提交进仓库**——它是跨会话、
 跨成员的进度锚点。
+
+源码新增可选 `workflowStage: "local-validation"`：本地验证已经开始、尚未激活 tracker 时，
+填写真实 initiative.title 和单值 activeModule，保留 initiative.issue=null、modules={}。
+能力图及当前模块 spec/plan 必须存在。phase 显示本地验证阶段，verify 跳过远端检查并明确
+不代表通过；该字段不授予执行权限，next/deliver/bind-workspace 拒绝此阶段。
+成果和下一步写在模块 plan 的最新检查点。字段缺省仍使用原流程；不要为绕过门禁自动
+清除字段或伪造 Issue。**已安装 0.8.0 不支持该扩展，源码验证不代表插件已经更新。**
+
+已有图/spec/plan 后，使用现有 setup 入口补齐本地上下文（`gitlab` 同样支持）：
+
+```bash
+/bin/bash plugins/spec-guard/hooks/setup-convention.sh github \
+  --local-validation --module=alpha --title="Local validation"
+# 审阅 state 前后差异并确认该范围后，使用相同参数加 --confirm。
+```
+
+该入口不认证、不激活 tracker；`--dry-run` 永远不写。安装初始空 state 与工作上下文分开，
+不会为消除提示伪造 Issue。图外 spec 有完整历史快照时验证摘要；只有已结束历史图归属时明确标记
+内容未验证；孤儿或已知快照不符仍失败。阶段交接遵循共享检查点预告，普通“继续”不恢复暂停的并行 initiative。
+
 
 ### 4. 建 `spec/CAPABILITY-MAP.md`
 
@@ -464,10 +487,12 @@ Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行�
 ### 阶段
 
 下面是**基名**。实际输出会带模式后缀（`(本地模式)` / `(gitlab)` /
-`(模块分支)` / `(gh 不可用，降级判定)`），组合起来共 28 种取值。
+`(模块分支)` / `(gh 不可用，降级判定)`）。本地验证阶段为源码新增，安装版支持范围见上文。
 
 ```
 IDLE              没有任何 spec；或有 spec 但刻意没有活跃模块  → /spec
+LOCAL_VALIDATION   本地验证上下文有效，tracker 尚未激活        → 展示最新检查点与下一步
+LOCAL_VALIDATION_INVALID 本地阶段未知或上下文不完整       ⚠断链 → 核对 state/spec/plan
 MAP_ONLY          有能力图但没有模块 spec                ⚠断链 → /spec 递归
 SPECED            有 spec 但没有 issue 结构              ⚠断链 → /sync-map
 TRACKED           有 issue 但没有 plan.md                ⚠断链 → /plan

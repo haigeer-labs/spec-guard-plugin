@@ -1,0 +1,17 @@
+{
+  "exit": 0,
+  "output": "ok\nok\n已执行 pause initiative=local-probe\n",
+  "checkpointModules": [
+    {
+      "id": "alpha",
+      "responsibility": "Test local stage",
+      "dependsOn": [],
+      "status": "unknown",
+      "issue": null,
+      "spec": null,
+      "plan": null
+    }
+  ],
+  "specStillTopLevel": true,
+  "planStillTopLevel": true
+}

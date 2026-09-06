@@ -3,6 +3,8 @@ description: 校验已落地的产物是否符合约定（spec 命名、plan 形
 allowed-tools: Bash
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
 跑一次产物落地校验：
 
 ```bash

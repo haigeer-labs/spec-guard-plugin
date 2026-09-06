@@ -1,0 +1,7 @@
+{
+  "exit": 1,
+  "reason": "Exact mode assertion before archive permission normalization",
+  "observedMarketplaceMode": "0o664",
+  "expectedGitMode": "100644",
+  "resolution": "Normalize exported regular files to git-mode 0644/0755; keep original attempt directory."
+}

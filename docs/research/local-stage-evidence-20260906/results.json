@@ -1,0 +1,260 @@
+[
+  {
+    "case": "local-github",
+    "version": "baseline",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "baseline",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/gh auth status"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": []
+  },
+  {
+    "case": "local-github",
+    "version": "codex-installed",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "codex-installed",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/gh auth status"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "claude-installed",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-github",
+    "version": "claude-installed",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/gh auth status"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "baseline",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "baseline",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/glab auth status"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": []
+  },
+  {
+    "case": "local-gitlab",
+    "version": "codex-installed",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "codex-installed",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/glab auth status"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "claude-installed",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "local-gitlab",
+    "version": "claude-installed",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/glab auth status"
+    ]
+  },
+  {
+    "case": "historical-six-map",
+    "version": "baseline",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "historical-six-map",
+    "version": "baseline",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/gh auth status"
+    ]
+  },
+  {
+    "case": "historical-six-map",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "historical-six-map",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": []
+  },
+  {
+    "case": "archived-no-map",
+    "version": "baseline",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git remote get-url origin",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "archived-no-map",
+    "version": "baseline",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git remote get-url origin"
+    ]
+  },
+  {
+    "case": "archived-no-map",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git remote get-url origin",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "archived-no-map",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git remote get-url origin"
+    ]
+  },
+  {
+    "case": "history-with-alpha",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "history-with-alpha",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": []
+  },
+  {
+    "case": "history-with-orphan",
+    "version": "candidate",
+    "hook": "phase-guard.sh",
+    "exit": 0,
+    "calls": [
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git branch --show-current",
+      "/private/tmp/sg-stage-investigation-20260906/fixture/bin/git status --porcelain"
+    ]
+  },
+  {
+    "case": "history-with-orphan",
+    "version": "candidate",
+    "hook": "verify-artifacts.sh",
+    "exit": 1,
+    "calls": []
+  }
+]

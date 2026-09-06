@@ -4,7 +4,17 @@ argument-hint: "[github|gitlab|local] [--dry-run] [--replace] [--no-claude-md|--
 allowed-tools: Bash
 ---
 
+阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
+
 在当前项目落地 agent-skills 多 Spec 约定。
+
+## 显式本地上下文
+
+已有能力图、当前模块 spec/plan，用户要先本地验证时：使用
+`github|gitlab --local-validation --module=<module-id> --title="<title>"`。
+仍调用下面同一个脚本；默认只预览 state，确认具体范围后加 `--confirm`，
+`--dry-run` 始终不写。不调用认证、不创建远端映射；非法产物或现有映射不会被覆盖。
+这是本地 plan 完成后创建/更新 activeModule 的入口，普通 setup 的安装初始 state 仍为空。
 
 ## 执行
 

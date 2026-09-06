@@ -395,6 +395,8 @@ def _create_or_recover(client, title, description, marker):
 def sync_map(project, map_path, state_path, confirm):
     projection = _map_projection(map_path)
     state = _state(state_path)
+    if "workflowStage" in state:
+        raise TrackerIdentityError("workflowStage 存在：tracker 尚未激活，禁止同步")
     client = GitLabClient()
     client.initialize()
     print("将同步 initiative: %s" % projection["title"])

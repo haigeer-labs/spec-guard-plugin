@@ -58,6 +58,7 @@ python3 scripts/check-command-names.py || F=1
 echo ""
 echo "═══ 校验器自身的回归 ═══"
 bash scripts/test-checkers.sh || F=1
+python3 -B scripts/test_pre_push_environment.py || F=1
 echo ""
 
 # 指纹算法是两个 hook 和 /sync-map 共用的那一份 —— 它自己算错，

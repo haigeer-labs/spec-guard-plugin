@@ -35,7 +35,13 @@ cat > "${HOOK}" <<'PRE'
 # spec-guard-pre-push —— 由 scripts/install-git-hooks.sh 生成
 # 绕过: git push --no-verify
 set -uo pipefail
-R="$(git rev-parse --show-toplevel)"
+R="$(git rev-parse --show-toplevel)" || exit 1
+# Git exports repository-local variables to hooks. Tests create other repositories;
+# clear those variables before their Git commands can target this checkout.
+GIT_LOCAL_VARS="$(git rev-parse --local-env-vars)" || exit 1
+while IFS= read -r git_var; do
+  [ -z "$git_var" ] || unset "$git_var" || exit 1
+done <<< "$GIT_LOCAL_VARS"
 echo "── pre-push: 跑不花钱的那几层 ──"
 F=0
 # 每样只跑**一遍**，输出留在变量里。跑两遍（一遍取输出一遍取退出码）

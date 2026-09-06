@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.9.0"
+  },
+  "records": [
+    {
+      "subject": "spec-guard-source",
+      "status": "source-verified",
+      "target": {
+        "kind": "source-checkout",
+        "id": "ff759e86e8c53afda4d229f6ae45ca82d9e1e290"
+      },
+      "observedAt": "2026-09-06T05:43:30Z",
+      "evidence": [
+        "docs/research/0.9.0-local-candidate/regressions.json"
+      ]
+    },
+    {
+      "subject": "spec-guard-plugin-package",
+      "status": "package-verified",
+      "target": {
+        "kind": "package",
+        "id": "sha256:606d77177130b95867a46d89d23ab7752375ed317c13c43bedba6d0ddacf3599"
+      },
+      "observedAt": "2026-09-06T05:43:30Z",
+      "evidence": [
+        "docs/research/0.9.0-local-candidate/package-results.json"
+      ]
+    },
+    {
+      "subject": "codex",
+      "status": "not-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    },
+    {
+      "subject": "claude-code",
+      "status": "not-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    },
+    {
+      "subject": "codex-host",
+      "status": "not-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    },
+    {
+      "subject": "claude-code-host",
+      "status": "not-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    },
+    {
+      "subject": "github",
+      "status": "not-verified",
+      "target": {
+        "kind": "tracker-project",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    },
+    {
+      "subject": "gitlab",
+      "status": "not-verified",
+      "target": {
+        "kind": "tracker-project",
+        "id": "0.9.0:not-run"
+      },
+      "reason": "Not in authorized local candidate scope; no installation, host restart, extra agents or tracker writes performed."
+    }
+  ]
+}

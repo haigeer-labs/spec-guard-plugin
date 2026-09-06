@@ -1,0 +1,788 @@
+{
+  "version": "0.9.0",
+  "candidateCommit": "ff759e86e8c53afda4d229f6ae45ca82d9e1e290",
+  "artifactDir": "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified",
+  "archive": "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified.tar.gz",
+  "archiveSha256": "606d77177130b95867a46d89d23ab7752375ed317c13c43bedba6d0ddacf3599",
+  "files": [
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "gitMode": "100644",
+      "sha256": "f329390f05801b01604c9bdb1e4e4ae6f966cb450d6afa48ccf3a77451ed2f51"
+    },
+    {
+      "path": "plugins/spec-guard/.claude-plugin/plugin.json",
+      "gitMode": "100644",
+      "sha256": "c93c78245e9db3a8051d2192f44ff0f9c8cfaff7916e8c68530700e410d05b2b"
+    },
+    {
+      "path": "plugins/spec-guard/.codex-plugin/plugin.json",
+      "gitMode": "100644",
+      "sha256": "54ac7bf14bc7aaffdc8396ee4559024dce585c928e86ff2f0f4ec110b994e7b8"
+    },
+    {
+      "path": "plugins/spec-guard/.mcpbignore",
+      "gitMode": "100644",
+      "sha256": "34b7b6551fce8a938c931d104fab1183d777bdb29ac92bdbdbda6845fc034fa5"
+    },
+    {
+      "path": "plugins/spec-guard/commands/bind-workspace.md",
+      "gitMode": "100644",
+      "sha256": "4a65d2c515ad21717aeda2b05a4a4e24980cb5630d1bfb26f9880d01b5d65605"
+    },
+    {
+      "path": "plugins/spec-guard/commands/deliver.md",
+      "gitMode": "100644",
+      "sha256": "8b51aff835d0ad959e64a3b4e5e8c338cab94a3982b97e55e29620eb5179e53c"
+    },
+    {
+      "path": "plugins/spec-guard/commands/history-integrity.md",
+      "gitMode": "100644",
+      "sha256": "74327812116a43a950303bba62d7a7e1842a98e10c6eedab360174c2a1edacdb"
+    },
+    {
+      "path": "plugins/spec-guard/commands/initiative-lifecycle.md",
+      "gitMode": "100644",
+      "sha256": "e2c051847a6879101ffcb3c59f5d560faa70464db63c4c8f2888a69fe1f13411"
+    },
+    {
+      "path": "plugins/spec-guard/commands/next.md",
+      "gitMode": "100644",
+      "sha256": "3bf434a2bb8f013c24843360380c11c81d06b5189c82f68e4bbec4e232a93ec9"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-execute.md",
+      "gitMode": "100644",
+      "sha256": "04f90d137e6a61719e1a9e5fdaf75dbacf367d80eb05f7dafb6fa6765e15e231"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-guidance.md",
+      "gitMode": "100644",
+      "sha256": "315ab8cc66f45f6cbae12420483b3fa3ca975ca047906dccb5c910226496b63a"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-integrate.md",
+      "gitMode": "100644",
+      "sha256": "a93b08df253b0b0d47e6ad99d26098d393905239ad677a23db132856c563556b"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-readiness.md",
+      "gitMode": "100644",
+      "sha256": "11b210adeb5f5eaa4245aa7b8c1ce8769eea801a96a1c020e4bec240366f6893"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-reclaim.md",
+      "gitMode": "100644",
+      "sha256": "096265cc2604512dbf848e5bf5d4afb04082d733fcd9843df815824066cca078"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-register-worker.md",
+      "gitMode": "100644",
+      "sha256": "0d771908d659ddc6b97cc77e4794001ba23c5d4ee9913720c5a93ff111fb4a46"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-safety-gate.md",
+      "gitMode": "100644",
+      "sha256": "b32e603d718a9a79397410071427417b79681c99f2ed6640d73ff3bbc6d7bdc8"
+    },
+    {
+      "path": "plugins/spec-guard/commands/parallel-status.md",
+      "gitMode": "100644",
+      "sha256": "70406a12ce7037ceaf4be2d4137c2463fcc97c9cc27a611f88691b3345465da4"
+    },
+    {
+      "path": "plugins/spec-guard/commands/phase.md",
+      "gitMode": "100644",
+      "sha256": "0249534fe01bf013f54097432e6d57e9d7eef3f744879faf77a6fff943966e91"
+    },
+    {
+      "path": "plugins/spec-guard/commands/setup-convention.md",
+      "gitMode": "100644",
+      "sha256": "5721ea0aeefb6436f064dfc6bd2323029cb6228385ffa3e46d9d6ae0ed743601"
+    },
+    {
+      "path": "plugins/spec-guard/commands/sync-map.md",
+      "gitMode": "100644",
+      "sha256": "2465bc41e582658d39286cd8c511e6dad738eb114f80c681993bff1bc6a5a329"
+    },
+    {
+      "path": "plugins/spec-guard/commands/teardown-convention.md",
+      "gitMode": "100644",
+      "sha256": "3a67931e1cdaa11ac8b7ad1eedc7c72ab04cfef7e17350d0b5d8e2f701313357"
+    },
+    {
+      "path": "plugins/spec-guard/commands/verify-artifacts.md",
+      "gitMode": "100644",
+      "sha256": "56e60bb6520306b5bfe837a8dda79555f62d7595b3e1b24cc98e70cc07a1806f"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/artifact_history.py",
+      "gitMode": "100644",
+      "sha256": "f6b38d8470bfad96cb7bd2d56ae22a3b4427f3103d3d0b4e2a45518f86ef78f6"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/capability-history.py",
+      "gitMode": "100755",
+      "sha256": "045be6a1491b8cdd07662567cc62262f8cfed10019002822023b1c4c5ebb2bfc"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/capability-map.py",
+      "gitMode": "100755",
+      "sha256": "1abd87eedbb93d771669674baa180f913c0121876886bd3e1bd32095dd34daca"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/capability_map.py",
+      "gitMode": "100644",
+      "sha256": "9849c855495b26cfedf6a74c18702353e94d234dac3ee089a523c63414a623ac"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/gitlab-bridge.sh",
+      "gitMode": "100755",
+      "sha256": "fa33212db98abc3dee6eecfad62666b9fcbf87a700274a1ef43a8bea62d8d4bf"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/gitlab_tracker.py",
+      "gitMode": "100644",
+      "sha256": "095b7bf3f5656fcded99f57f9e916d8dea8a0876e58f07734856491376f04977"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/history-migration.py",
+      "gitMode": "100755",
+      "sha256": "58e3ff9fa99312b39b7725bdf6d083788ffad40ebd3d7c737f6bfb9b1cf71cff"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/hooks.json",
+      "gitMode": "100644",
+      "sha256": "1d4e44815974f6701db0740f16d73c7c2570ab3704898a8dcf3c51b8cb30a2b7"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/initiative-lifecycle.sh",
+      "gitMode": "100755",
+      "sha256": "7381ba121149432fa2648674f0543d585e7299639805f6ecfeb976cc214f840c"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/local_context.py",
+      "gitMode": "100644",
+      "sha256": "ec43fbafba67ae4668cdb20a46a9d9499d048986b7cfb7eab6bef25e7bcbfcb7"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/local_validation.py",
+      "gitMode": "100644",
+      "sha256": "a65a242b8d161cba7e71e31d5d78e26504e2bcc1339c5614415a80488c37f925"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-cli.py",
+      "gitMode": "100644",
+      "sha256": "2f34324a55c13998a7c4f31da6ee9f74ba559a4611b7d1a179fb60072b348dbd"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-desktop-register.py",
+      "gitMode": "100644",
+      "sha256": "73c0052c160a8a7c32abff9310c8b0bfe8a3efdde1edbcb49e6860f468eeaf98"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-execution.py",
+      "gitMode": "100644",
+      "sha256": "d37e42444ef56ed81712474a9e8fd0408cbdc786f241661a14c9e66b12d5e5da"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-guidance.py",
+      "gitMode": "100755",
+      "sha256": "6e2c4c96d7e6a28219c6c539edf9f57f3ec568cde9267c46596d33a925b6d9d4"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-readiness.py",
+      "gitMode": "100755",
+      "sha256": "b0705353354a5b62df76518600d786c06856380cba5365fe0ebe343f05037df3"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-safety-gate.py",
+      "gitMode": "100755",
+      "sha256": "0b302069b5f61e62012f9a76e8923b7bc60e798cd05780718ff63c927bcf79fe"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel-worktree.py",
+      "gitMode": "100644",
+      "sha256": "f5c6685eae59e03fdb9ee02e9811853e5dfdbb54d4747fb9f3845bb05d844628"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel_cli_adapters.py",
+      "gitMode": "100644",
+      "sha256": "c5dd62ebb7317c6867543c923817e0f69c2510d77cc84eb6475f0d0673b3a01d"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel_execution_lib.py",
+      "gitMode": "100644",
+      "sha256": "a4ccc2c56249c344b9e54ec108c3f85aa45c360aac5a0a833759324fadd189f4"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel_guidance.py",
+      "gitMode": "100644",
+      "sha256": "c85a9326e14527a50eaba68ac581414c786e6daf8bcd0a8ca211fed6d6089d28"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel_safety_gate.py",
+      "gitMode": "100644",
+      "sha256": "1e6dc575cd8bf133f9f456d1f430eb6b25fe94870426317d3d8f3014e20b4609"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/parallel_worktree_lib.py",
+      "gitMode": "100644",
+      "sha256": "a6c3ac6ef88df2a4d43dab82e026fe75a3e236961e63f57d9426acb8c9081ef0"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/phase-guard.sh",
+      "gitMode": "100755",
+      "sha256": "89843687fb88c824bfff8089ee765d7fbb1bbb113f3fcbe2451809172494e53e"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/setup-convention.sh",
+      "gitMode": "100755",
+      "sha256": "fa6bafc9867615f8e1d87705ca5a814e430a38cca5aacb9179d0de2b338c6810"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/spec-digest.py",
+      "gitMode": "100644",
+      "sha256": "567e499aea11cdfb47b7a795e0ca4e8dd1a4e38880aea2d025b67ee00eae887c"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/sync-map-gitlab.sh",
+      "gitMode": "100755",
+      "sha256": "e252f1b7bf1059f8a89fe61e49bd35a192851dd7a3d81f83559e8c4cb8cf08d3"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/teardown-convention.sh",
+      "gitMode": "100755",
+      "sha256": "03dd7c12b91e1c7fe61c840bc1d60bcbe13e3bb08d48fb4c4e05c3f257971a6d"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-audit-map-consistency.sh",
+      "gitMode": "100755",
+      "sha256": "9d838c27f44b910be285e4db2030f7a82c929160ac286ea10df76878928a0ce9"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-audit-safety-containment.sh",
+      "gitMode": "100755",
+      "sha256": "a517a317ff10dccb5ba85dbeebf7e6510c0230f3faec5f03a1ed77c3698df4ef"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-capability-history.sh",
+      "gitMode": "100755",
+      "sha256": "359c76488caba449a9128a02e3bb3f7df50243f308f1e20a187f47b4c553d10d"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-claude-desktop-mcp.sh",
+      "gitMode": "100755",
+      "sha256": "f03c0ccd97a01101951e262fa395c728a0c6ba0fcd12468cc5c46edb5f567681"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-codex-adapter.sh",
+      "gitMode": "100755",
+      "sha256": "b398c2fc7d768f6a73116f347b50580208ef556156fb36a196131ed00378ada6"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-desktop-worker-registration.sh",
+      "gitMode": "100755",
+      "sha256": "8db3820c8ba097aa0e5eea4a1832a23ea315f3a2ac31777e1258e677f9051a9d"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-gitlab-bridge.sh",
+      "gitMode": "100755",
+      "sha256": "7a673f32709066f96e62fadda6f417c0a8c7271023ba1df34fdbfec567c51a38"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh",
+      "gitMode": "100755",
+      "sha256": "c998ef09e8958ce0377eac1f4411c16c1dcae3324709ff819f48236dcca6c75e"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-history-migration.sh",
+      "gitMode": "100755",
+      "sha256": "0af00c0f30d7ae22f7bc20a21ae0d27e514a5f40a1a3af5ebd7e50e6105b9206"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-history-verification.sh",
+      "gitMode": "100755",
+      "sha256": "bda1e3706748455601f7e9ff424d2f53790e72fa29a87ef0aecd45a343c2cab8"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-initiative-lifecycle.sh",
+      "gitMode": "100755",
+      "sha256": "9d4d4035ee26d0115607d491871b18dc572a3cb252d659f968a3160c92f13631"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-cli-execution.sh",
+      "gitMode": "100755",
+      "sha256": "ab4916dd395f9440e6d6b90333fba11f06394a9c18ac22f73a69333498698a87"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-execution-ledger.sh",
+      "gitMode": "100755",
+      "sha256": "5ef070d5901decd53e6d3f2bebb172a02223baa0c3d82c237ba51f1c4f897084"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-guidance.sh",
+      "gitMode": "100755",
+      "sha256": "9e9e32f2be42a6a5f9b2a7e83b1177cfef0c531582dd3adab6fdd4fea77fe4c1"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-readiness.sh",
+      "gitMode": "100755",
+      "sha256": "2b5ff8e97ae2b2c3d26e63df6c3929bf10858350fd6d15806ae38bc8494d0733"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-safety-gate.sh",
+      "gitMode": "100755",
+      "sha256": "5cb1e198f83205aad64a3c00f939a07a766ee07942f811360e3c3ed3ca70f5ed"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-workflow-integration.sh",
+      "gitMode": "100755",
+      "sha256": "8805ab5dec37e7a530e7df9d3c384b152f17f1f76b72c8548d437579a012465a"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-parallel-worktree-runtime.sh",
+      "gitMode": "100755",
+      "sha256": "86c2f51c5e7c72c56e1e4e06cd227ed8e14a81ddd350195b05743d078e48091f"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-phase-guard.sh",
+      "gitMode": "100755",
+      "sha256": "f40f421aa046fb5517fd03153a68cb62abc7680a8cdfbb14da5616961a1e5802"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-sync-map-gitlab.sh",
+      "gitMode": "100755",
+      "sha256": "c0a3e9961f89de06f28714b4f22a946445f5cb7c39a79e7583e5d18f7e2d21ae"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test-verify-artifacts.sh",
+      "gitMode": "100755",
+      "sha256": "5ef9b479b0589f56cfd6be05297c4b4bca3e33f707ba9c775ea41e0cb8923639"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test_artifact_history.py",
+      "gitMode": "100644",
+      "sha256": "ca5b579eb453500083ef43d41b6208cd68d2888e8b7df92969025d2d7099e6c9"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test_local_context.py",
+      "gitMode": "100644",
+      "sha256": "1efa7e016a17d28646274b4f61732d407d6eea8d7a65be6bd9b2ee51f86dd187"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test_local_validation.py",
+      "gitMode": "100644",
+      "sha256": "290512f7f89789135ee0b6fbc180837867de994789347be5e96f92c737bc8b5e"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test_parallel_fixture.py",
+      "gitMode": "100644",
+      "sha256": "b688b1cda0f95ba88de9cbd0df4e8bd08f3e492236d1679f715b80d01cf04ca2"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/test_workflow_checkpoints.py",
+      "gitMode": "100644",
+      "sha256": "d10988d9909d493180973f725ca7e9ca2133e7cb1c15bdc36f201c314287ec6a"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/verify-artifacts.sh",
+      "gitMode": "100755",
+      "sha256": "26fdbb6b37d8268ecc44a910bfcebd946047785efddd9f90c26c6174dd1692dc"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/verify-history.sh",
+      "gitMode": "100755",
+      "sha256": "dda2d671928e4c1d492c7e0b00dda41404b27d4165e0576d544e9b1fc0627dcb"
+    },
+    {
+      "path": "plugins/spec-guard/hooks/workspace_binding.py",
+      "gitMode": "100644",
+      "sha256": "d8372e12d0570d363fea3db9c64528467b31cd4eb6c63e0c9a382329fea6bb37"
+    },
+    {
+      "path": "plugins/spec-guard/manifest.json",
+      "gitMode": "100644",
+      "sha256": "143e2ce3f3d7b157ac78c89544faf9f8b552eb70e779f62baab327daa3dc4e93"
+    },
+    {
+      "path": "plugins/spec-guard/mcp/claude_desktop_server.mjs",
+      "gitMode": "100644",
+      "sha256": "d4937d30b0ee184b94d35a7bf3e19ba0c6d7eda48376fcd4bce836e494c13b2c"
+    },
+    {
+      "path": "plugins/spec-guard/references/workflow-checkpoints.md",
+      "gitMode": "100644",
+      "sha256": "e82bad5fccb249b5e906511a1e2d8b29587b74da7bcca52ff5cf82166b8ec8d7"
+    },
+    {
+      "path": "plugins/spec-guard/skills/spec-github-bridge/SKILL.md",
+      "gitMode": "100644",
+      "sha256": "e70baa79ed4ff08de7238d57ade267f0b91cbee18aeb77113fac87762ec3ef7b"
+    },
+    {
+      "path": "plugins/spec-guard/skills/spec-gitlab-bridge/SKILL.md",
+      "gitMode": "100644",
+      "sha256": "898f2752923064134c0d7a360480e380855b894af139d66b68c1ca0eea6faf28"
+    },
+    {
+      "path": "plugins/spec-guard/skills/spec-guard-ops/SKILL.md",
+      "gitMode": "100644",
+      "sha256": "fd5a6a10b5a932054284f9d8269653c0230bd61d4675dc92bd8cfdfb182967e8"
+    },
+    {
+      "path": "plugins/spec-guard/templates/CAPABILITY-MAP.md",
+      "gitMode": "100644",
+      "sha256": "af7e3a43fa285316c87d0697f9eee06abb9159ebcc6bd0ca1ba83aac73ac0f0b"
+    },
+    {
+      "path": "plugins/spec-guard/templates/claude-block-github.md",
+      "gitMode": "100644",
+      "sha256": "ccc0ae8a2944f890382e2918b83fde4b9635349f357d77841e557b07339ad367"
+    },
+    {
+      "path": "plugins/spec-guard/templates/claude-block-gitlab.md",
+      "gitMode": "100644",
+      "sha256": "73dbc9d3d3b30dd07eae3d774360ea52ecfc908094643ee4b9bc798b9f358792"
+    },
+    {
+      "path": "plugins/spec-guard/templates/claude-block-local.md",
+      "gitMode": "100644",
+      "sha256": "c1de43e3202ea0f30f76a95095b8af528a3ad2c9ec3b183ef481ddf88ce8ded0"
+    },
+    {
+      "path": "plugins/spec-guard/templates/codex-block-github.md",
+      "gitMode": "100644",
+      "sha256": "d571a8bb8e5a1bb6c39307e0430690e8ca243811e91ccfbbd165ad3daff4960d"
+    },
+    {
+      "path": "plugins/spec-guard/templates/codex-block-gitlab.md",
+      "gitMode": "100644",
+      "sha256": "a73997b07d80b898b73b753b18d4237ec2fd818408cdaf88e72490c3a30dacbb"
+    },
+    {
+      "path": "plugins/spec-guard/templates/codex-block-local.md",
+      "gitMode": "100644",
+      "sha256": "5a2c9cb55ac563e03e473df2ea07e4362434d86f85356e0e21b0f2ad1beb4442"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "scripts/release-package.py",
+        "validate",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified",
+        "0.9.0"
+      ],
+      "exit": 0,
+      "stdout": "ok\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - tracker: \\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：state.json 无法读取或解析\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=\n\n  ❌ 本地验证阶段不可用：state.json 无法读取或解析\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⏭  state.json 没有 activeModule\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 0 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - tracker: \\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：state.json 无法读取或解析\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=\n\n  ❌ 本地验证阶段不可用：state.json 无法读取或解析\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⏭  state.json 没有 activeModule\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 0 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=false\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：当前模块缺少 spec 或 plan\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n  ❌ 本地验证阶段不可用：当前模块缺少 spec 或 plan\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⚠️  tasks/alpha/plan.md 不存在 —— /plan 还没跑\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 1 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - 活跃模块: alpha\\n  - tracker: github\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=false\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：当前模块缺少 spec 或 plan\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n动 spec、拆任务、取任务或交付之前，先加载 `spec-github-bridge` skill ——\\n目录约定、issue 落库、模块级 PR 与合并策略全在里面。跳过它必然写出双真相源。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=github  activeModule=alpha\n\n  ❌ 本地验证阶段不可用：当前模块缺少 spec 或 plan\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⚠️  tasks/alpha/plan.md 不存在 —— /plan 还没跑\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 1 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION (tracker 尚未激活)**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=true\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 按 tasks/alpha/plan.md 的最新检查点说明成果、已授权下一步和下次停点；此状态不授权任务领取或远端写入\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 0,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n  ✅ 本地验证上下文有效（不代表执行或交付获准）\n  ⏭  tracker 尚未激活；binding、远端投影与远端校验未执行，不代表通过\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ✅ tasks/alpha/plan.md 的 Task List 不是 checklist\n  ⏭  本地阶段没有已激活的 tracker 任务索引（不代表通过）\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 7 通过 / 0 警告 / 0 失败 ═══\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - tracker: \\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：state.json 无法读取或解析\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=\n\n  ❌ 本地验证阶段不可用：state.json 无法读取或解析\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⏭  state.json 没有 activeModule\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 0 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - tracker: \\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：state.json 无法读取或解析\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=\n\n  ❌ 本地验证阶段不可用：state.json 无法读取或解析\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⏭  state.json 没有 activeModule\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 0 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=false\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：当前模块缺少 spec 或 plan\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/Users/vilin/.codex/worktrees/68fd/spec-guard-plugin/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n  ❌ 本地验证阶段不可用：当前模块缺少 spec 或 plan\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⚠️  tasks/alpha/plan.md 不存在 —— /plan 还没跑\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 1 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/phase-guard.sh"
+      ],
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"## agent-skills 链路状态（自动探测，非用户输入）\\n\\n当前阶段: **LOCAL_VALIDATION_INVALID**\\n\\n  - 活跃模块: alpha\\n  - tracker: gitlab\\n  - spec: 能力图=true, 模块 spec=1 份\\n  - spec-digest: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/spec-digest.py\\n  - checkpoint-rules: /private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）\\n  - plan: tasks/alpha/plan.md=false\\n  - spec-guard: 开发副本（未经 /plugin 安装）\\n\\n**检测到断链：**\\n  ⚠ 本地验证阶段不可用：当前模块缺少 spec 或 plan\\n\\n处理方式：先向用户说明断链，给出补齐建议，**得到确认后再执行**。不要自作主张跳过或补齐。\\n\\n**本项目没有 AGENTS.md 声明块（Codex 的 --no-instructions 模式）。**\\n当前 tracker 是「gitlab」；在动 spec 或任务前，先确认项目说明文件中的\\nspec-guard 约定与当前 tracker 一致，避免把 GitHub 流程套到不对应的 tracker。\\n\\n建议下一步: 先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker\\n\\n以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/verify-artifacts.sh"
+      ],
+      "exit": 1,
+      "stdout": "═══ 产物落地校验 ═══\n  tracker=gitlab  activeModule=alpha\n\n  ❌ 本地验证阶段不可用：当前模块缺少 spec 或 plan\n── A. 能力图 ──\n  ✅ 能力图解析出 1 个 module id\n\n── A2. 能力图 ↔ 投影的指纹 ──\n  ⏭  本地阶段不校验远端投影（不代表通过）\n\n── B. spec 文件名 ↔ module id ──\n  ✅ spec 文件名与 module id 一致\n\n── C. 目录约定 ──\n  ✅ 根目录无 SPEC*.md\n  ✅ tasks/ 有 module 命名空间\n  ✅ 无活的 todo.md 与 tracker 并存\n\n── D. plan.md ──\n  ⚠️  tasks/alpha/plan.md 不存在 —— /plan 还没跑\n\n── E. GitHub 层 ──\n  ⏭  本地阶段不查询 GitHub（不代表通过）\n\n── F. GitLab 层 ──\n  ⏭  本地阶段不查询 GitLab（不代表通过）\n\n═══ 5 通过 / 1 警告 / 1 失败 ═══\n\n失败项要先向用户说明再处理，不要自作主张补齐 —— 有些是用户故意的。\n",
+      "stderr": "",
+      "trackerCalls": [
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git",
+        "/private/tmp/sg-090-validation/alpha-fixture-verified/bin/git"
+      ]
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/test_local_validation.py"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "............\n----------------------------------------------------------------------\nRan 12 tests in 8.963s\n\nOK\n"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/test_local_context.py"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.870s\n\nOK\n"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "/private/tmp/sg-090-validation/package-history-test-environment/plugins/spec-guard/hooks/test_artifact_history.py"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "........\n----------------------------------------------------------------------\nRan 8 tests in 4.332s\n\nOK\n"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "/private/tmp/sg-090-validation/spec-guard-0.9.0-ff759e8-verified/plugins/spec-guard/hooks/test_workflow_checkpoints.py"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.003s\n\nOK\n"
+    }
+  ],
+  "status": "local candidate content and package behavior verified; no installation or host acceptance"
+}

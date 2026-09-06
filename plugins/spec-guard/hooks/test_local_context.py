@@ -70,6 +70,23 @@ class LocalContextTests(unittest.TestCase):
         self.assertNotEqual(self.setup('--confirm').returncode, 0)
         self.assertEqual(before, path.read_bytes())
 
+    def test_local_setup_from_subdirectory_uses_project_root(self):
+        child = self.root / 'nested'
+        child.mkdir()
+        # Match ordinary setup's Git-root resolution without creating a repository.
+        (self.root / 'bin/git').write_text(
+            '#!/bin/sh\n[ "$1" = rev-parse ] || exit 1\nprintf "%s\\n" "$SG_TEST_ROOT"\n')
+        env = dict(self.env, SG_TEST_ROOT=str(self.root))
+        env.pop('CLAUDE_PROJECT_DIR')
+        p = subprocess.run(['/bin/bash', str(self.hooks / 'setup-convention.sh'),
+                            'github', '--local-validation', '--module=alpha',
+                            '--title=Nested setup', '--confirm'],
+                           cwd=child, env=env, text=True, capture_output=True)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(json.loads((self.root / '.agent/state.json').read_text())
+                         ['initiative']['title'], 'Nested setup')
+        self.assertFalse((child / '.agent').exists())
+
     def test_gitlab_setup_and_invalid_state_preserve_bytes(self):
         self.fixture.state['tracker'] = 'gitlab'
         self.fixture.save()

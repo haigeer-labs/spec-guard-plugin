@@ -63,6 +63,42 @@
         "command:installed v0.10.0 workflow_roadmap.py --project /private/tmp/spec-guard-roadmap-e2e.nosfGW/new --all",
         "result:journey-note-filter with explicit dependency journey-note-select and GitHub Issue #25 CLOSED"
       ]
+    },
+    {
+      "id": "github-roadmap-upgrade-missing-initiative",
+      "kind": "github-project",
+      "confirmation": "required",
+      "status": "project-verified",
+      "target": {
+        "kind": "tracker-project",
+        "id": "github.com/yizhongkaimail-collab/spec-guard-e2e-upgrade-20260903"
+      },
+      "expectedSideEffects": [
+        "read project convention state without modifying project or tracker state"
+      ],
+      "observedAt": "2026-09-09T16:03:49Z",
+      "evidence": [
+        "command:installed v0.10.0 workflow_roadmap.py --project /private/tmp/spec-guard-roadmap-e2e.nosfGW/upgrade --all",
+        "result:exit 1 and initiative state is missing or unreadable; no legacy artifacts were inferred as current progress"
+      ]
+    },
+    {
+      "id": "github-roadmap-legacy-sync-missing-initiative",
+      "kind": "github-project",
+      "confirmation": "required",
+      "status": "project-verified",
+      "target": {
+        "kind": "tracker-project",
+        "id": "github.com/yizhongkaimail-collab/spec-guard-e2e-sync-v0729-20260903"
+      },
+      "expectedSideEffects": [
+        "read legacy project files without modifying project or tracker state"
+      ],
+      "observedAt": "2026-09-09T16:03:49Z",
+      "evidence": [
+        "command:installed v0.10.0 workflow_roadmap.py --project /private/tmp/spec-guard-roadmap-e2e.nosfGW/sync --all",
+        "result:exit 1 and initiative state is missing or unreadable; no legacy artifacts were inferred as current progress"
+      ]
     }
   ]
 }

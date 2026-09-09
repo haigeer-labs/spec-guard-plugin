@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.10.0"
+  },
+  "records": [
+    {
+      "subject": "spec-guard-source",
+      "status": "source-verified",
+      "target": {
+        "kind": "source-checkout",
+        "id": "commit:f7e3cec9a0899b5aa77ded8e980c33b4c5c68cdb"
+      },
+      "observedAt": "2026-09-09T15:57:18Z",
+      "evidence": [
+        "command:python3 -m unittest plugins/spec-guard/hooks/test_workflow_roadmap.py",
+        "command:bash plugins/spec-guard/hooks/test-codex-adapter.sh",
+        "command:bash evals/test-release-package.sh"
+      ]
+    },
+    {
+      "subject": "codex-cli",
+      "status": "installed-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "version:0.10.0;session:01a086e0-9915-78d0-9cd3-69442a682fb3"
+      },
+      "observedAt": "2026-09-09T15:57:18Z",
+      "evidence": [
+        "command:codex plugin list --available --json",
+        "installed-cache:/Users/vilin/.codex/plugins/cache/spec-guard-marketplace/spec-guard/0.10.0"
+      ]
+    },
+    {
+      "subject": "codex-cli-host",
+      "status": "host-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "codex-cli-smoke:2026-09-09T15:57:18Z"
+      },
+      "observedAt": "2026-09-09T15:57:18Z",
+      "evidence": [
+        "command:bash evals/codex-plugin-smoke.sh",
+        "result:received spec-guard hook-injected phase fact"
+      ]
+    }
+  ],
+  "journeys": [
+    {
+      "id": "github-roadmap-readonly-new-project",
+      "kind": "github-project",
+      "confirmation": "required",
+      "status": "project-verified",
+      "target": {
+        "kind": "tracker-project",
+        "id": "github.com/yizhongkaimail-collab/spec-guard-e2e-new-20260903"
+      },
+      "expectedSideEffects": [
+        "read the declared Initiative, capability map, plan and GitHub Issue #25 without modifying project or tracker state"
+      ],
+      "observedAt": "2026-09-09T15:57:18Z",
+      "evidence": [
+        "command:installed v0.10.0 workflow_roadmap.py --project /private/tmp/spec-guard-roadmap-e2e.nosfGW/new --all",
+        "result:journey-note-filter with explicit dependency journey-note-select and GitHub Issue #25 CLOSED"
+      ]
+    }
+  ]
+}

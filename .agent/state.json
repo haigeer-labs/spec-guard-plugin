@@ -7,6 +7,6 @@
   },
   "issueTypes": false,
   "modules": {},
-  "activeModule": "workflow-checkpoint-preview",
+  "activeModule": "workflow-roadmap",
   "workflowStage": "local-validation"
 }

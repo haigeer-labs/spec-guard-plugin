@@ -386,6 +386,20 @@ fi
 
 # ── 5. git 层 ──────────────────────────────────────────────
 BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+BRANCH_DISPLAY="$BRANCH"
+if [ -z "$BRANCH_DISPLAY" ]; then
+  HEAD_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "")
+  [ -n "$HEAD_SHORT" ] && BRANCH_DISPLAY="HEAD（detached @ ${HEAD_SHORT}）"
+fi
+GIT_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+WORKTREE_DISPLAY=""
+if [ -n "$GIT_TOP" ]; then
+  if [ -f "$GIT_TOP/.git" ]; then
+    WORKTREE_DISPLAY="linked worktree（附加工作区）"
+  else
+    WORKTREE_DISPLAY="primary checkout"
+  fi
+fi
 DIRTY=$(git status --porcelain 2>/dev/null | grep -vE "^\?\? (spec/|tasks/|\.agent/)" | wc -l | tr -d " ")
 [ -z "$DIRTY" ] && DIRTY=0
 # 默认分支（模块 PR 的 base）。**不能只认 main/master 两个名字。**
@@ -683,7 +697,7 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
   && add "checkpoint-rules: ${SELF_DIR}/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
-[ -n "$BRANCH" ] && add "git: 分支=$BRANCH, 未提交=$DIRTY"
+[ -n "$BRANCH_DISPLAY" ] && add "git: 分支=$BRANCH_DISPLAY, worktree=${WORKTREE_DISPLAY:-未知}, 未提交=$DIRTY"
 if [ "${ON_MODULE_BRANCH}" = true ]; then
   if [ "${TASKS_DONE_HERE}" -gt 0 ]; then
     add "模块分支: 本分支已落 ${TASKS_DONE_HERE} 个 task 的 commit（${DONE_LIST}）—— 这些 issue 要到 PR 合入默认分支才关，取下一个任务时必须跳过它们"

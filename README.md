@@ -364,6 +364,7 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 | `/spec-guard:setup-convention … --migrate` | 把根上的 `SPEC-<模块>.md` / 能力图迁进 `spec/`（不加只报告，不动文件） |
 | `/spec-guard:teardown-convention` | 移除约定（保留你的 spec 和 plan） |
 | `/spec-guard:phase` | 查看当前链路状态和断链项 |
+| `/spec-guard:roadmap [--all]` | 按需查看正常流程、当前位置、检查点、完成条件与 Git/worktree 上下文；`--all` 才展开活跃能力图 |
 | `/spec-guard:verify-artifacts` | 校验已落地的产物是否符合约定 |
 | `/spec-guard:parallel-readiness` | 只读分析能力图中的并行候选；默认不联网，`--refresh` 须经确认且仍不等于安全并行 |
 | `/spec-guard:parallel-safety-gate` | 审查显式路径/API/资源边界；仅 `manual-parallel-eligible`，不自动执行 |
@@ -471,7 +472,7 @@ Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行�
   - tracker: github
   - spec: 能力图=true, 模块 spec=3 份
   - plan: tasks/identity/plan.md=false
-  - git: 分支=main, 未提交=0
+  - git: 分支=main, worktree=primary checkout, 未提交=0
   - spec-guard: v0.7.17
 
 **检测到断链：**
@@ -483,6 +484,11 @@ Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行�
 
 以上是仓库客观状态。若用户意图与之冲突，以用户为准，但要先指出冲突。
 ```
+
+`/phase` 只提供紧凑的自动摘要；需要完整视图时才调用 `/spec-guard:roadmap`。路线图先展示
+上游的正常阶段，再展示当前 Initiative/模块、下一动作与下一检查点、完成条件和证据边界。
+它不计算百分比或 ETA，不创建任务/Issue/PR，不修改 state，也不把分支、linked worktree 或
+独立端口误作模块绑定、任务领取或并行写入授权。
 
 ### 阶段
 

@@ -74,6 +74,25 @@ CLAUDE_PROJECT_DIR="$PROJECT" /bin/bash "$ROOT/hooks/phase-guard.sh"
 `LOCAL_VALIDATION_INVALID` 时核对 state/spec/plan，不自动清字段或激活 tracker。
 源码结果和已安装插件结果分别报告，旧版 0.8.0 不支持该状态。
 
+## `roadmap`
+
+按需、只读地展示当前 Initiative 的完整工作流路线。默认只显示当前模块及直接依赖/后继：
+
+```bash
+python3 -B "$ROOT/hooks/workflow_roadmap.py" --project "$PROJECT"
+```
+
+用户明确要求当前活跃能力图的完整模块矩阵时才追加 `--all`：
+
+```bash
+python3 -B "$ROOT/hooks/workflow_roadmap.py" --project "$PROJECT" --all
+```
+
+该入口不调用 tracker 写操作、不改 `.agent/state.json`、不绑定 worktree、不领取任务，也不管理
+端口、进程或外部数据服务。无法唯一确认 Initiative、能力图、模块、检查点或远端事实时，保留脚本的
+`?`/`!` 结论，不按分支名、文件时间或 task 数量猜测。`local-validation` 仅展示本地路线，不能建议
+sync/next/deliver。worktree、分支和 detached HEAD 是执行上下文，不构成模块或任务权限。
+
 ## `verify`
 
 只读地校验已落产物：

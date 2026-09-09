@@ -82,6 +82,22 @@ echo "═══ phase-guard 回归测试 ═══"
 
 base
 chk "空仓库" "IDLE|断链0"
+hasctx "主工作区展示紧凑 worktree 类型" "worktree=primary checkout"
+
+base
+git worktree add -q -b fixture-linked "$TMP/linked"
+LINKED_CTX="$(CLAUDE_PROJECT_DIR="$TMP/linked" bash "$H" 2>/dev/null | python3 -c '
+import sys, json
+try: print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])
+except Exception: print("")')"
+case "$LINKED_CTX" in
+  *"worktree=linked worktree（附加工作区）"*) printf '  ✅ 附加工作区展示紧凑 worktree 类型\n'; PASS=$((PASS+1)) ;;
+  *) printf '  ❌ 附加工作区展示紧凑 worktree 类型\n'; FAIL=$((FAIL+1)) ;;
+esac
+
+base
+git checkout --detach -q
+hasctx "detached HEAD 仍展示当前代码位置" "git: 分支=HEAD（detached @"
 
 # 远端 tracker 的严格能力图项目必须被只读地提示显式绑定；hook 不得趁机写
 # .git 或 state。旧的非严格夹具不触发这条诊断，避免把 Phase 0 误判为 binding。

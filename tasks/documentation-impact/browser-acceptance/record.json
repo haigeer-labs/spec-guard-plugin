@@ -1,0 +1,1 @@
+{"required":false,"reason":"documentation-impact produces Markdown and command output only; it introduces no browser UI."}

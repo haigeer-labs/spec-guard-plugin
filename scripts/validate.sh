@@ -76,6 +76,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s plugins/spec-guard/hoo
 python3 -B plugins/spec-guard/hooks/test_local_context.py || F=1
 python3 -B plugins/spec-guard/hooks/test_artifact_history.py || F=1
 python3 -B plugins/spec-guard/hooks/test_workflow_checkpoints.py || F=1
+python3 -B plugins/spec-guard/hooks/test_documentation_baseline.py || F=1
+python3 -B plugins/spec-guard/hooks/test_documentation_impact.py || F=1
+python3 -B plugins/spec-guard/hooks/test_documentation_verification.py || F=1
 echo ""
 
 echo "═══ Capability history ledger regression ═══"

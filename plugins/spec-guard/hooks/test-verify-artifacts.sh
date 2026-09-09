@@ -83,6 +83,42 @@ mkdir -p tasks/identity; echo "## Task List" > tasks/identity/plan.md
 echo '{"tracker":"none","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
 chk "local 合规 → 零失败零警告" "5,0,0|0"
 
+# 文档治理只在显式基线下出现；未收口事项必须是警告而非 verify 失败。
+base; strict_map
+mkdir -p docs tasks/identity
+cat > docs/DOCUMENTATION-BASELINE.md <<'EOF'
+| Concern | Authority | Status | Rationale |
+|---|---|---|---|
+| product-direction | `docs/product.md` | verified | Scope. |
+| architecture | `docs/architecture.md` | target | Target state. |
+| developer-entry | `README.md` | verified | Entry. |
+EOF
+cat > spec/identity.md <<'EOF'
+## Documentation impact
+
+| Concern | Decision | Rationale |
+|---|---|---|
+| product-direction | follow | Scope applies. |
+| architecture | update | Boundary changes. |
+| developer-entry | follow | Commands stay. |
+EOF
+cat > tasks/identity/plan.md <<'EOF'
+## Documentation delivery
+
+| Concern | Planned artifact | Rationale |
+|---|---|---|
+| architecture | `docs/architecture.md` | Boundary. |
+
+## Documentation outcome
+
+| Concern | Outcome | Evidence | Rationale |
+|---|---|---|---|
+| architecture | deferred | — | Awaiting review. |
+EOF
+echo '{"tracker":"none","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+has "文档延后是非阻断提醒" "文档交付仍需关注（非阻断、仅声明层）"
+chk "  └ attention 不计入失败" "5,1,0|0"
+
 # ── B：文件名漂移（本脚本存在的首要理由）──
 base; map identity; touch spec/user-identity.md
 echo '{"tracker":"none","activeModule":""}' > .agent/state.json

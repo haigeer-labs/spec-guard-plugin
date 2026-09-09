@@ -1,24 +1,19 @@
-# Capability Map: Local Workflow Integrity
+# Capability Map: Documentation Governance
 
 ## 目标
 
-正确表达尚未激活 tracker 的本地工作，区分历史产物与遗漏模块，在串行工作检查点预告下一步。自动并行执行器保持暂停。
+让项目以需求、架构与消费者契约等上游文档约束模块实现，并让文档影响在计划和交付时显式收口；不以代码反推文档真相，不强制固定文档集合。
 
 ## 模块
 
 | Module id | Responsibility | Depends on |
 |---|---|---|
-| local-workflow-context | 显式本地上下文、共享阶段判据与 tracker 门禁 | — |
-| historical-artifact-consistency | 历史产物归属与本地阶段完整快照 | local-workflow-context |
-| workflow-checkpoint-preview | 共享检查点预告与入口接入 | historical-artifact-consistency |
-| workflow-roadmap | 只读展示完整工作流、当前位置、检查点、完成条件与执行上下文 | workflow-checkpoint-preview |
+| documentation-baseline | 定义显式启用的项目级文档基线协议、解析事实和初始化入口 | — |
+| documentation-impact | 在模块 Spec、Plan 与交付前表达并收口对文档基线的遵循、补全、变更或不适用结论 | documentation-baseline |
+| documentation-verification | 提供只读核验、保守提醒和跨宿主回归，确保缺失或未知不被伪装为文档完成 | documentation-baseline, documentation-impact |
 
-Build order: local-workflow-context → historical-artifact-consistency → workflow-checkpoint-preview → workflow-roadmap
+Build order: documentation-baseline → documentation-impact → documentation-verification
 
 ## 评审记录
 
-用户于 2026-09-06 回复“继续”，确认调查报告中的三块串行设计及本地实施范围。无远端操作授权。
-
-用户于 2026-09-09 确认：在既有检查点能力之后增加 `workflow-roadmap`。它是按需、只读的
-工作流导航，不是新的任务系统或百分比进度工具；不创建 tracker 对象、不改写 state、也不恢复
-暂停的并行写入能力。
+用户于 2026-09-10 确认：文档不是代码的一比一快照，而是需求、产品方案、技术架构和消费者体验对实现的上层约束。项目必须显式回答其目标、架构约束和开发/验证入口；ADR、接入、用户、运维与合规文档按项目特征触发。默认采用提醒式治理，不从代码猜测文档是否过期。

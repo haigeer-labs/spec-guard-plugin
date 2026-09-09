@@ -2,11 +2,11 @@
   "tracker": "github",
   "initiative": {
     "issue": null,
-    "title": "Documentation Governance",
+    "title": "Local Workflow Integrity",
     "map": "spec/CAPABILITY-MAP.md"
   },
   "issueTypes": false,
   "modules": {},
-  "activeModule": "documentation-verification",
+  "activeModule": "workflow-roadmap",
   "workflowStage": "local-validation"
 }

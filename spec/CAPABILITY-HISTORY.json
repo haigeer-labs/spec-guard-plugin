@@ -984,6 +984,178 @@
           }
         }
       ]
+    },
+    {
+      "id": "workflow-roadmap",
+      "title": "workflow-roadmap",
+      "events": [
+        {
+          "type": "created",
+          "at": "2026-09-09T18:09:51.477686Z",
+          "checkpoint": {
+            "id": "20260909T180951Z-0001",
+            "map": {
+              "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/CAPABILITY-MAP.md",
+              "sha256": "d9b901e54b2e64d112b5731eff5e3c2f50e0165668d3f91ba1fd799e38d36ddf"
+            },
+            "state": {
+              "path": ".agent/history/workflow-roadmap/20260909T180951Z-0001/state.json",
+              "sha256": "af605419861e195914ea4d6a0a419d6f33d77ee6ca2d7a307186b21c2990b55d"
+            },
+            "modules": [
+              {
+                "id": "local-workflow-context",
+                "responsibility": "显式本地上下文、共享阶段判据与 tracker 门禁",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/local-workflow-context.md",
+                  "sha256": "ea6fd839c93eec31d80ef205bf6bfec41863f9ea7473dca962cd21ef96122a55"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/local-workflow-context/plan.md",
+                  "sha256": "6214a6b34eaebcff52fb05ef886abc92bce22274f66936d9ee75f2428c0dfab5"
+                }
+              },
+              {
+                "id": "historical-artifact-consistency",
+                "responsibility": "历史产物归属与本地阶段完整快照",
+                "dependsOn": [
+                  "local-workflow-context"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/historical-artifact-consistency.md",
+                  "sha256": "f570173dbe2735c329e0b1eaee2198e13d82382c8189359b796dba4839599471"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/historical-artifact-consistency/plan.md",
+                  "sha256": "d69edaa76ac6eeaba9aca01113e51baa12a41649bc61923a493e687e684c5a92"
+                }
+              },
+              {
+                "id": "workflow-checkpoint-preview",
+                "responsibility": "共享检查点预告与入口接入",
+                "dependsOn": [
+                  "historical-artifact-consistency"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/workflow-checkpoint-preview.md",
+                  "sha256": "c639046da22f184fa11c1e8b7c6cf611e2501d0965135704a47c7e6de6337586"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/workflow-checkpoint-preview/plan.md",
+                  "sha256": "655a18a3c7cf018eea0c358f7cd054a0a7354a4a6b48df2429d6bccb2fa430e7"
+                }
+              },
+              {
+                "id": "workflow-roadmap",
+                "responsibility": "只读展示完整工作流、当前位置、检查点、完成条件与执行上下文",
+                "dependsOn": [
+                  "workflow-checkpoint-preview"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/workflow-roadmap.md",
+                  "sha256": "084180ae42b53efd8f884acdb61b242e0f1a89c1c649543c76f32c2233b1a230"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/workflow-roadmap/plan.md",
+                  "sha256": "904c9bdbc173b1de6c3f589f488a018f4b1d48ae03ab971867a3af2d5a89b3ed"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "2026-09-09T18:09:51.477686Z",
+          "checkpoint": {
+            "id": "20260909T180951Z-0001",
+            "map": {
+              "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/CAPABILITY-MAP.md",
+              "sha256": "d9b901e54b2e64d112b5731eff5e3c2f50e0165668d3f91ba1fd799e38d36ddf"
+            },
+            "state": {
+              "path": ".agent/history/workflow-roadmap/20260909T180951Z-0001/state.json",
+              "sha256": "af605419861e195914ea4d6a0a419d6f33d77ee6ca2d7a307186b21c2990b55d"
+            },
+            "modules": [
+              {
+                "id": "local-workflow-context",
+                "responsibility": "显式本地上下文、共享阶段判据与 tracker 门禁",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/local-workflow-context.md",
+                  "sha256": "ea6fd839c93eec31d80ef205bf6bfec41863f9ea7473dca962cd21ef96122a55"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/local-workflow-context/plan.md",
+                  "sha256": "6214a6b34eaebcff52fb05ef886abc92bce22274f66936d9ee75f2428c0dfab5"
+                }
+              },
+              {
+                "id": "historical-artifact-consistency",
+                "responsibility": "历史产物归属与本地阶段完整快照",
+                "dependsOn": [
+                  "local-workflow-context"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/historical-artifact-consistency.md",
+                  "sha256": "f570173dbe2735c329e0b1eaee2198e13d82382c8189359b796dba4839599471"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/historical-artifact-consistency/plan.md",
+                  "sha256": "d69edaa76ac6eeaba9aca01113e51baa12a41649bc61923a493e687e684c5a92"
+                }
+              },
+              {
+                "id": "workflow-checkpoint-preview",
+                "responsibility": "共享检查点预告与入口接入",
+                "dependsOn": [
+                  "historical-artifact-consistency"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/workflow-checkpoint-preview.md",
+                  "sha256": "c639046da22f184fa11c1e8b7c6cf611e2501d0965135704a47c7e6de6337586"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/workflow-checkpoint-preview/plan.md",
+                  "sha256": "655a18a3c7cf018eea0c358f7cd054a0a7354a4a6b48df2429d6bccb2fa430e7"
+                }
+              },
+              {
+                "id": "workflow-roadmap",
+                "responsibility": "只读展示完整工作流、当前位置、检查点、完成条件与执行上下文",
+                "dependsOn": [
+                  "workflow-checkpoint-preview"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/workflow-roadmap/20260909T180951Z-0001/workflow-roadmap.md",
+                  "sha256": "084180ae42b53efd8f884acdb61b242e0f1a89c1c649543c76f32c2233b1a230"
+                },
+                "plan": {
+                  "path": "tasks/history/workflow-roadmap/20260909T180951Z-0001/workflow-roadmap/plan.md",
+                  "sha256": "904c9bdbc173b1de6c3f589f488a018f4b1d48ae03ab971867a3af2d5a89b3ed"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

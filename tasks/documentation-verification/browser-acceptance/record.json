@@ -1,0 +1,1 @@
+{"required":false,"reason":"documentation-verification produces Markdown and command output only; it introduces no browser UI."}

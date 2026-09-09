@@ -702,6 +702,40 @@ EOF
   fi
 fi
 
+if [ -n "${MODULE}" ] && [ -f "${SELF_DIR}/hooks/documentation_verification.py" ]; then
+  DOC_JSON=$(python3 -B "${SELF_DIR}/hooks/documentation_verification.py" \
+    --project "${ROOT}" --module "${MODULE}" --format json 2>/dev/null || true)
+  DOC_STATE=$(printf '%s' "${DOC_JSON}" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("state", ""))
+except Exception: print("")
+' 2>/dev/null || true)
+  if [ "${DOC_STATE}" != "" ] && [ "${DOC_STATE}" != "absent" ]; then
+    echo ""
+    echo "── G. 文档交付声明（只读提醒）──"
+    case "${DOC_STATE}" in
+      ready)
+        ok "文档交付声明已收口（仅声明层，不代表内容或实现已验证）" ;;
+      attention)
+        DOC_ATTENTION=$(printf '%s' "${DOC_JSON}" | python3 -c '
+import json,sys
+try: print("；".join(json.load(sys.stdin).get("attention", [])))
+except Exception: print("")
+' 2>/dev/null || true)
+        warn "文档交付仍需关注（非阻断、仅声明层）：${DOC_ATTENTION}" ;;
+      invalid)
+        DOC_ERROR=$(printf '%s' "${DOC_JSON}" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("error", ""))
+except Exception: print("")
+' 2>/dev/null || true)
+        bad "文档交付声明无效：${DOC_ERROR}" ;;
+      *)
+        bad "文档核验返回未知状态：${DOC_STATE}" ;;
+    esac
+  fi
+fi
+
 echo ""
 echo "═══ ${P} 通过 / ${W} 警告 / ${F} 失败 ═══"
 if [ "${F}" -gt 0 ]; then

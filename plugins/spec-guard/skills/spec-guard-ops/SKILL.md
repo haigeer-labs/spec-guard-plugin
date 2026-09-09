@@ -93,6 +93,38 @@ python3 -B "$ROOT/hooks/workflow_roadmap.py" --project "$PROJECT" --all
 `?`/`!` 结论，不按分支名、文件时间或 task 数量猜测。`local-validation` 仅展示本地路线，不能建议
 sync/next/deliver。worktree、分支和 detached HEAD 是执行上下文，不构成模块或任务权限。
 
+## `documentation-baseline`
+
+只读查询当前项目是否显式启用了文档基线：
+
+```bash
+python3 -B "$ROOT/hooks/documentation_baseline.py" --project "$PROJECT" --format json
+```
+
+`absent` 表示未启用，不是违规；先根据用户提供的既有需求、架构和开发入口展示草稿。只有用户明确确认后，才创建 `docs/DOCUMENTATION-BASELINE.md`。`valid` 时原样说明每项的权威来源、状态和理由；`target` 是合法的未完全实现目标态。`invalid` 时说明错误，得到确认后才改既有文件。不得扫描代码、Git diff 或文件时间来判定文档是否过期，也不得强制生成 ADR、用户手册或接入文档。
+
+## `documentation-impact`
+
+只读查询当前模块对有效文档基线的显式决定：
+
+```bash
+MODULE="<module-id>"
+python3 -B "$ROOT/hooks/documentation_impact.py" --project "$PROJECT" --module "$MODULE" --format json
+```
+
+`absent` 表示项目没有启用基线，静默跳过；`valid` 时展示每项决定及 `update`/`create` 的计划交付物；`invalid` 时原样报告缺失决定或计划表错误。先按用户给出的模块范围、既有 Spec 和 Plan 展示 `Documentation impact` / `Documentation delivery` 草稿，只有用户明确确认后才修改这两份文件。不得扫描代码、Git diff、文件时间或权威文档正文来猜测是否过期、已更新或已实现；`pending` 与 `not-applicable` 必须保留理由，`update`/`create` 仅代表计划而非交付证据。
+
+## `documentation-verification`
+
+只读汇总模块的声明性文档交付状态：
+
+```bash
+MODULE="<module-id>"
+python3 -B "$ROOT/hooks/documentation_verification.py" --project "$PROJECT" --module "$MODULE" --format json
+```
+
+`absent` 静默跳过；`attention` 是待决、未声明 outcome 或延后的非阻断提醒；`ready` 只表示需交付项已声明 `delivered`，不代表内容、发布或代码符合度已验证；`invalid` 原样报告结构错误。先按用户提供的真实事实展示 outcome 草稿，只有用户明确确认后才改 Plan 或业务文档。不得扫描代码、Git diff、文件时间或权威文档正文来猜测文档状态。
+
 ## `verify`
 
 只读地校验已落产物：

@@ -138,7 +138,7 @@ ops = open(sys.argv[1], encoding="utf-8").read()
 bridge = open(sys.argv[2], encoding="utf-8").read()
 readme = open(sys.argv[3], encoding="utf-8").read()
 
-for operation in ("setup", "phase", "roadmap", "verify", "verify-history", "audit-history", "correct-history", "history-migration", "parallel-readiness", "parallel-safety-gate", "parallel-subagent-preflight", "teardown", "lifecycle", "sync-map", "next", "deliver"):
+for operation in ("setup", "phase", "roadmap", "documentation-baseline", "documentation-impact", "documentation-verification", "verify", "verify-history", "audit-history", "correct-history", "history-migration", "parallel-readiness", "parallel-safety-gate", "parallel-subagent-preflight", "teardown", "lifecycle", "sync-map", "next", "deliver"):
     if ops.count(f"`{operation}`") != 1:
         raise SystemExit(f"操作 {operation} 必须恰好声明一次")
 
@@ -160,6 +160,12 @@ if 'phase-guard.sh"' not in ops or 'verify-artifacts.sh"' not in ops:
     raise SystemExit("phase/verify 未调用共享只读检查脚本")
 if 'workflow_roadmap.py' not in ops or '--all' not in ops:
     raise SystemExit("roadmap 未调用共享只读路线图脚本")
+if 'documentation_baseline.py' not in ops or '确认' not in ops:
+    raise SystemExit("documentation-baseline 未声明只读解析与确认写入边界")
+if 'documentation_impact.py' not in ops or '不得扫描代码' not in ops:
+    raise SystemExit("documentation-impact 未声明只读解析与无代码推断边界")
+if 'documentation_verification.py' not in ops or '非阻断' not in ops:
+    raise SystemExit("documentation-verification 未声明只读与非阻断边界")
 if 'parallel-readiness.py' not in ops:
     raise SystemExit("parallel-readiness 未调用共享分析脚本")
 if '--refresh' not in ops or '用户确认' not in ops:

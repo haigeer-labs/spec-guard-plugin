@@ -21,6 +21,22 @@
 只有所有允许的副作用和证据都已记录时，旅程才可用 `project-verified`；其
 `target.kind` 为 `tracker-project`。
 
+### 标准验收项目（用户长期指定，2026-09-09）
+
+以下三个私有 GitHub 仓库是 Spec Guard 的固定测试目标。后续与其职责相符的验收不再重复询问
+仓库身份；不得将这项授权扩展到其他仓库或生产项目。
+
+| 仓库 | 默认职责 | 路线图验收角色 |
+| --- | --- | --- |
+| `yizhongkaimail-collab/spec-guard-e2e-new-20260903` | 新项目接入、能力图和 GitHub tracker 旅程 | 正向主项目：验证唯一 Initiative、依赖/后继、`--all` 与只读 tracker overlay。 |
+| `yizhongkaimail-collab/spec-guard-e2e-upgrade-20260903` | 旧项目升级 | 负向兼容项目：没有活跃 Initiative 时不得猜测当前位置。 |
+| `yizhongkaimail-collab/spec-guard-e2e-sync-v0729-20260903` | 旧版 GitHub 同步兼容 | 负向兼容项目：缺 state/能力图时路线图必须保守降级，不能从遗留 spec/plan 伪造进度。 |
+
+在上述项目中，常规验收可创建带 `e2e` 前缀的测试 Issue、分支与 Draft PR，并可为已声明的
+验收步骤更新其 `.agent`、能力图、Spec 或 Plan。保留原始证据和测试产物；删除仓库、重写历史、
+修改插件发布标签或操作其他仓库仍须单独确认。实际写入前仍在发布证据中记录目标、时间、范围和
+副作用，不把“测试仓库已指定”误报为“该次旅程已通过”。
+
 ## GitLab 测试仓库
 
 仅使用用户明确批准的 GitLab 测试仓库，并记录完整的 GitLab URL、项目路径和允许的 Issue/MR

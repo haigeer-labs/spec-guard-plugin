@@ -217,9 +217,19 @@ def parse_map(path, validate_graph=True):
         # 历史图可没有 Build order，但仍只承认唯一模块表；不能把检查点、
         # 风险或示例表的首列误作 module id，进而制造投影指纹假警报。
         lines = _visible_lines(lines)
-        headers = [line for line in lines if line.lstrip().startswith("|")
+        headers = [index for index, line in enumerate(lines)
+                   if line.lstrip().startswith("|")
                    and _table_cells(line)[0].lower() == "module id"]
-        rows = _strict_rows(lines) if headers else []
+        if len(headers) > 1:
+            raise MapError("必须恰好有一个模块表")
+        selected = []
+        if headers:
+            for line in lines[headers[0] + 1:]:
+                if not line.lstrip().startswith("|"):
+                    break
+                selected.append(line)
+        # 兼容旧图的中文职责表头；严格模式才要求完整英文表头和 Build order。
+        rows = _parse_rows(selected)
         goal = _parse_goal(lines)
         return ParsedMap(rows, goal, [row.module_id for row in rows])
     lines = _visible_lines(lines)

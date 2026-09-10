@@ -83,6 +83,20 @@ mkdir -p tasks/identity; echo "## Task List" > tasks/identity/plan.md
 echo '{"tracker":"none","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
 chk "local 合规 → 零失败零警告" "5,0,0|0"
 
+# 只模块表参与 module id 校验；检查点等其他 Markdown 表格不能伪造模块。
+base; strict_map; touch spec/identity.md
+mkdir -p tasks/identity; echo "## Task List" > tasks/identity/plan.md
+cat >> spec/CAPABILITY-MAP.md <<'EOF'
+
+## Checkpoints
+
+| Checkpoint ID | Module | Next step |
+|---|---|---|
+| identity/plan | identity | review |
+EOF
+echo '{"tracker":"none","activeModule":"identity","modules":{"identity":{}}}' > .agent/state.json
+chk "检查点表不被当作模块" "5,0,0|0"
+
 # 文档治理只在显式基线下出现；未收口事项必须是警告而非 verify 失败。
 base; strict_map
 mkdir -p docs tasks/identity

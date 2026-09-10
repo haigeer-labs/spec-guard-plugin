@@ -230,17 +230,22 @@ if [ ! -f "${MAP}" ]; then
 else
   MAP_IDS=$(python3 -c '
 import sys
+
 ids = []
+in_modules = False
 for line in open(sys.argv[1], encoding="utf-8"):
     if not line.lstrip().startswith("|"):
+        if in_modules:
+            break
         continue
-    cells = [c.strip() for c in line.strip().strip("|").split("|")]
-    if len(cells) < 2:
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    header = [cell.lower() for cell in cells]
+    if header == ["module id", "responsibility", "depends on"]:
+        in_modules = True
         continue
-    first = cells[0]
-    if not first or first.lower() == "module id" or set(first) <= set("-: "):
+    if not in_modules or not cells or set(cells[0]) <= set("-: "):
         continue
-    ids.append(first.strip(chr(96)))
+    ids.append(cells[0].strip(chr(96)))
 print("\n".join(ids))
 ' "${MAP}")
   N=$(printf '%s' "${MAP_IDS}" | grep -c . || true)

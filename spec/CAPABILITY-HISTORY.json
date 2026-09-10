@@ -1156,6 +1156,146 @@
           }
         }
       ]
+    },
+    {
+      "id": "documentation-governance",
+      "title": "documentation-governance",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260910T014247Z-0001",
+            "map": {
+              "path": "spec/history/documentation-governance/20260910T014247Z-0001/CAPABILITY-MAP.md",
+              "sha256": "6f0ecde3aeba62c5729110530fb2713b316eecc76aa392bacb1998b48e184ac4"
+            },
+            "state": {
+              "path": ".agent/history/documentation-governance/20260910T014247Z-0001/state.json",
+              "sha256": "f5980e42a9e277b8c2c9fc82d3040f0a41b34fd5f51aa17820608620c33098b3"
+            },
+            "modules": [
+              {
+                "id": "documentation-baseline",
+                "responsibility": "定义显式启用的项目级文档基线协议、解析事实和初始化入口",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-baseline.md",
+                  "sha256": "b0ba943c61de69cb1751d14d9d58d4ca220003540d02b05eaee5da540b8f8111"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-baseline/plan.md",
+                  "sha256": "43e73bfc49f4dd30665cb7b354a53d8ca8c47bf2a91a8cb219a4cf23184af862"
+                }
+              },
+              {
+                "id": "documentation-impact",
+                "responsibility": "在模块 Spec、Plan 与交付前表达并收口对文档基线的遵循、补全、变更或不适用结论",
+                "dependsOn": [
+                  "documentation-baseline"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-impact.md",
+                  "sha256": "01b8741a0529477e4e80b6726552f39105592126cd7176e91767f5b873d3f763"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-impact/plan.md",
+                  "sha256": "b357130a15c153c4dc9e723e9f2282b96c96ee1271469ae09687d7063023b858"
+                }
+              },
+              {
+                "id": "documentation-verification",
+                "responsibility": "提供只读核验、保守提醒和跨宿主回归，确保缺失或未知不被伪装为文档完成",
+                "dependsOn": [
+                  "documentation-baseline",
+                  "documentation-impact"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-verification.md",
+                  "sha256": "d17129f9273a1635b013767718ea3855862133ecf9440b1d6e901f585779393c"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-verification/plan.md",
+                  "sha256": "6e34dcaa69fa13c465ab4ca40038690b94449e4f018bcfa733cddfa42fa53de2"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260910T014247Z-0001",
+            "map": {
+              "path": "spec/history/documentation-governance/20260910T014247Z-0001/CAPABILITY-MAP.md",
+              "sha256": "6f0ecde3aeba62c5729110530fb2713b316eecc76aa392bacb1998b48e184ac4"
+            },
+            "state": {
+              "path": ".agent/history/documentation-governance/20260910T014247Z-0001/state.json",
+              "sha256": "f5980e42a9e277b8c2c9fc82d3040f0a41b34fd5f51aa17820608620c33098b3"
+            },
+            "modules": [
+              {
+                "id": "documentation-baseline",
+                "responsibility": "定义显式启用的项目级文档基线协议、解析事实和初始化入口",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-baseline.md",
+                  "sha256": "b0ba943c61de69cb1751d14d9d58d4ca220003540d02b05eaee5da540b8f8111"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-baseline/plan.md",
+                  "sha256": "43e73bfc49f4dd30665cb7b354a53d8ca8c47bf2a91a8cb219a4cf23184af862"
+                }
+              },
+              {
+                "id": "documentation-impact",
+                "responsibility": "在模块 Spec、Plan 与交付前表达并收口对文档基线的遵循、补全、变更或不适用结论",
+                "dependsOn": [
+                  "documentation-baseline"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-impact.md",
+                  "sha256": "01b8741a0529477e4e80b6726552f39105592126cd7176e91767f5b873d3f763"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-impact/plan.md",
+                  "sha256": "b357130a15c153c4dc9e723e9f2282b96c96ee1271469ae09687d7063023b858"
+                }
+              },
+              {
+                "id": "documentation-verification",
+                "responsibility": "提供只读核验、保守提醒和跨宿主回归，确保缺失或未知不被伪装为文档完成",
+                "dependsOn": [
+                  "documentation-baseline",
+                  "documentation-impact"
+                ],
+                "status": "unknown",
+                "issue": null,
+                "spec": {
+                  "path": "spec/history/documentation-governance/20260910T014247Z-0001/documentation-verification.md",
+                  "sha256": "d17129f9273a1635b013767718ea3855862133ecf9440b1d6e901f585779393c"
+                },
+                "plan": {
+                  "path": "tasks/history/documentation-governance/20260910T014247Z-0001/documentation-verification/plan.md",
+                  "sha256": "6e34dcaa69fa13c465ab4ca40038690b94449e4f018bcfa733cddfa42fa53de2"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

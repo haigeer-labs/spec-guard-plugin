@@ -176,6 +176,17 @@ def _selftest():
         base["ok"] and not base["missing"] and not base["rowsStale"]
         and base["goalStale"] is False)
 
+    # 只有 Module id 表参与指纹；检查点等其他表不能制造虚假的未投影模块。
+    with open(m, "a", encoding="utf-8") as f:
+        f.write("\n## 检查点预告\n\n"
+                "| Checkpoint ID | Module | Next step |\n"
+                "|---|---|---|\n"
+                "| identity/plan | identity | review |\n")
+    checkpoint = check(m, s)
+    chk("检查点表不计入模块指纹",
+        checkpoint["mapCount"] == 2 and not checkpoint["missing"]
+        and not checkpoint["rowsStale"] and checkpoint["goalStale"] is False)
+
     # ── ① 能力图加了一个模块 ──
     write_map(R2 + [("payments", "下单与收款", "catalog")])
     r = check(m, s)

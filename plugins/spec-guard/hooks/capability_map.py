@@ -214,7 +214,10 @@ def parse_map(path, validate_graph=True):
     with open(path, encoding="utf-8") as handle:
         lines = handle.read().splitlines()
     if not validate_graph:
-        rows = _parse_rows(lines)
+        # 历史图可没有 Build order，但仍只承认唯一模块表；不能把检查点、
+        # 风险或示例表的首列误作 module id，进而制造投影指纹假警报。
+        lines = _visible_lines(lines)
+        rows = _strict_rows(lines)
         goal = _parse_goal(lines)
         return ParsedMap(rows, goal, [row.module_id for row in rows])
     lines = _visible_lines(lines)

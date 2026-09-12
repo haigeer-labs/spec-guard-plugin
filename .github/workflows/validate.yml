@@ -9,10 +9,11 @@ jobs:
   validate:
     # macOS 自带 bash 3.2，Linux 是 bash 5。两者对多字节字符的解析不同，
     # 只跑一个平台会漏掉「$VAR 后紧跟全角括号」这类静默致命 bug。
+    # main 的 push 已由合并前 PR 覆盖双平台；合并后只重跑 Ubuntu，避免重复占用 macOS runner。
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ${{ fromJSON(github.event_name == 'push' && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:

@@ -128,7 +128,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 
 ```
 # 一次性：装插件（工具装到你这台机器）
-/plugin marketplace add yizhongkaimail-collab/spec-guard-plugin
+/plugin marketplace add haigeer-labs/spec-guard-plugin
 /plugin install spec-guard
 
 # 每个项目一次：落地约定（写进项目仓库并提交）

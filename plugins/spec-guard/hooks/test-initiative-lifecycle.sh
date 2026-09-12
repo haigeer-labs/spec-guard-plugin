@@ -9,6 +9,7 @@ trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
 ok() { printf '  ✅ %s\n' "$1"; PASS=$((PASS+1)); }
 bad() { printf '  ❌ %s\n' "$1"; FAIL=$((FAIL+1)); }
+has_glob() { compgen -G "$1" >/dev/null; }
 
 PROJECT="$TMP/project"
 mkdir -p "$PROJECT/spec" "$PROJECT/tasks/payment-api" "$PROJECT/tasks/ledger" "$PROJECT/.agent"
@@ -34,12 +35,12 @@ if [ -f "$LIFECYCLE" ] && "$LIFECYCLE" pause --project "$PROJECT" --initiative p
   && [ ! -f "$PROJECT/tasks/payment-api/plan.md" ] && [ ! -f "$PROJECT/tasks/ledger/plan.md" ] \
   && [ -f "$PROJECT/spec/CAPABILITY-HISTORY.json" ] \
   && [ "$(python3 "$HOOKDIR/capability-history.py" status "$PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = paused ] \
-  && [ -f "$PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ] \
-  && [ -f "$PROJECT/spec/history/payment-v2"/*/payment-api.md ] \
-  && [ -f "$PROJECT/spec/history/payment-v2"/*/ledger.md ] \
-  && [ -f "$PROJECT/tasks/history/payment-v2"/*/payment-api/plan.md ] \
-  && [ -f "$PROJECT/tasks/history/payment-v2"/*/ledger/plan.md ] \
-  && [ -f "$PROJECT/.agent/history/payment-v2"/*/state.json ] \
+  && has_glob "$PROJECT/spec/history/payment-v2/*/CAPABILITY-MAP.md" \
+  && has_glob "$PROJECT/spec/history/payment-v2/*/payment-api.md" \
+  && has_glob "$PROJECT/spec/history/payment-v2/*/ledger.md" \
+  && has_glob "$PROJECT/tasks/history/payment-v2/*/payment-api/plan.md" \
+  && has_glob "$PROJECT/tasks/history/payment-v2/*/ledger/plan.md" \
+  && has_glob "$PROJECT/.agent/history/payment-v2/*/state.json" \
   && python3 - "$PROJECT/spec/CAPABILITY-HISTORY.json" <<'PY'
 import json
 import sys
@@ -59,7 +60,6 @@ else
 fi
 
 HISTORY="$HOOKDIR/capability-history.py"
-LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
 CREATED="$TMP/created.json"
 printf '%s\n' '{"id":"payment-v2","title":"Payment v2","events":[{"type":"created","at":"2026-09-02T09:00:00Z","checkpoint":{"id":"20260902T090000Z-0001","map":{"path":"spec/history/payment-v2/20260902T090000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}' > "$CREATED"
 
@@ -70,7 +70,7 @@ printf '{}' > "$TERMINAL_PROJECT/.agent/state.json"
 if "$LIFECYCLE" complete --project "$TERMINAL_PROJECT" --initiative payment-v2 >/dev/null 2>&1 \
   && [ ! -f "$TERMINAL_PROJECT/spec/CAPABILITY-MAP.md" ] \
   && [ "$(python3 "$HISTORY" status "$TERMINAL_PROJECT/spec/CAPABILITY-HISTORY.json" payment-v2)" = completed ] \
-  && [ -f "$TERMINAL_PROJECT/spec/history/payment-v2"/*/CAPABILITY-MAP.md ]; then
+  && has_glob "$TERMINAL_PROJECT/spec/history/payment-v2/*/CAPABILITY-MAP.md"; then
   ok "正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区"
 else
   bad "正：账本不存在时 complete 自动建账、写入终态 checkpoint 后清理当前工作区"
@@ -87,7 +87,7 @@ if "$LIFECYCLE" complete --project "$EXISTING_LEDGER_PROJECT" --initiative new-i
   && [ ! -f "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-MAP.md" ] \
   && [ "$(python3 "$HISTORY" status "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-HISTORY.json" older-initiative)" = completed ] \
   && [ "$(python3 "$HISTORY" status "$EXISTING_LEDGER_PROJECT/spec/CAPABILITY-HISTORY.json" new-initiative)" = completed ] \
-  && [ -f "$EXISTING_LEDGER_PROJECT/spec/history/new-initiative"/*/CAPABILITY-MAP.md ]; then
+  && has_glob "$EXISTING_LEDGER_PROJECT/spec/history/new-initiative/*/CAPABILITY-MAP.md"; then
   ok "正：已有其他 initiative 的账本可登记并完成新的 initiative"
 else
   bad "正：已有其他 initiative 的账本可登记并完成新的 initiative"

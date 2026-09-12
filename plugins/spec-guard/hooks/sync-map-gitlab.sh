@@ -8,9 +8,11 @@ confirm=false
 
 hooks="$(cd "$(dirname "$0")" && pwd)"
 project="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+set --
+"$confirm" && set -- --confirm
 
 python3 "$hooks/gitlab_tracker.py" sync \
   --project "$project" \
   --map "$project/spec/CAPABILITY-MAP.md" \
   --state "$project/.agent/state.json" \
-  $( "$confirm" && printf '%s' '--confirm' )
+  "$@"

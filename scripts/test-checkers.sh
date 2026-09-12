@@ -69,12 +69,19 @@ want pass "grep-pipe: 注释里提到不算 → 放行"   python3 "$ROOT/scripts
 BADF='depend''encies'
 printf 'gh issue view 5 --json title,%s\n' "$BADF" > "$TMP/badjson.md"
 printf 'gh issue view 5 --json title,blockedBy\n'   > "$TMP/goodjson.md"
-if command -v gh >/dev/null 2>&1; then
-  want fail "gh-json: 不存在的字段 → 报错" python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/badjson.md"
-  want pass "gh-json: 真实字段 → 放行"     python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/goodjson.md"
-else
-  printf '  ⏭  gh 未安装，跳过 gh-json 的一正一反（不代表通过）\n'
-fi
+# 这里不能依赖 runner 预装 gh 的网络/认证状态。某些 CI 环境有 gh，但拿不到
+# 字段表，校验器按设计会降级跳过，反向用例便会误判为通过。用最小 fake 固定
+# `Available fields:` 输出，专门验证校验器的字段判定本身。
+mkdir -p "$TMP/ghjson-bin"
+printf '%s\n' '#!/bin/sh' \
+  'printf "%s\\n" "Available fields:" "title" "blockedBy" >&2' \
+  'exit 1' > "$TMP/ghjson-bin/gh"
+chmod +x "$TMP/ghjson-bin/gh"
+GHJSON_PATH="$TMP/ghjson-bin:$PATH"
+want fail "gh-json: 不存在的字段 → 报错" \
+  env PATH="$GHJSON_PATH" python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/badjson.md"
+want pass "gh-json: 真实字段 → 放行" \
+  env PATH="$GHJSON_PATH" python3 "$ROOT/scripts/check-gh-json-fields.py" "$TMP/goodjson.md"
 # gh 不可用时必须干净跳过退 0，不能假阻塞。
 # PATH 清空后 python3 也找不着了，所以用绝对路径调它 —— 这里要屏蔽的只有 gh。
 mkdir -p "$TMP/nogh"

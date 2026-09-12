@@ -19,6 +19,8 @@
 
 Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件 hook。真实宿主 smoke
 会把未安装、未登录、未信任或 hook 未执行报告为“环境未就绪”，不误报为产品失败。
+如果本机同时安装了多个同名 `spec-guard`，还必须指定插件 ID 和候选目录；否则 smoke
+拒绝把任意一个已安装副本冒充当前候选。
 
 ---
 
@@ -592,13 +594,17 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 /bin/bash evals/codex-plugin-smoke.sh --selftest            # 不调用 Codex
 ```
 
-真实 Codex smoke 不接入 `validate.sh`，因为它需要用户安装插件、登录并信任 hook：
+真实 Codex smoke 不接入 `validate.sh`，因为它需要用户安装插件、登录并信任 hook。对
+当前候选必须同时声明已安装插件 ID 与候选目录，避免同名旧版本被误判为本次验收：
 
 ```bash
-/bin/bash evals/codex-plugin-smoke.sh
+/bin/bash evals/codex-plugin-smoke.sh \
+  --plugin-id spec-guard@spec-guard-marketplace \
+  --expected-source "$PWD/plugins/spec-guard"
 ```
 
-退出码 `0` 为通过，`1` 为已执行 hook 的行为失败，`2` 为环境未就绪。
+退出码 `0` 为通过，`1` 为已执行 hook 的行为失败，`2` 为环境未就绪（包括多条同名
+安装、插件来源不等于候选目录、未信任或未登录）。
 
 > ⚠️ **macOS 上显式用 `/bin/bash`（那是 3.2）。** 装了 Homebrew 的话 `bash` 会指向
 > 5.x —— 那就绕过了本机唯一能暴露 bash 3.2 兼容问题的环境，而 CI 的 macOS matrix

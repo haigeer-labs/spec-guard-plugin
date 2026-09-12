@@ -23,14 +23,17 @@
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
-DRY=false; KEEP=false; HOST=claude
+DRY=false; KEEP=false; HOST=claude; SEEN=""; HOST_SET=false
 for a in "$@"; do
+  case " $SEEN " in *" $a "*) echo "重复参数: $a" >&2; exit 2 ;; esac
+  SEEN="$SEEN $a"
   case "$a" in
     --dry-run)    DRY=true ;;
     --keep-state) KEEP=true ;;
-    --host=claude) HOST=claude ;;
-    --host=codex)  HOST=codex ;;
+    --host=claude) [ "$HOST_SET" = false ] || { echo "host 只能指定一次" >&2; exit 2; }; HOST=claude; HOST_SET=true ;;
+    --host=codex)  [ "$HOST_SET" = false ] || { echo "host 只能指定一次" >&2; exit 2; }; HOST=codex; HOST_SET=true ;;
     --host=*)      echo "host 必须是 claude 或 codex"; exit 2 ;;
+    *)             echo "未知参数: $a" >&2; exit 2 ;;
   esac
 done
 
@@ -40,6 +43,9 @@ done
 #   而根上的约定原封不动还在。移除操作报成功却没移除，比报错更坏。
 ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BLOCK_TOOL="$HERE/managed-block.py"
+[ -f "$BLOCK_TOOL" ] || { echo "❌ 缺少声明块安全工具: $BLOCK_TOOL" >&2; exit 1; }
 
 case "$HOST" in
   claude)
@@ -61,6 +67,19 @@ case "$HOST" in
 esac
 STATE=".agent/state.json"
 
+# 任何无效的目标声明块都要在 state 处理前拒绝，避免“块没拆掉、state 却被停用”的半完成状态。
+HAS_TARGET_MARKER=false
+if [ -f "$INSTRUCTIONS" ]; then
+  if grep -Fq "$MARK_B" "$INSTRUCTIONS" 2>/dev/null; then
+    HAS_TARGET_MARKER=true
+  elif grep -Fq "$MARK_E" "$INSTRUCTIONS" 2>/dev/null; then
+    HAS_TARGET_MARKER=true
+  fi
+fi
+if [ "$HAS_TARGET_MARKER" = true ]; then
+  python3 "$BLOCK_TOOL" validate "$INSTRUCTIONS" "$MARK_B" "$MARK_E" >/dev/null || exit 1
+fi
+
 act()  { [ "$DRY" = true ] && printf '  [dry-run] %s\n' "$1" || printf '  ✅ %s\n' "$1"; }
 skip() { printf '  ⏭  %s\n' "$1"; }
 note() { printf '  ℹ  %s\n' "$1"; }
@@ -75,23 +94,12 @@ if [ -f "$OTHER_INSTRUCTIONS" ] && grep -q "$OTHER_MARK_B" "$OTHER_INSTRUCTIONS"
 fi
 
 # ── 1. 指令文件的声明块 ──
-if [ -f "$INSTRUCTIONS" ] && grep -q "${MARK_B}" "$INSTRUCTIONS" 2>/dev/null; then
-  N=$(python3 - "${MARK_B}" "${MARK_E}" "${DRY}" "$INSTRUCTIONS" <<'PYEOF'
-import sys
-mb, me, dry, instructions = sys.argv[1], sys.argv[2], sys.argv[3] == "true", sys.argv[4]
-lines = open(instructions, encoding='utf-8').read().split('\n')
-b = next(i for i, l in enumerate(lines) if l.strip() == mb)
-# 取**最后**一个结束标记：正文里可能提到标记本身
-e = len(lines) - 1 - next(i for i, l in enumerate(reversed(lines)) if l.strip() == me)
-out = lines[:b] + lines[e + 1:]
-# 只在块前后都留空行时收掉一个，避免删完留下连续空行
-while len(out) > b > 0 and out[b - 1].strip() == '' and b < len(out) and out[b].strip() == '':
-    del out[b]
-if not dry:
-    open(instructions, 'w', encoding='utf-8').write('\n'.join(out))
-print(e - b + 1)
-PYEOF
-) || N="?"
+if [ -f "$INSTRUCTIONS" ] && grep -Fq "${MARK_B}" "$INSTRUCTIONS" 2>/dev/null; then
+  if [ "$DRY" = true ]; then
+    N=$(python3 "$BLOCK_TOOL" validate "$INSTRUCTIONS" "$MARK_B" "$MARK_E") || exit 1
+  else
+    N=$(python3 "$BLOCK_TOOL" remove "$INSTRUCTIONS" "$MARK_B" "$MARK_E") || exit 1
+  fi
   act "${INSTRUCTIONS} 声明块已移除（${N} 行，标记外一个字节不动）"
   DID=1
 else

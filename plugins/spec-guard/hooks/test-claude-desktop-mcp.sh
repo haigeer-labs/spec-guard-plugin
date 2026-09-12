@@ -58,12 +58,14 @@ else
   bad "server accepts JSON-RPC stream"
 fi
 
-if python3 - "$TMP/stdout" <<'PY'
+if python3 - "$TMP/stdout" "$MANIFEST" <<'PY'
 import json, sys
 lines=[json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
+manifest=json.load(open(sys.argv[2], encoding='utf-8'))
 assert [line['id'] for line in lines] == [1, 2, 3, 4, 5, 6, 7, 8]
 assert lines[0]['result']['protocolVersion'] == '2025-06-18'
 assert lines[0]['result']['capabilities'] == {'tools': {}}
+assert lines[0]['result']['serverInfo'] == {'name': 'spec-guard', 'version': manifest['version']}
 assert [tool['name'] for tool in lines[1]['result']['tools']] == [
     'phase', 'verify', 'verify_history', 'audit_history', 'sync_map_preview', 'write_operation'
 ]

@@ -20,6 +20,11 @@ if [ "${1:-}" = --help ]; then
   esac
   exit 0
 fi
+[ "${1:-}" = --confirm ] || {
+  echo '拒绝 GitLab 写操作：请在 action 后显式传入 --confirm' >&2
+  exit 2
+}
+shift
 case "$ACTION" in
   issue)
     [ "$#" -eq 6 ] && [ "$1" = --repo ] && [ "$3" = --title ] && [ "$5" = --description-file ] \

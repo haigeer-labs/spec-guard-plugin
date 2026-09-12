@@ -26,6 +26,10 @@ EVENT_TYPE="$ACTION"
 [ "$ACTION" = abandon ] && EVENT_TYPE=abandoned
 [ "$ACTION" = supersede ] && EVENT_TYPE=superseded
 [ -n "$PROJECT" ] && [ -n "$INITIATIVE" ] || { echo "必须指定项目和 initiative" >&2; exit 2; }
+PROJECT="$(cd "$PROJECT" 2>/dev/null && pwd -P)" || { echo "项目目录不存在或不可访问" >&2; exit 2; }
+case "$INITIATIVE" in
+  *[!a-z0-9-]*|''|-*|*-|*--*) echo "initiative 必须是 kebab-case 标识符" >&2; exit 2 ;;
+esac
 HISTORY="$(cd "$(dirname "$0")" && pwd)/capability-history.py"
 LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
 
@@ -98,19 +102,44 @@ fi
 [ -f "$PROJECT/spec/CAPABILITY-MAP.md" ] || { echo "缺少当前能力图" >&2; exit 1; }
 [ -f "$PROJECT/.agent/state.json" ] || { echo "缺少当前状态" >&2; exit 1; }
 
-# Resolve the copy/cleanup set once. Local modules have no remote projection.
+# 本地验证阶段是显式、受限的上下文；未知或不完整的阶段绝不能被 lifecycle
+# 当成普通 tracker 状态归档，否则错误 state 会被搬进 history、当前文件也被删掉。
+LOCAL_VALIDATION="$(cd "$(dirname "$0")" && pwd)/local_validation.py"
+LOCAL_STAGE="$(python3 "$LOCAL_VALIDATION" "$PROJECT" 2>/dev/null || true)"
+case "${LOCAL_STAGE%%|*}" in
+  invalid)
+    echo "本地验证阶段不可用：${LOCAL_STAGE#*|}" >&2
+    exit 1
+    ;;
+  valid|absent) ;;
+  *)
+    echo "本地验证阶段无法判定；拒绝修改当前产物" >&2
+    exit 1
+    ;;
+esac
+
+# Resolve the copy/cleanup set once from the authoritative capability map.
+# State is a projection and may omit local modules, but it may never invent a
+# module: using arbitrary state keys here would turn a malformed key into an
+# archive or cleanup path.
 MODULES=$(python3 - "$PROJECT" "$(dirname "$HISTORY")" <<'PYMODULES'
-import json, sys
+import json, re, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[2])
-from local_validation import inspect_stage
 from capability_map import parse_map
 root = Path(sys.argv[1])
-status, message = inspect_stage(root)
-if status == 'invalid':
-    raise SystemExit(message)
 state = json.loads((root / '.agent/state.json').read_text())
-ids = parse_map(root / 'spec/CAPABILITY-MAP.md').order if status == 'valid' else state.get('modules', {}).keys()
+modules = state.get('modules', {})
+if not isinstance(modules, dict):
+    raise SystemExit('state.modules 必须是对象')
+ids = parse_map(root / 'spec/CAPABILITY-MAP.md', validate_graph=False).order
+if any(not re.match(r'^[a-z0-9]+(?:-[a-z0-9]+)*$', module_id) for module_id in ids):
+    raise SystemExit('能力图含无效 module id')
+if not ids and modules:
+    raise SystemExit('能力图没有模块，不能接受 state.modules')
+unknown = sorted(set(modules) - set(ids))
+if unknown:
+    raise SystemExit('state 含能力图中不存在的 module: %s' % ', '.join(unknown))
 print('\n'.join(ids))
 PYMODULES
 ) || exit 1

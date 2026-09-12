@@ -56,26 +56,13 @@ is_github_remote() {  # $1=remote url
 }
 
 # GitLab.com 可从 host 无歧义判定；自建实例不能假定 host 含 gitlab（例如
-# mgit.lgroup.co），只接受 glab 对当前仓库的成功只读识别。hook 每轮执行，
-# 所以把探测限制在两秒内，失败就由调用者安全回退到 none。
+# mgit.lgroup.co），更不能为了猜测 tracker 而在每次 hook 注入时访问 glab。
+# 自建实例必须由 state.json 显式声明 tracker=gitlab；未声明则安全回退到 none。
 is_gitlab_remote() {  # $1=remote url
-  local h pid waited rc
+  local h
   h=$(remote_host "$1")
   case "$h" in gitlab.com|*.gitlab.com) return 0 ;; esac
-  command -v glab >/dev/null 2>&1 || return 1
-  glab repo view >/dev/null 2>&1 &
-  pid=$!; waited=0
-  while kill -0 "$pid" 2>/dev/null; do
-    if [ "$waited" -ge 2 ]; then
-      kill "$pid" 2>/dev/null || true
-      wait "$pid" 2>/dev/null || true
-      return 1
-    fi
-    sleep 1
-    waited=$((waited + 1))
-  done
-  wait "$pid"; rc=$?
-  return "$rc"
+  return 1
 }
 
 # ── tracker 模式判定 ───────────────────────────────────────
@@ -268,12 +255,13 @@ for f in spec/*.md; do
   SPEC_COUNT=$((SPEC_COUNT + 1))
 done
 
-# 生命周期完成后，当前 map/state 会移入 history，但老版本留下的 module spec 可能
-# 仍在根 spec/。只有账本本身合法、至少有一条 initiative、且每条都处于终态时，才能
-# 把这种形状判为已归档；不能因为「看见 history 文件」就吞掉真正丢失 state 的断链。
+# 生命周期完成后，当前 map/state 会移入 history。老版本可能留下 module spec，
+# 正常归档则什么 module spec 都不留；两种形状都必须读取同一份账本。只有账本本身
+# 合法、至少有一条 initiative、且每条都处于终态时，才能判为已归档；不能因为
+# 「看见 history 文件」就吞掉真正丢失 state 的断链。
 HAS_ARCHIVED_HISTORY=false
 LEDGER="spec/CAPABILITY-HISTORY.json"
-if [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -gt 0 ] && [ ! -f "$STATE" ] \
+if [ "$HAS_MAP" = false ] && [ ! -f "$STATE" ] \
    && [ -f "$LEDGER" ] && [ -f "${SELF_DIR}/hooks/capability-history.py" ] \
    && command -v python3 >/dev/null 2>&1 \
    && python3 "${SELF_DIR}/hooks/capability-history.py" validate "$LEDGER" >/dev/null 2>&1 \
@@ -288,6 +276,143 @@ raise SystemExit(0 if initiatives and all(item["events"][-1]["type"] in terminal
 PY
 then
   HAS_ARCHIVED_HISTORY=true
+fi
+
+# 归档是本地文件操作；它本身不能证明外部 tracker 也已收口。
+# lifecycle 保持离线：这里是 hook 中**可选、只读且显式 opt-in**的补充核验。
+# 只有设置 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1、归档账本最新事件为 completed，
+# 且快照明确记录了外部 initiative 条目号，才查询。paused / abandoned /
+# superseded 不等同于「远端必须关闭」，所以不作推断。
+ARCHIVE_REMOTE_OPEN=""
+ARCHIVE_REMOTE_UNVERIFIED=""
+ARCHIVE_REMOTE_CLOSED=""
+ARCHIVE_REMOTE_EXTERNAL=false
+ARCHIVE_GITLAB_PROJECT_ID=""
+
+archive_remote_verification_enabled() {
+  [ "${SPEC_GUARD_ARCHIVE_REMOTE_VERIFY:-}" = "1" ]
+}
+
+archived_completed_trackers() {
+  python3 - "$LEDGER" "$ROOT" <<'PY'
+import json
+import os
+import sys
+
+ledger_path, root = sys.argv[1:]
+try:
+    ledger = json.load(open(ledger_path, encoding="utf-8"))
+except Exception:
+    raise SystemExit
+for initiative in ledger.get("initiatives", []):
+    initiative_id = initiative.get("id", "unknown")
+    events = initiative.get("events", [])
+    if not events or events[-1].get("type") != "completed":
+        continue
+    checkpoint = events[-1].get("checkpoint", {})
+    # 早期账本没有状态快照：它不能告诉我们 tracker，保留旧的本地归档
+    # 语义。新账本声明了 state 路径却读不到时，才是需要显式待核验的损坏。
+    if "state" not in checkpoint:
+        continue
+    state = checkpoint.get("state") or {}
+    state_path = state.get("path")
+    if not isinstance(state_path, str) or not state_path.startswith(".agent/history/"):
+        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        continue
+    absolute = os.path.abspath(os.path.join(root, state_path))
+    if os.path.commonpath((os.path.abspath(root), absolute)) != os.path.abspath(root):
+        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        continue
+    try:
+        snapshot = json.load(open(absolute, encoding="utf-8"))
+    except Exception:
+        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        continue
+    tracker = snapshot.get("tracker")
+    issue = (snapshot.get("initiative") or {}).get("issue")
+    if isinstance(tracker, str) and tracker:
+        print("%s\t%s\t%s" % (initiative_id, tracker, issue if isinstance(issue, int) and issue > 0 else ""))
+PY
+}
+
+gitlab_archived_issue_state() {
+  local issue="$1" project raw
+  command -v glab >/dev/null 2>&1 || return 0
+  if [ -z "$ARCHIVE_GITLAB_PROJECT_ID" ]; then
+    project=$(glab repo view --output json 2>/dev/null | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin)["path_with_namespace"])
+except Exception: pass
+' 2>/dev/null) || project=""
+    [ -n "$project" ] || return 0
+    ARCHIVE_GITLAB_PROJECT_ID=$(glab api "projects/${project//\//%2F}" 2>/dev/null | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin)["id"])
+except Exception: pass
+' 2>/dev/null) || ARCHIVE_GITLAB_PROJECT_ID=""
+  fi
+  [ -n "$ARCHIVE_GITLAB_PROJECT_ID" ] || return 0
+  raw=$(glab api "projects/$ARCHIVE_GITLAB_PROJECT_ID/issues/$issue" 2>/dev/null) || raw=""
+  [ -n "$raw" ] || return 0
+  printf '%s' "$raw" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("state", ""))
+except Exception: pass
+' 2>/dev/null || true
+}
+
+if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; then
+  while IFS=$'\t' read -r ARCHIVE_INITIATIVE ARCHIVE_TRACKER ARCHIVE_ISSUE; do
+    case "$ARCHIVE_TRACKER" in
+      none) ;;
+      __snapshot_unreadable__)
+        ARCHIVE_REMOTE_EXTERNAL=true
+        ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}initiative [${ARCHIVE_INITIATIVE}] 的归档状态快照"
+        ;;
+      github)
+        ARCHIVE_REMOTE_EXTERNAL=true
+        case "$ARCHIVE_ISSUE" in
+          ''|*[!0-9]*)
+            ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
+            continue
+            ;;
+        esac
+        if ! archive_remote_verification_enabled; then
+          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}（未显式授权远端核验）"
+          continue
+        fi
+        ARCHIVE_STATE=$(gh issue view "$ARCHIVE_ISSUE" --json state --jq .state 2>/dev/null || true)
+        case "$ARCHIVE_STATE" in
+          OPEN|open) ARCHIVE_REMOTE_OPEN="${ARCHIVE_REMOTE_OPEN}${ARCHIVE_REMOTE_OPEN:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
+          CLOSED|closed) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
+          *) ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
+        esac
+        ;;
+      gitlab)
+        ARCHIVE_REMOTE_EXTERNAL=true
+        case "$ARCHIVE_ISSUE" in
+          ''|*[!0-9]*)
+            ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitLab initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
+            continue
+            ;;
+        esac
+        if ! archive_remote_verification_enabled; then
+          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitLab Issue #${ARCHIVE_ISSUE}（未显式授权远端核验）"
+          continue
+        fi
+        ARCHIVE_STATE=$(gitlab_archived_issue_state "$ARCHIVE_ISSUE")
+        case "$ARCHIVE_STATE" in
+          open|opened|OPEN|OPENED) ARCHIVE_REMOTE_OPEN="${ARCHIVE_REMOTE_OPEN}${ARCHIVE_REMOTE_OPEN:+、}GitLab Issue #${ARCHIVE_ISSUE}" ;;
+          closed|CLOSED) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitLab Issue #${ARCHIVE_ISSUE}" ;;
+          *) ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitLab Issue #${ARCHIVE_ISSUE}" ;;
+        esac
+        ;;
+      *)
+        ARCHIVE_REMOTE_EXTERNAL=true
+        ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}${ARCHIVE_TRACKER} 条目${ARCHIVE_ISSUE:+ #${ARCHIVE_ISSUE}}"
+        ;;
+    esac
+  done < <(archived_completed_trackers)
 fi
 
 # 违规：spec 放错位置
@@ -485,6 +610,21 @@ elif [ "$LOCAL_STAGE" != absent ]; then
   PHASE="LOCAL_VALIDATION_INVALID"
   broken "本地验证阶段不可用：${LOCAL_STAGE_RESULT#*|}"
   NEXT="先核对 state 与当前模块 spec/plan；不要自动清除阶段字段或激活 tracker"
+elif [ "$HAS_ARCHIVED_HISTORY" = true ]; then
+  if [ -n "$ARCHIVE_REMOTE_OPEN" ]; then
+    PHASE="ARCHIVE_DRIFT (远端未关闭)"
+    broken "本地 history 已归档，但 ${ARCHIVE_REMOTE_OPEN} 仍为 OPEN；本地归档不能代替远端 tracker 的完成态"
+    NEXT="先向用户说明本地/远端分歧；获得确认后关闭对应 initiative 条目。远端关闭后，hook 会在下次注入时重新核验"
+  elif [ -n "$ARCHIVE_REMOTE_UNVERIFIED" ]; then
+    PHASE="ARCHIVED (远端待核验)"
+    NEXT="当前没有活跃 initiative，但 ${ARCHIVE_REMOTE_UNVERIFIED} 的远端 tracker 未核验；获得用户明确授权后，以 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1 运行一次 hook 做只读确认，再开始新的一轮"
+  elif [ "$ARCHIVE_REMOTE_EXTERNAL" = true ]; then
+    PHASE="IDLE (已归档，远端已核验)"
+    NEXT="当前没有活跃 initiative；已核验归档对应的外部 tracker 条目均关闭，可 /spec 开始新的一轮"
+  else
+    PHASE="IDLE (已归档)"
+    NEXT="当前没有活跃 initiative；/spec 开始新的一轮"
+  fi
 elif [ "$HAS_MAP" = false ] && [ "$SPEC_COUNT" -eq 0 ]; then
   PHASE="IDLE"
   NEXT="/spec —— 还没有任何规格"
@@ -512,10 +652,6 @@ elif [ "$SPEC_COUNT" -gt 0 ] && [ -z "$MODULE" ] && [ -f "$STATE" ]; then
   # （/sync-map 是 github 专属），所以这是本地模式跑完 /spec 的必经状态。
   PHASE="IDLE (无活跃模块)"
   NEXT="起新模块时把 activeModule 写进 .agent/state.json；或 /spec 开新的一轮"
-
-elif [ "$HAS_ARCHIVED_HISTORY" = true ]; then
-  PHASE="IDLE (已归档)"
-  NEXT="当前没有活跃 initiative；/spec 开始新的一轮"
 
 elif [ -z "$MODULE" ]; then
   # 到这里：有 spec、activeModule 为空、且 state.json **不存在**
@@ -697,6 +833,8 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
   && add "checkpoint-rules: ${SELF_DIR}/references/workflow-checkpoints.md（阶段交接或停止前读取；已有授权不重复询问）"
 [ -n "$MODULE" ] && add "plan: tasks/$MODULE/plan.md=$HAS_PLAN"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
+[ -n "$ARCHIVE_REMOTE_CLOSED" ] && add "归档远端核验：${ARCHIVE_REMOTE_CLOSED} 已关闭"
+[ -n "$ARCHIVE_REMOTE_UNVERIFIED" ] && add "归档远端核验：${ARCHIVE_REMOTE_UNVERIFIED} 未核验"
 [ -n "$BRANCH_DISPLAY" ] && add "git: 分支=$BRANCH_DISPLAY, worktree=${WORKTREE_DISPLAY:-未知}, 未提交=$DIRTY"
 if [ "${ON_MODULE_BRANCH}" = true ]; then
   if [ "${TASKS_DONE_HERE}" -gt 0 ]; then

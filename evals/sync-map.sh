@@ -261,8 +261,8 @@ PY
 }
 
 # ── 刷新那一组的判据 ────────────────────────────────────────
-verdict_refresh() {  # $1=GHLOG $2=目录
-  local rl="$1" rd="$2" rc=0 EE ME CREATED
+verdict_refresh() {  # $1=GHLOG
+  local rl="$1" rc=0 EE ME CREATED
   # 带正文的 edit（--body / --body-file），按目标 issue 分开数
   EE=$(calls "${rl}" | awk -F'|' '$1=="edit" && $6=="101" && ($3+0)>0' | wc -l | tr -d ' ')
   ME=$(calls "${rl}" | awk -F'|' '$1=="edit" && $6=="102" && ($3+0)>0' | wc -l | tr -d ' ')

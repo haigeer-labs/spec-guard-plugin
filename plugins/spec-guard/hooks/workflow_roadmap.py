@@ -67,6 +67,25 @@ def _run_remote(command, root):
     return subprocess.run(command, cwd=str(root), capture_output=True, text=True, timeout=5)
 
 
+def _github_credential_access_failed(result):
+    error = getattr(result, "stderr", "") or ""
+    normalized = error.lower()
+    return any(marker in normalized for marker in (
+        "failed to log in",
+        "not logged in",
+        "token in default is invalid",
+        "gh auth login",
+        "keychain",
+    ))
+
+
+def _github_api_network_unavailable(result):
+    error = getattr(result, "stderr", "") or ""
+    normalized = error.lower()
+    return ("error connecting to api.github.com" in normalized or
+            "failed to connect to api.github.com" in normalized)
+
+
 def _github_remote(root, state, module):
     mappings = state.get("modules")
     entry = mappings.get(module, {}) if isinstance(mappings, dict) else {}
@@ -77,8 +96,18 @@ def _github_remote(root, state, module):
         result = _run_remote(["gh", "issue", "view", str(issue), "--json", "state,subIssues"], root)
         data = json.loads(result.stdout) if result.returncode == 0 else None
     except (OSError, ValueError, subprocess.TimeoutExpired):
+        result = None
         data = None
     if not isinstance(data, dict):
+        if result is not None and _github_credential_access_failed(result):
+            return "unknown", (
+                "GitHub CLI 认证或凭据访问不可用；请在可访问凭据的 shell 中检查 "
+                "gh auth status，并按其结果重新认证后重试"
+            )
+        if result is not None and _github_api_network_unavailable(result):
+            return "unknown", (
+                "GitHub API 网络访问不可用；请检查当前 shell 的网络或沙箱权限后重试"
+            )
         return "unknown", "GitHub 只读查询不可用"
     children = data.get("subIssues")
     count = children.get("totalCount") if isinstance(children, dict) else None

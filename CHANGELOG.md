@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.1] - 2026-09-12
+
+### 修复
+
+- **迁移后的安装来源。** Claude Marketplace、Claude/Codex 插件清单与 README 现在都指向 `haigeer-labs/spec-guard-plugin`，避免新安装继续读取旧账号的仓库。
+
 ## [0.11.0] - 2026-09-10
 
 ### 修复

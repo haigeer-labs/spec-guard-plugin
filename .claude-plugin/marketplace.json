@@ -1,6 +1,6 @@
 {
   "name": "spec-guard-marketplace",
-  "owner": { "name": "yizhongkaimail-collab", "url": "https://github.com/yizhongkaimail-collab/spec-guard-plugin" },
+  "owner": { "name": "haigeer-labs", "url": "https://github.com/haigeer-labs/spec-guard-plugin" },
   "plugins": [
     {
       "name": "spec-guard",

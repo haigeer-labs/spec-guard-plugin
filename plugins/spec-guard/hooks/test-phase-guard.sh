@@ -133,6 +133,100 @@ base; mkdir -p spec; touch spec/a.md
 printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"modules":[]}}]}]}' > spec/CAPABILITY-HISTORY.json
 chk "终态 history + 遗留 spec → 已归档，不报断链" "IDLE (已归档)|断链0"
 
+# 本地归档只说明当前产物已收起，不能代替远端 tracker 的终态事实。
+# 这里的 gh 桩完全本地：回归测试既不读取、更不会操作真实 GitHub。
+archived_github_fixture() {
+  base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002
+  printf '%s\n' '{"tracker":"github","initiative":{"issue":141},"activeModule":"","modules":{}}' \
+    > .agent/history/archive/20260904T000001Z-0002/state.json
+  printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"state":{"path":".agent/history/archive/20260904T000001Z-0002/state.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"modules":[]}}]}]}' \
+    > spec/CAPABILITY-HISTORY.json
+}
+
+ARCHIVE_GH_BIN="$TMP/archive-gh-bin"; mkdir -p "$ARCHIVE_GH_BIN"
+cat > "$ARCHIVE_GH_BIN/gh" <<'STUB'
+#!/bin/bash
+[ -z "${ARCHIVE_GH_CALLS:-}" ] || printf '%s\n' "$*" >> "$ARCHIVE_GH_CALLS"
+case "$*" in
+  "issue view 141 --json state --jq .state") printf '%s\n' "${ARCHIVE_GH_STATE:-OPEN}" ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$ARCHIVE_GH_BIN/gh"
+
+# 默认状态注入不得隐式访问任何远端 tracker。即使本机有认证命令，也只能
+# 明示 opt-in 后读取远端；否则必须保留“待核验”，而不是把本地归档说成完成。
+archived_github_fixture
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+chk "归档核验未 opt-in → 不访问 GitHub 且保留待核验" "ARCHIVED (远端待核验)|断链0"
+hasctx "未授权远端核验时说明显式启用方式" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 归档核验未 opt-in → gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 归档核验未 opt-in 却调用 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS
+
+archived_github_fixture
+OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GH_BIN:$PATH"; export ARCHIVE_GH_STATE=OPEN SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "归档快照的 GitHub Epic 仍 OPEN → 不得宣告整体完成" "ARCHIVE_DRIFT (远端未关闭)|断链1"
+hasctx "远端仍开放时给出明确的本地/远端分歧" "GitHub Epic #141 仍为 OPEN"
+
+archived_github_fixture
+export ARCHIVE_GH_STATE=CLOSED
+chk "归档快照的 GitHub Epic 已 CLOSED → 标为已核验" "IDLE (已归档，远端已核验)|断链0"
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+archived_github_fixture
+chk "无 gh 时不伪造成功，保留为远端待核验" "ARCHIVED (远端待核验)|断链0"
+hasctx "远端不可读时明示未核验" "远端 tracker 未核验"
+
+archived_github_fixture
+rm .agent/history/archive/20260904T000001Z-0002/state.json
+chk "正常归档且快照缺失 → 不得落入普通 IDLE" "ARCHIVED (远端待核验)|断链0"
+hasctx "归档快照缺失时标明待核验原因" "归档状态快照"
+
+# GitLab 走同一条只读对账路径；glab 是本地桩，测试不访问真实项目。
+archived_gitlab_fixture() {
+  base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002
+  printf '%s\n' '{"tracker":"gitlab","initiative":{"issue":7},"activeModule":"","modules":{}}' \
+    > .agent/history/archive/20260904T000001Z-0002/state.json
+  printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"state":{"path":".agent/history/archive/20260904T000001Z-0002/state.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"modules":[]}}]}]}' \
+    > spec/CAPABILITY-HISTORY.json
+}
+
+ARCHIVE_GLAB_BIN="$TMP/archive-glab-bin"; mkdir -p "$ARCHIVE_GLAB_BIN"
+cat > "$ARCHIVE_GLAB_BIN/glab" <<'STUB'
+#!/bin/bash
+[ -z "${ARCHIVE_GLAB_CALLS:-}" ] || printf '%s\n' "$*" >> "$ARCHIVE_GLAB_CALLS"
+case "$*" in
+  "repo view --output json") printf '%s\n' '{"path_with_namespace":"group/project"}' ;;
+  "api projects/group%2Fproject") printf '%s\n' '{"id":42}' ;;
+  "api projects/42/issues/7") printf '%s\n' '{"iid":7,"state":"opened"}' ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$ARCHIVE_GLAB_BIN/glab"
+
+# GitLab 同样必须经运行时显式 opt-in；此桩用于证明默认路径完全不执行 glab。
+archived_gitlab_fixture
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GLAB_CALLS="$TMP/archive-glab-calls"; export PATH="$ARCHIVE_GLAB_BIN:$PATH" ARCHIVE_GLAB_CALLS
+unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+chk "归档核验未 opt-in → 不访问 GitLab 且保留待核验" "ARCHIVED (远端待核验)|断链0"
+if [ ! -e "$ARCHIVE_GLAB_CALLS" ]; then
+  printf '  ✅ 归档核验未 opt-in → glab 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 归档核验未 opt-in 却调用 glab\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GLAB_CALLS
+
+archived_gitlab_fixture
+OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GLAB_BIN:$PATH"; export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "归档快照的 GitLab initiative 仍 opened → 不得宣告整体完成" "ARCHIVE_DRIFT (远端未关闭)|断链1"
+hasctx "GitLab 远端仍开放时给出明确分歧" "GitLab Issue #7 仍为 OPEN"
+export PATH="$OLD_ARCHIVE_PATH"; unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
 base; mkdir -p spec; touch spec/a.md
 printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"active","title":"Active","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/active/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}]}' > spec/CAPABILITY-HISTORY.json
 chk "活跃 history + 遗留 spec → 仍报断链" "SPECED|断链1"
@@ -225,20 +319,27 @@ git remote add origin https://gitlab.com/a/b.git 2>/dev/null
 echo '{"activeModule":"x","modules":{"x":{}}}' > .agent/state.json
 chk "GitLab.com 未声明 tracker → GitLab 模式" "SPECED (gitlab)|断链1"
 
-# 自建 GitLab 的 host 不必含 gitlab。只有 glab 能确认当前 remote 时才认作 GitLab。
+# 自建 GitLab 的 remote 无法由 host 安全识别。默认不得为猜测 tracker 而访问
+# glab；用户应在 state 中显式声明 tracker=gitlab 后再使用远端能力。
 base; mkdir -p spec tasks/x .agent; touch spec/a.md tasks/x/plan.md
 git remote add origin git@mgit.lgroup.co:hqdf/web/x9-live-player.git 2>/dev/null
 echo '{"activeModule":"x","modules":{"x":{"issue":42}}}' > .agent/state.json
 mkdir -p "$TMP/glab-bin"
 cat > "$TMP/glab-bin/glab" <<'STUB'
 #!/bin/bash
+[ -z "${SELFHOST_GLAB_CALLS:-}" ] || printf '%s\n' "$*" >> "$SELFHOST_GLAB_CALLS"
 [ "$1" = repo ] && [ "$2" = view ] && exit 0
 exit 1
 STUB
 chmod +x "$TMP/glab-bin/glab"
-OLD_GLAB_PATH="$PATH"; export PATH="$TMP/glab-bin:$PATH"
-chk "自建 GitLab 由 glab 确认" "PLANNED (gitlab)|断链0"
-export PATH="$OLD_GLAB_PATH"
+OLD_GLAB_PATH="$PATH"; SELFHOST_GLAB_CALLS="$TMP/selfhost-glab-calls"; export PATH="$TMP/glab-bin:$PATH" SELFHOST_GLAB_CALLS
+chk "未显式声明的自建 GitLab → 本地模式" "PLANNED (本地模式)|断链1"
+if [ ! -e "$SELFHOST_GLAB_CALLS" ]; then
+  printf '  ✅ 未显式声明的自建 GitLab → glab 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 未显式声明的自建 GitLab 却调用 glab\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_GLAB_PATH"; unset SELFHOST_GLAB_CALLS
 
 rm -rf "$TMP/r2"; mkdir -p "$TMP/r2"; echo "# 普通项目" > "$TMP/r2/CLAUDE.md"
 if [ -z "$(CLAUDE_PROJECT_DIR="$TMP/r2" bash "$H" 2>/dev/null)" ]; then
@@ -1206,6 +1307,54 @@ if [ $? -eq 2 ]; then
   printf '  ✅ 没装过的项目退 2（幂等）\n'; PASS=$((PASS+1))
 else
   printf '  ❌ 重复 teardown 应退 2\n'; FAIL=$((FAIL+1))
+fi
+
+# 畸形标记绝不能触发「尽力而为」的写入。解析异常不能被吞掉后继续
+# 创建 state 或移动它；此处逐字比对输入并检查没有新的项目目录。
+rm -rf "$TMP/bad-setup"; mkdir -p "$TMP/bad-setup"; cd "$TMP/bad-setup" || exit 1; git init -q 2>/dev/null
+printf '# 保留\n<!-- BEGIN:agent-skills-convention -->\n缺少结束标记\n' > CLAUDE.md
+cp CLAUDE.md before.md
+bash "$SETUP" local --replace >/dev/null 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && cmp -s CLAUDE.md before.md && [ ! -d .agent ] && [ ! -d spec ] && [ ! -d tasks ]; then
+  printf '  ✅ 反：setup 遇到缺失 END → 非零且零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ setup 吞掉缺失 END 或留下写入（RC=%s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/duplicate-marker"; mkdir -p "$TMP/duplicate-marker"; cd "$TMP/duplicate-marker" || exit 1; git init -q 2>/dev/null
+printf '# 保留\n<!-- BEGIN:agent-skills-convention -->\n块内\n<!-- END:agent-skills-convention -->\n用户尾注\n<!-- END:agent-skills-convention -->\n' > CLAUDE.md
+cp CLAUDE.md before.md
+bash "$SETUP" local --replace >/dev/null 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && cmp -s CLAUDE.md before.md && [ ! -d .agent ] && [ ! -d spec ] && [ ! -d tasks ]; then
+  printf '  ✅ 反：重复 END → setup 拒绝且不吞掉标记外内容\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 重复 END 让 setup 修改了用户内容（RC=%s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
+rm -rf "$TMP/bad-teardown"; mkdir -p "$TMP/bad-teardown/.agent"; cd "$TMP/bad-teardown" || exit 1; git init -q 2>/dev/null
+printf '# 保留\n<!-- BEGIN:agent-skills-convention -->\n缺少结束标记\n' > CLAUDE.md
+printf '{"modules":{"safe":{"issue":1}}}\n' > .agent/state.json
+cp CLAUDE.md before.md; cp .agent/state.json state-before.json
+bash "$TD" >/dev/null 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && cmp -s CLAUDE.md before.md && cmp -s .agent/state.json state-before.json \
+   && [ ! -e .agent/state.json.disabled ]; then
+  printf '  ✅ 反：teardown 遇到缺失 END → 非零且零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ teardown 吞掉缺失 END 或移动 state（RC=%s）\n' "$RC"; FAIL=$((FAIL+1))
+fi
+
+# 只接受精确的 flag；"--dry-run=true" 不是 dry-run，必须在写入前被拒。
+mktd
+cp CLAUDE.md before.md; cp .agent/state.json state-before.json
+bash "$TD" --dry-run=true >/dev/null 2>&1
+RC=$?
+if [ "$RC" -eq 2 ] && cmp -s CLAUDE.md before.md && cmp -s .agent/state.json state-before.json; then
+  printf '  ✅ 反：畸形 dry-run 参数被拒且零写入\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 畸形 dry-run 参数被忽略或发生写入（RC=%s）\n' "$RC"; FAIL=$((FAIL+1))
 fi
 
 # --keep-state:保留原名,而 hook 因此仍激活 —— 这是刻意的,要说清楚

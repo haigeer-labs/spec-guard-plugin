@@ -25,22 +25,28 @@ for argument in "$@"; do
 done
 
 MODE="${1:-github}"
+[ "$#" -eq 0 ] || shift
 HOST=claude
 DRY=false
 REPLACE=false      # 已存在的声明块：默认跳过，--replace 才就地升级
 NO_BLOCK=false     # 零 CLAUDE.md 足迹：完全不写声明块，靠 .agent/state.json 激活
 NO_INSTRUCTIONS=false
 MIGRATE=false      # 迁移散落在根上的 spec 产物：默认只报告，--migrate 才真动文件
+SEEN=""
+HOST_SET=false
 for a in "$@"; do
+  case " $SEEN " in *" $a "*) echo "重复参数: $a"; exit 2 ;; esac
+  SEEN="$SEEN $a"
   case "$a" in
     --dry-run)      DRY=true ;;
     --replace)      REPLACE=true ;;
     --no-claude-md) NO_BLOCK=true ;;
     --no-instructions) NO_INSTRUCTIONS=true ;;
-    --host=claude)  HOST=claude ;;
-    --host=codex)   HOST=codex ;;
+    --host=claude)  [ "$HOST_SET" = false ] || { echo "host 只能指定一次"; exit 2; }; HOST=claude; HOST_SET=true ;;
+    --host=codex)   [ "$HOST_SET" = false ] || { echo "host 只能指定一次"; exit 2; }; HOST=codex; HOST_SET=true ;;
     --host=*)       echo "host 必须是 claude 或 codex"; exit 2 ;;
     --migrate)      MIGRATE=true ;;
+    *)              echo "未知参数: $a"; exit 2 ;;
   esac
 done
 case "$MODE" in github|gitlab|local) ;; *) echo "模式必须是 github、gitlab 或 local"; exit 2 ;; esac
@@ -88,10 +94,26 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "${ROOT}" 2>/dev/null || { echo "❌ 进不去项目根: ${ROOT}"; exit 1; }
+BLOCK_TOOL="$HERE/managed-block.py"
+[ -f "$BLOCK_TOOL" ] || { echo "❌ 缺少声明块安全工具: $BLOCK_TOOL"; exit 1; }
 
 TPL="${CLAUDE_PLUGIN_ROOT:-$(dirname "$HERE")}/templates"
 [ -d "$TPL" ] || TPL="$(dirname "$HERE")/templates"
 [ -d "$TPL" ] || { echo "❌ 找不到 templates 目录（试过 ${TPL}）"; exit 1; }
+
+# 必须在创建任何目录、迁移任何文件之前验证现有声明块。不能把错误吞掉
+# 后继续“尽力而为”：这种场景下任何写入都会使用户难以恢复。
+HAS_TARGET_MARKER=false
+if [ -f "$INSTRUCTIONS" ]; then
+  if grep -Fq "$MARK_B" "$INSTRUCTIONS" 2>/dev/null; then
+    HAS_TARGET_MARKER=true
+  elif grep -Fq "$MARK_E" "$INSTRUCTIONS" 2>/dev/null; then
+    HAS_TARGET_MARKER=true
+  fi
+fi
+if [ "$HAS_TARGET_MARKER" = true ]; then
+  python3 "$BLOCK_TOOL" validate "$INSTRUCTIONS" "$MARK_B" "$MARK_E" >/dev/null || exit 1
+fi
 
 ISSUE_TYPES=unknown          # github 模式下由前置检查探测后覆盖
 F=0
@@ -259,18 +281,7 @@ elif [ "$ALREADY" = true ]; then
   # 用 python3 而不是 sed：bash 3.2 的 sed 在多字节内容上不可靠。
   [ -f "$SRC" ] || bad "模板缺失: $SRC"
   if [ "$DRY" = false ] && [ -f "$SRC" ]; then
-    OLDN=$(python3 - "$SRC" "$MARK_B" "$MARK_E" "$INSTRUCTIONS" <<'PYEOF'
-import sys
-src, mb, me, instructions = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-lines = open(instructions, encoding='utf-8').read().split('\n')
-b = next(i for i, l in enumerate(lines) if l.strip() == mb)
-e = len(lines) - 1 - next(i for i, l in enumerate(reversed(lines)) if l.strip() == me)
-body = open(src, encoding='utf-8').read().rstrip('\n').split('\n')
-out = lines[:b + 1] + body + lines[e:]
-open(instructions, 'w', encoding='utf-8').write('\n'.join(out))
-print(e - b - 1)
-PYEOF
-) || OLDN="?"
+    OLDN=$(python3 "$BLOCK_TOOL" replace "$INSTRUCTIONS" "$MARK_B" "$MARK_E" "$SRC") || exit 1
     NEWN=$(wc -l < "$SRC" | tr -d ' ')
     act "${INSTRUCTIONS} 声明块（就地升级：${OLDN} 行 → ${NEWN} 行）"
   else

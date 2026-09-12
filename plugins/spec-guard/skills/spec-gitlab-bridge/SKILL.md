@@ -69,14 +69,17 @@ GitLab 15.3 没有可依赖的 Work Items 层级。模块 Issue 与 task Issue �
 6. 全部模块映射成功后才把 `activeModule` 设为 build order 的第一个模块。把本次映射
    摘要、Issue IID 和降级说明写入用户可审阅的输出。
 
-创建 Issue 与关联只能通过下列受限入口或等价的显式 `glab` 命令：
+创建 Issue、关联、MR 与合并只能通过下列受限入口。每一项写入都必须把
+`--confirm` 放在 action 后；没有该参数时入口在调用 `glab` 前退出。
 
 ```bash
-glab issue create --repo <group/project> --title '<title>' --description-file <file>
-glab api -X POST 'projects/<project-id>/issues/<iid>/links' \
-  -f target_project_id=<project-id> -f target_issue_iid=<iid>
-glab mr create --repo <group/project> --source-branch <branch> --target-branch <branch>
-glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" issue --confirm \
+  --repo <group/project> --title '<title>' --description-file <file>
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" relate --confirm \
+  <project-id> <source-iid> <target-iid>
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" mr --confirm \
+  --repo <group/project> --source-branch <branch> --target-branch <branch> --title '<title>'
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" merge --confirm --repo <group/project> --iid <iid>
 ```
 
 始终在输出中标明 `relates_to` 是降级关联。未知 API 版本或 404 时停止并说明该能力不可用。
@@ -85,7 +88,7 @@ glab mr merge <iid> --repo <group/project> --yes --remove-source-branch
 `can_be_merged` 且无冲突。只能通过受限入口处理这一情形：
 
 ```bash
-/bin/bash "$ROOT/hooks/gitlab-bridge.sh" merge --repo <group/project> --iid <iid>
+/bin/bash "$ROOT/hooks/gitlab-bridge.sh" merge --confirm --repo <group/project> --iid <iid>
 ```
 
 它只会在首次失败后读取远端状态，并且**仅**在上述三个条件同时满足时重试一次；
@@ -131,7 +134,7 @@ python3 plugins/spec-guard/hooks/gitlab_tracker.py next \
 2. 确认当前分支仅属于 `activeModule`，工作区干净，并将本模块关闭 task 的 IID 写入
    commit 或 MR 描述（例如 `Closes #<iid>`）。不要关闭其他模块的 Issue。
 3. 创建指向默认分支的模块级 MR，向用户显示 MR IID、源/目标分支和将自动关闭的 Issue。
-4. 用户允许合并后，使用 `glab mr merge ... --remove-source-branch`。合并后逐条核对 task
+4. 用户允许合并后，使用 `gitlab-bridge.sh merge --confirm ...`。合并后逐条核对 task
    与模块 Issue 的状态；GitLab 没有自动关闭时，先说明并请求关闭授权。
 5. 只有远端状态已核实后才推进 `activeModule` 或调用 initiative lifecycle。归档只移动
    本插件的 `spec/`、`tasks/` 和 `.agent/` 产物；不得删除用户业务文件。

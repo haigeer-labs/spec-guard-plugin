@@ -132,5 +132,36 @@ else
   bad "反：损坏 checkpoint 时 resume 不覆盖当前工作区"
 fi
 
+# lifecycle 的模块集合必须来自能力图，而不是 state 的任意 key。否则 `../`
+# 会在归档后半段走进 rm，删除用户的项目文件。
+ESCAPE_PROJECT="$TMP/escape-project"
+mkdir -p "$ESCAPE_PROJECT/spec" "$ESCAPE_PROJECT/tasks/alpha" "$ESCAPE_PROJECT/.agent"
+printf '# Capability Map: Escape\n\n## 目标\n\nescape\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| alpha | Alpha | — |\n' > "$ESCAPE_PROJECT/spec/CAPABILITY-MAP.md"
+printf '# Alpha\n' > "$ESCAPE_PROJECT/spec/alpha.md"
+printf '# Plan\n' > "$ESCAPE_PROJECT/tasks/alpha/plan.md"
+printf 'must survive\n' > "$ESCAPE_PROJECT/sentinel.md"
+printf '{"activeModule":"alpha","modules":{"../sentinel":{"issue":1}}}\n' > "$ESCAPE_PROJECT/.agent/state.json"
+if ! "$LIFECYCLE" complete --project "$ESCAPE_PROJECT" --initiative escape-test >/dev/null 2>&1 \
+  && [ "$(cat "$ESCAPE_PROJECT/sentinel.md")" = 'must survive' ] \
+  && [ -f "$ESCAPE_PROJECT/spec/CAPABILITY-MAP.md" ] \
+  && [ ! -d "$ESCAPE_PROJECT/spec/history/escape-test" ]; then
+  ok "反：state 含越界 module id → 拒绝且不删文件、不建归档"
+else
+  bad "反：越界 module id 被生命周期接受或留下写入"
+fi
+
+# initiative 本身也是路径片段；拒绝必须发生在 mkdir/cp 之前。
+PATH_PROJECT="$TMP/path-project"
+mkdir -p "$PATH_PROJECT/spec" "$PATH_PROJECT/tasks/alpha" "$PATH_PROJECT/.agent" "$TMP/outside"
+printf '# Capability Map: Path\n\n## 目标\n\npath\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| alpha | Alpha | — |\n' > "$PATH_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"activeModule":"alpha","modules":{"alpha":{"issue":1}}}\n' > "$PATH_PROJECT/.agent/state.json"
+if ! "$LIFECYCLE" complete --project "$PATH_PROJECT" --initiative ../../../outside >/dev/null 2>&1 \
+  && [ -z "$(find "$TMP/outside" -mindepth 1 -print -quit)" ] \
+  && [ -f "$PATH_PROJECT/spec/CAPABILITY-MAP.md" ]; then
+  ok "反：越界 initiative → 拒绝且项目外零残留"
+else
+  bad "反：越界 initiative 可写入项目外路径"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

@@ -125,6 +125,39 @@ class WorkflowRoadmapTests(unittest.TestCase):
         commands = [call.args[0] for call in remote.call_args_list]
         self.assertIn(["gh", "issue", "view", "41", "--json", "state,subIssues"], commands)
 
+    def test_github_auth_failure_explains_credential_access_without_guessing_state(self):
+        state_path = self.root / ".agent/state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        del state["workflowStage"]
+        state["modules"] = {"current-work": {"issue": 41}}
+        state["initiative"]["issue"] = 40
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        reply = SimpleNamespace(returncode=1, stdout="", stderr=(
+            "Failed to log in to github.com account haigeermail\n"
+            "The token in default is invalid."
+        ))
+        with patch("workflow_roadmap._run_remote", return_value=reply):
+            facts = collect(self.root)
+        self.assertEqual(facts["remote"], "unknown")
+        self.assertIn("认证或凭据访问不可用", facts["remoteDetail"])
+        self.assertIn("gh auth status", facts["remoteDetail"])
+        self.assertNotIn("Keychain", facts["remoteDetail"])
+
+    def test_github_network_failure_explains_remote_query_cannot_reach_api(self):
+        state_path = self.root / ".agent/state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        del state["workflowStage"]
+        state["modules"] = {"current-work": {"issue": 41}}
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        reply = SimpleNamespace(returncode=1, stdout="", stderr=(
+            "error connecting to api.github.com\n"
+            "check your internet connection or https://githubstatus.com\n"
+        ))
+        with patch("workflow_roadmap._run_remote", return_value=reply):
+            facts = collect(self.root)
+        self.assertEqual(facts["remote"], "unknown")
+        self.assertIn("GitHub API 网络访问不可用", facts["remoteDetail"])
+
     def test_malformed_tracker_mapping_degrades_without_a_traceback(self):
         state_path = self.root / ".agent/state.json"
         state = json.loads(state_path.read_text(encoding="utf-8"))
@@ -148,6 +181,14 @@ class WorkflowRoadmapTests(unittest.TestCase):
         facts = collect(self.root)
         self.assertEqual(facts["nextAction"]["detail"], "检查本地 diff。")
         self.assertIn("不授予本地修改", render(facts))
+
+    def test_roadmap_command_preflights_github_auth_without_relative_checkpoint_link(self):
+        command = Path(__file__).resolve().parents[1] / "commands/roadmap.md"
+        text = command.read_text(encoding="utf-8")
+        self.assertIn("gh auth status --hostname github.com", text)
+        self.assertIn("${CLAUDE_PLUGIN_ROOT}/references/workflow-checkpoints.md", text)
+        self.assertNotIn("](../references/workflow-checkpoints.md)", text)
+        self.assertIn("网络不可用", text)
 
 
 if __name__ == "__main__":

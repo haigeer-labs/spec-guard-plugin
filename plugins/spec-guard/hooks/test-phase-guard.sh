@@ -137,6 +137,9 @@ chk "终态 history + 遗留 spec → 已归档，不报断链" "IDLE (已归档
 # 这里的 gh 桩完全本地：回归测试既不读取、更不会操作真实 GitHub。
 archived_github_fixture() {
   base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002
+  # SSH host 可以是本机 ~/.ssh/config 中的别名；gh 无法从该别名推断
+  # github.com 认证上下文，因此 hook 必须显式传递 owner/repo。
+  git remote add origin git@github-haigeer:fixture/repo.git
   printf '%s\n' '{"tracker":"github","initiative":{"issue":141},"activeModule":"","modules":{}}' \
     > .agent/history/archive/20260904T000001Z-0002/state.json
   printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"state":{"path":".agent/history/archive/20260904T000001Z-0002/state.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"modules":[]}}]}]}' \
@@ -148,7 +151,7 @@ cat > "$ARCHIVE_GH_BIN/gh" <<'STUB'
 #!/bin/bash
 [ -z "${ARCHIVE_GH_CALLS:-}" ] || printf '%s\n' "$*" >> "$ARCHIVE_GH_CALLS"
 case "$*" in
-  "issue view 141 --json state --jq .state") printf '%s\n' "${ARCHIVE_GH_STATE:-OPEN}" ;;
+  "issue view 141 --repo fixture/repo --json state --jq .state") printf '%s\n' "${ARCHIVE_GH_STATE:-OPEN}" ;;
   *) exit 1 ;;
 esac
 STUB
@@ -176,6 +179,10 @@ hasctx "远端仍开放时给出明确的本地/远端分歧" "GitHub Epic #141 
 archived_github_fixture
 export ARCHIVE_GH_STATE=CLOSED
 chk "归档快照的 GitHub Epic 已 CLOSED → 标为已核验" "IDLE (已归档，远端已核验)|断链0"
+
+archived_github_fixture
+export ARCHIVE_GH_STATE=MERGED
+chk "归档快照指向已 MERGED 的 Pull Request → 标为已核验" "IDLE (已归档，远端已核验)|断链0"
 export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
 
 archived_github_fixture

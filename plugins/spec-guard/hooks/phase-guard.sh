@@ -293,6 +293,32 @@ archive_remote_verification_enabled() {
   [ "${SPEC_GUARD_ARCHIVE_REMOTE_VERIFY:-}" = "1" ]
 }
 
+# gh 会从 origin 的 host 推断认证上下文；SSH host 别名（例如
+# github-haigeer）不一定是 gh 已认证的 github.com。归档快照只记录 issue
+# 编号，因此只在当前 origin 能无歧义地还原 owner/repo 时，才显式指定仓库。
+# 解析失败时保留“待核验”，不能退回让 gh 猜测当前仓库。
+github_repository_from_origin() {
+  local remote path owner repository
+  remote=$(git remote get-url origin 2>/dev/null || true)
+  [ -n "$remote" ] && is_github_remote "$remote" || return 0
+  case "$remote" in
+    *://*) path="${remote#*://}"; path="${path#*/}" ;;
+    *@*:* ) path="${remote#*:}" ;;
+    *) return 0 ;;
+  esac
+  path="${path#/}"
+  path="${path%.git}"
+  case "$path" in
+    */*) ;;
+    *) return 0 ;;
+  esac
+  owner="${path%%/*}"
+  repository="${path#*/}"
+  case "$owner" in ''|*[!A-Za-z0-9_.-]*) return 0 ;; esac
+  case "$repository" in ''|*/*|*[!A-Za-z0-9_.-]*) return 0 ;; esac
+  printf '%s/%s\n' "$owner" "$repository"
+}
+
 archived_completed_trackers() {
   python3 - "$LEDGER" "$ROOT" <<'PY'
 import json
@@ -381,10 +407,15 @@ if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; the
           ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}（未显式授权远端核验）"
           continue
         fi
-        ARCHIVE_STATE=$(gh issue view "$ARCHIVE_ISSUE" --json state --jq .state 2>/dev/null || true)
+        ARCHIVE_GITHUB_REPOSITORY=$(github_repository_from_origin)
+        if [ -n "$ARCHIVE_GITHUB_REPOSITORY" ]; then
+          ARCHIVE_STATE=$(gh issue view "$ARCHIVE_ISSUE" --repo "$ARCHIVE_GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null || true)
+        else
+          ARCHIVE_STATE=""
+        fi
         case "$ARCHIVE_STATE" in
           OPEN|open) ARCHIVE_REMOTE_OPEN="${ARCHIVE_REMOTE_OPEN}${ARCHIVE_REMOTE_OPEN:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
-          CLOSED|closed) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
+          CLOSED|closed|MERGED|merged) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
           *) ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
         esac
         ;;

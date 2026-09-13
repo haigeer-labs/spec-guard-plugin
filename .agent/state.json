@@ -1,0 +1,18 @@
+{
+  "tracker": "github",
+  "initiative": {
+    "title": "Archived Tracker Provenance",
+    "issue": 15,
+    "map": "spec/CAPABILITY-MAP.md",
+    "goalDigest": "df356ae78430"
+  },
+  "issueTypes": true,
+  "modules": {
+    "archive-github-repository": {
+      "issue": 16,
+      "rowDigest": "0f67d6b2e753"
+    }
+  },
+  "activeModule": "archive-github-repository",
+  "updatedAt": "2026-09-13T10:19:16Z"
+}

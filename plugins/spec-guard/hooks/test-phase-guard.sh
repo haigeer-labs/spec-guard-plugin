@@ -137,10 +137,11 @@ chk "终态 history + 遗留 spec → 已归档，不报断链" "IDLE (已归档
 # 这里的 gh 桩完全本地：回归测试既不读取、更不会操作真实 GitHub。
 archived_github_fixture() {
   base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002
-  # SSH host 可以是本机 ~/.ssh/config 中的别名；gh 无法从该别名推断
-  # github.com 认证上下文，因此 hook 必须显式传递 owner/repo。
-  git remote add origin git@github-haigeer:fixture/repo.git
-  printf '%s\n' '{"tracker":"github","initiative":{"issue":141},"activeModule":"","modules":{}}' \
+  # origin 已迁移到另一个仓库；归档快照记录的 initiative.repository 仍是
+  # 归档时的旧仓库。验证必须只查询快照记录的那个，绝不能推断到当前 origin
+  # —— 这正是每条既有 CLOSED/MERGED/OPEN/无 gh/未 opt-in 用例要证明的事。
+  git remote add origin git@github-haigeer:moved/repo.git
+  printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo"},"activeModule":"","modules":{}}' \
     > .agent/history/archive/20260904T000001Z-0002/state.json
   printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"state":{"path":".agent/history/archive/20260904T000001Z-0002/state.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"modules":[]}}]}]}' \
     > spec/CAPABILITY-HISTORY.json
@@ -174,7 +175,8 @@ export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS
 archived_github_fixture
 OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GH_BIN:$PATH"; export ARCHIVE_GH_STATE=OPEN SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
 chk "归档快照的 GitHub Epic 仍 OPEN → 不得宣告整体完成" "ARCHIVE_DRIFT (远端未关闭)|断链1"
-hasctx "远端仍开放时给出明确的本地/远端分歧" "GitHub Epic #141 仍为 OPEN"
+hasctx "远端仍开放时给出明确的本地/远端分歧" "GitHub Epic fixture/repo#141 仍为 OPEN"
+hasctx "核验按快照记录的仓库标注 Epic，而不是当前 origin" "fixture/repo#141"
 
 archived_github_fixture
 export ARCHIVE_GH_STATE=CLOSED
@@ -184,6 +186,87 @@ archived_github_fixture
 export ARCHIVE_GH_STATE=MERGED
 chk "归档快照指向已 MERGED 的 Pull Request → 标为已核验" "IDLE (已归档，远端已核验)|断链0"
 export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 调用参数必须精确等于快照记录的仓库（origin 已迁移到 moved/repo），
+# 调用日志里绝不能出现 moved/repo —— 这是「核验只查记录的仓库」的直接证据。
+archived_github_fixture
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-repo"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "记录仓库 fixture/repo、origin 已迁移到 moved/repo → 仍按记录仓库核验为已关闭" "IDLE (已归档，远端已核验)|断链0"
+if [ -e "$ARCHIVE_GH_CALLS" ] \
+   && grep -qxF "issue view 141 --repo fixture/repo --json state --jq .state" "$ARCHIVE_GH_CALLS" \
+   && ! grep -qF "moved/repo" "$ARCHIVE_GH_CALLS"; then
+  printf '  ✅ gh 调用只带记录仓库 fixture/repo，不含 moved/repo\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ gh 调用未精确使用记录仓库\n'; cat "$ARCHIVE_GH_CALLS" 2>/dev/null; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 快照缺少仓库身份：必须报告「缺少仓库身份」，绝不回退到当前 origin，也
+# 绝不调用 gh。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-norepo"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "快照缺少仓库身份 → 归档待核验，绝不调用 gh" "ARCHIVED (远端待核验)|断链0"
+hasctx "缺少仓库身份时明确说明原因" "缺少仓库身份"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 缺少仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 缺少仓库身份却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 快照仓库身份格式非法（不是单个 owner/repo）：同样待核验，绝不调用 gh。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"a/b/c"},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-badrepo"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "快照仓库身份格式非法 → 归档待核验，绝不调用 gh" "ARCHIVED (远端待核验)|断链0"
+hasctx "非法仓库身份同样报告缺少仓库身份" "缺少仓库身份"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 非法仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 非法仓库身份却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 仓库身份带尾随换行：Python 的 `$` 允许末尾换行，read 又会按行截断，
+# 非法值会被悄悄当成 fixture/repo 去查。必须整串匹配，同样待核验、零调用。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo\n"},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-newline"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "快照仓库身份带尾随换行 → 归档待核验，不得当成合法仓库" "ARCHIVED (远端待核验)|断链0"
+# 阶段本身会被空行记录计成「 条目」而碰巧正确，所以原因与无空条目都要断言。
+hasctx "尾随换行的仓库身份报告缺少仓库身份" "缺少仓库身份"
+lacksctx "尾随换行不得拆出空 tracker 的未核验条目" "条目"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 尾随换行的仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 尾随换行的仓库身份却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 缺少 Issue 编号但仓库合法：仍按缺少 Issue 编号报告，且不调用 gh。
+# （字段改用 \x1f 分隔是防御性的：即使退回 tab，错位后的值也非数字，
+#  结论不变，所以本用例不能证明分隔符本身。）
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"repository":"fixture/repo"},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-noissue"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "快照缺少 Issue 编号但含合法仓库 → 报告缺少 Issue 编号" "ARCHIVED (远端待核验)|断链0"
+hasctx "缺少 Issue 编号时说明原因" "缺少 Issue 编号"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 缺少 Issue 编号时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 缺少 Issue 编号却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
 
 archived_github_fixture
 chk "无 gh 时不伪造成功，保留为远端待核验" "ARCHIVED (远端待核验)|断链0"

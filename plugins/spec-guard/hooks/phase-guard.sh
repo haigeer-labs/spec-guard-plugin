@@ -281,7 +281,8 @@ fi
 # 归档是本地文件操作；它本身不能证明外部 tracker 也已收口。
 # lifecycle 保持离线：这里是 hook 中**可选、只读且显式 opt-in**的补充核验。
 # 只有设置 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1、归档账本最新事件为 completed，
-# 且快照明确记录了外部 initiative 条目号，才查询。paused / abandoned /
+# 且快照明确记录了外部 initiative 条目号（GitHub 还须记录 initiative.repository，
+# 缺失时不回退到当前 origin），才查询。paused / abandoned /
 # superseded 不等同于「远端必须关闭」，所以不作推断。
 ARCHIVE_REMOTE_OPEN=""
 ARCHIVE_REMOTE_UNVERIFIED=""
@@ -293,37 +294,18 @@ archive_remote_verification_enabled() {
   [ "${SPEC_GUARD_ARCHIVE_REMOTE_VERIFY:-}" = "1" ]
 }
 
-# gh 会从 origin 的 host 推断认证上下文；SSH host 别名（例如
-# github-haigeer）不一定是 gh 已认证的 github.com。归档快照只记录 issue
-# 编号，因此只在当前 origin 能无歧义地还原 owner/repo 时，才显式指定仓库。
-# 解析失败时保留“待核验”，不能退回让 gh 猜测当前仓库。
-github_repository_from_origin() {
-  local remote path owner repository
-  remote=$(git remote get-url origin 2>/dev/null || true)
-  [ -n "$remote" ] && is_github_remote "$remote" || return 0
-  case "$remote" in
-    *://*) path="${remote#*://}"; path="${path#*/}" ;;
-    *@*:* ) path="${remote#*:}" ;;
-    *) return 0 ;;
-  esac
-  path="${path#/}"
-  path="${path%.git}"
-  case "$path" in
-    */*) ;;
-    *) return 0 ;;
-  esac
-  owner="${path%%/*}"
-  repository="${path#*/}"
-  case "$owner" in ''|*[!A-Za-z0-9_.-]*) return 0 ;; esac
-  case "$repository" in ''|*/*|*[!A-Za-z0-9_.-]*) return 0 ;; esac
-  printf '%s/%s\n' "$owner" "$repository"
-}
-
+# 归档快照的字段用 \x1f（非 IFS 空白）分隔，而不是 \t —— 缺失仓库身份时
+# 该字段就是空字符串，tab 是 IFS 空白会在 read 时把相邻空字段折叠掉，
+# 导致后面的仓库字段错位顶进 issue 变量。\x1f 不是空白，空字段原样保留。
 archived_completed_trackers() {
   python3 - "$LEDGER" "$ROOT" <<'PY'
 import json
 import os
+import re
 import sys
+
+FS = "\x1f"
+REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 ledger_path, root = sys.argv[1:]
 try:
@@ -343,21 +325,29 @@ for initiative in ledger.get("initiatives", []):
     state = checkpoint.get("state") or {}
     state_path = state.get("path")
     if not isinstance(state_path, str) or not state_path.startswith(".agent/history/"):
-        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        print(FS.join((initiative_id, "__snapshot_unreadable__", "", "")))
         continue
     absolute = os.path.abspath(os.path.join(root, state_path))
     if os.path.commonpath((os.path.abspath(root), absolute)) != os.path.abspath(root):
-        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        print(FS.join((initiative_id, "__snapshot_unreadable__", "", "")))
         continue
     try:
         snapshot = json.load(open(absolute, encoding="utf-8"))
     except Exception:
-        print("%s\t__snapshot_unreadable__\t" % initiative_id)
+        print(FS.join((initiative_id, "__snapshot_unreadable__", "", "")))
         continue
     tracker = snapshot.get("tracker")
     issue = (snapshot.get("initiative") or {}).get("issue")
+    repository = (snapshot.get("initiative") or {}).get("repository")
+    if not (isinstance(repository, str) and REPO_RE.fullmatch(repository)):
+        repository = ""
     if isinstance(tracker, str) and tracker:
-        print("%s\t%s\t%s" % (initiative_id, tracker, issue if isinstance(issue, int) and issue > 0 else ""))
+        print(FS.join((
+            initiative_id,
+            tracker,
+            str(issue) if isinstance(issue, int) and issue > 0 else "",
+            repository,
+        )))
 PY
 }
 
@@ -388,7 +378,7 @@ except Exception: pass
 }
 
 if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; then
-  while IFS=$'\t' read -r ARCHIVE_INITIATIVE ARCHIVE_TRACKER ARCHIVE_ISSUE; do
+  while IFS=$'\x1f' read -r ARCHIVE_INITIATIVE ARCHIVE_TRACKER ARCHIVE_ISSUE ARCHIVE_REPOSITORY; do
     case "$ARCHIVE_TRACKER" in
       none) ;;
       __snapshot_unreadable__)
@@ -403,20 +393,19 @@ if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; the
             continue
             ;;
         esac
-        if ! archive_remote_verification_enabled; then
-          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}（未显式授权远端核验）"
+        if [ -z "$ARCHIVE_REPOSITORY" ]; then
+          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}（缺少仓库身份）"
           continue
         fi
-        ARCHIVE_GITHUB_REPOSITORY=$(github_repository_from_origin)
-        if [ -n "$ARCHIVE_GITHUB_REPOSITORY" ]; then
-          ARCHIVE_STATE=$(gh issue view "$ARCHIVE_ISSUE" --repo "$ARCHIVE_GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null || true)
-        else
-          ARCHIVE_STATE=""
+        if ! archive_remote_verification_enabled; then
+          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic ${ARCHIVE_REPOSITORY}#${ARCHIVE_ISSUE}（未显式授权远端核验）"
+          continue
         fi
+        ARCHIVE_STATE=$(gh issue view "$ARCHIVE_ISSUE" --repo "$ARCHIVE_REPOSITORY" --json state --jq .state 2>/dev/null || true)
         case "$ARCHIVE_STATE" in
-          OPEN|open) ARCHIVE_REMOTE_OPEN="${ARCHIVE_REMOTE_OPEN}${ARCHIVE_REMOTE_OPEN:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
-          CLOSED|closed|MERGED|merged) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
-          *) ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}" ;;
+          OPEN|open) ARCHIVE_REMOTE_OPEN="${ARCHIVE_REMOTE_OPEN}${ARCHIVE_REMOTE_OPEN:+、}GitHub Epic ${ARCHIVE_REPOSITORY}#${ARCHIVE_ISSUE}" ;;
+          CLOSED|closed|MERGED|merged) ARCHIVE_REMOTE_CLOSED="${ARCHIVE_REMOTE_CLOSED}${ARCHIVE_REMOTE_CLOSED:+、}GitHub Epic ${ARCHIVE_REPOSITORY}#${ARCHIVE_ISSUE}" ;;
+          *) ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic ${ARCHIVE_REPOSITORY}#${ARCHIVE_ISSUE}" ;;
         esac
         ;;
       gitlab)

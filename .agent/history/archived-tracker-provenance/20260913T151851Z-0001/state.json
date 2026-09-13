@@ -4,7 +4,8 @@
     "title": "Archived Tracker Provenance",
     "issue": 15,
     "map": "spec/CAPABILITY-MAP.md",
-    "goalDigest": "df356ae78430"
+    "goalDigest": "df356ae78430",
+    "repository": "haigeer-labs/spec-guard-plugin"
   },
   "issueTypes": true,
   "modules": {

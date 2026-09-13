@@ -1296,6 +1296,76 @@
           }
         }
       ]
+    },
+    {
+      "id": "archived-tracker-provenance",
+      "title": "archived-tracker-provenance",
+      "events": [
+        {
+          "type": "created",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260913T151851Z-0001",
+            "map": {
+              "path": "spec/history/archived-tracker-provenance/20260913T151851Z-0001/CAPABILITY-MAP.md",
+              "sha256": "101c248d4ff61d9f517e60b36d0a1a752f3879cb38d244313d8d1405d1ff50c3"
+            },
+            "state": {
+              "path": ".agent/history/archived-tracker-provenance/20260913T151851Z-0001/state.json",
+              "sha256": "4175062b225060b7f2ea93ed600d5ebbb40aebb3d644991738aa26e198521ca9"
+            },
+            "modules": [
+              {
+                "id": "archive-github-repository",
+                "responsibility": "归档时把 GitHub 仓库身份记入状态快照，归档核验改为只查询快照记录的仓库，缺失时保持未核验",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": 16,
+                "spec": {
+                  "path": "spec/history/archived-tracker-provenance/20260913T151851Z-0001/archive-github-repository.md",
+                  "sha256": "ee2827740bdb32f86ddac8e4e5eebec0ee74f6327e8e2cd3e295a11ed09a970f"
+                },
+                "plan": {
+                  "path": "tasks/history/archived-tracker-provenance/20260913T151851Z-0001/archive-github-repository/plan.md",
+                  "sha256": "ffc00c40459361c9952c1713583a53accc595df088f929b9f42fe996cb7d90dc"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "completed",
+          "at": "now",
+          "checkpoint": {
+            "id": "20260913T151851Z-0001",
+            "map": {
+              "path": "spec/history/archived-tracker-provenance/20260913T151851Z-0001/CAPABILITY-MAP.md",
+              "sha256": "101c248d4ff61d9f517e60b36d0a1a752f3879cb38d244313d8d1405d1ff50c3"
+            },
+            "state": {
+              "path": ".agent/history/archived-tracker-provenance/20260913T151851Z-0001/state.json",
+              "sha256": "4175062b225060b7f2ea93ed600d5ebbb40aebb3d644991738aa26e198521ca9"
+            },
+            "modules": [
+              {
+                "id": "archive-github-repository",
+                "responsibility": "归档时把 GitHub 仓库身份记入状态快照，归档核验改为只查询快照记录的仓库，缺失时保持未核验",
+                "dependsOn": [],
+                "status": "unknown",
+                "issue": 16,
+                "spec": {
+                  "path": "spec/history/archived-tracker-provenance/20260913T151851Z-0001/archive-github-repository.md",
+                  "sha256": "ee2827740bdb32f86ddac8e4e5eebec0ee74f6327e8e2cd3e295a11ed09a970f"
+                },
+                "plan": {
+                  "path": "tasks/history/archived-tracker-provenance/20260913T151851Z-0001/archive-github-repository/plan.md",
+                  "sha256": "ffc00c40459361c9952c1713583a53accc595df088f929b9f42fe996cb7d90dc"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ],
   "corrections": [

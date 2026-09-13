@@ -286,6 +286,8 @@ fi
 # superseded 不等同于「远端必须关闭」，所以不作推断。
 ARCHIVE_REMOTE_OPEN=""
 ARCHIVE_REMOTE_UNVERIFIED=""
+ARCHIVE_REMOTE_UNVERIFIABLE=""
+ARCHIVE_SNAPSHOT_UNREADABLE=""
 ARCHIVE_REMOTE_CLOSED=""
 ARCHIVE_REMOTE_EXTERNAL=false
 ARCHIVE_GITLAB_PROJECT_ID=""
@@ -383,18 +385,18 @@ if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; the
       none) ;;
       __snapshot_unreadable__)
         ARCHIVE_REMOTE_EXTERNAL=true
-        ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}initiative [${ARCHIVE_INITIATIVE}] 的归档状态快照"
+        ARCHIVE_SNAPSHOT_UNREADABLE="${ARCHIVE_SNAPSHOT_UNREADABLE}${ARCHIVE_SNAPSHOT_UNREADABLE:+、}initiative [${ARCHIVE_INITIATIVE}] 的归档状态快照"
         ;;
       github)
         ARCHIVE_REMOTE_EXTERNAL=true
         case "$ARCHIVE_ISSUE" in
           ''|*[!0-9]*)
-            ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
+            ARCHIVE_REMOTE_UNVERIFIABLE="${ARCHIVE_REMOTE_UNVERIFIABLE}${ARCHIVE_REMOTE_UNVERIFIABLE:+、}GitHub initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
             continue
             ;;
         esac
         if [ -z "$ARCHIVE_REPOSITORY" ]; then
-          ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitHub Epic #${ARCHIVE_ISSUE}（缺少仓库身份）"
+          ARCHIVE_REMOTE_UNVERIFIABLE="${ARCHIVE_REMOTE_UNVERIFIABLE}${ARCHIVE_REMOTE_UNVERIFIABLE:+、}GitHub Epic #${ARCHIVE_ISSUE}（缺少仓库身份）"
           continue
         fi
         if ! archive_remote_verification_enabled; then
@@ -412,7 +414,7 @@ if [ "$HAS_ARCHIVED_HISTORY" = true ] && command -v python3 >/dev/null 2>&1; the
         ARCHIVE_REMOTE_EXTERNAL=true
         case "$ARCHIVE_ISSUE" in
           ''|*[!0-9]*)
-            ARCHIVE_REMOTE_UNVERIFIED="${ARCHIVE_REMOTE_UNVERIFIED}${ARCHIVE_REMOTE_UNVERIFIED:+、}GitLab initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
+            ARCHIVE_REMOTE_UNVERIFIABLE="${ARCHIVE_REMOTE_UNVERIFIABLE}${ARCHIVE_REMOTE_UNVERIFIABLE:+、}GitLab initiative [${ARCHIVE_INITIATIVE}]（缺少 Issue 编号）"
             continue
             ;;
         esac
@@ -654,9 +656,16 @@ elif [ "$HAS_ARCHIVED_HISTORY" = true ]; then
     PHASE="ARCHIVE_DRIFT (远端未关闭)"
     broken "本地 history 已归档，但 ${ARCHIVE_REMOTE_OPEN} 仍为 OPEN；本地归档不能代替远端 tracker 的完成态"
     NEXT="先向用户说明本地/远端分歧；获得确认后关闭对应 initiative 条目。远端关闭后，hook 会在下次注入时重新核验"
-  elif [ -n "$ARCHIVE_REMOTE_UNVERIFIED" ]; then
+  elif [ -n "$ARCHIVE_REMOTE_UNVERIFIED" ] || [ -n "$ARCHIVE_SNAPSHOT_UNREADABLE" ]; then
     PHASE="ARCHIVED (远端待核验)"
-    NEXT="当前没有活跃 initiative，但 ${ARCHIVE_REMOTE_UNVERIFIED} 的远端 tracker 未核验；获得用户明确授权后，以 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1 运行一次 hook 做只读确认，再开始新的一轮"
+    NEXT="当前没有活跃 initiative"
+    [ -n "$ARCHIVE_SNAPSHOT_UNREADABLE" ] && NEXT="${NEXT}；${ARCHIVE_SNAPSHOT_UNREADABLE} 不可读，先用 /spec-guard:history-integrity 做只读审计并检查对应 checkpoint"
+    [ -n "$ARCHIVE_REMOTE_UNVERIFIED" ] && NEXT="${NEXT}；${ARCHIVE_REMOTE_UNVERIFIED} 的远端 tracker 未核验，获得用户明确授权后以 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1 运行一次 hook 做只读确认"
+    [ -n "$ARCHIVE_REMOTE_UNVERIFIABLE" ] && NEXT="${NEXT}；${ARCHIVE_REMOTE_UNVERIFIABLE} 无法核验（归档时未记录仓库身份或没有 Issue 编号），不影响开始新的一轮"
+    NEXT="${NEXT}；处理后再开始新的一轮"
+  elif [ -n "$ARCHIVE_REMOTE_UNVERIFIABLE" ]; then
+    PHASE="IDLE (已归档，部分无法核验)"
+    NEXT="当前没有活跃 initiative；${ARCHIVE_REMOTE_UNVERIFIABLE} 无法核验（归档时未记录仓库身份或没有 Issue 编号），不影响开始新的一轮；/spec 开始新的一轮"
   elif [ "$ARCHIVE_REMOTE_EXTERNAL" = true ]; then
     PHASE="IDLE (已归档，远端已核验)"
     NEXT="当前没有活跃 initiative；已核验归档对应的外部 tracker 条目均关闭，可 /spec 开始新的一轮"
@@ -874,6 +883,8 @@ add "spec: 能力图=$HAS_MAP, 模块 spec=$SPEC_COUNT 份"
 [ "$OPEN_TASKS" != "?" ] && add "GitHub: $OPEN_TASKS 个未关闭 task（sub-issue 共 ${TOTAL_TASKS} 个）${ASSIGNED:+, 已认领 $ASSIGNED}"
 [ -n "$ARCHIVE_REMOTE_CLOSED" ] && add "归档远端核验：${ARCHIVE_REMOTE_CLOSED} 已关闭"
 [ -n "$ARCHIVE_REMOTE_UNVERIFIED" ] && add "归档远端核验：${ARCHIVE_REMOTE_UNVERIFIED} 未核验"
+[ -n "$ARCHIVE_REMOTE_UNVERIFIABLE" ] && add "归档远端核验：${ARCHIVE_REMOTE_UNVERIFIABLE} 无法核验"
+[ -n "$ARCHIVE_SNAPSHOT_UNREADABLE" ] && add "归档状态快照不可读：${ARCHIVE_SNAPSHOT_UNREADABLE}"
 [ -n "$BRANCH_DISPLAY" ] && add "git: 分支=$BRANCH_DISPLAY, worktree=${WORKTREE_DISPLAY:-未知}, 未提交=$DIRTY"
 if [ "${ON_MODULE_BRANCH}" = true ]; then
   if [ "${TASKS_DONE_HERE}" -gt 0 ]; then

@@ -84,7 +84,8 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 
 `initiative.repository`（`owner/repo`）只由 `initiative-lifecycle.sh` 写入归档
 快照（`.agent/history/<initiative>/<checkpoint>/state.json`），记录该 Epic 所在
-的 GitHub 仓库；agent 不写这个字段，当前 `.agent/state.json` 也不带它。
+的 GitHub 仓库；agent 不写这个字段。`resume` 会把快照原样恢复为当前 state，
+此时字段随之带回，之后再归档保留原值，不按当前 origin 重新解析。
 
 `workflowStage` 当前唯一显式值是 `local-validation`，用于已有能力图、当前模块 spec/plan、
 但尚未激活 tracker 的本地研究/验证。initiative.title 必须填写，initiative.issue 为 null，

@@ -321,19 +321,22 @@ printf '# Map\n' > "$RT_PROJECT/spec/CAPABILITY-MAP.md"
 printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$RT_PROJECT/.agent/state.json"
 git -C "$RT_PROJECT" init -q
 git -C "$RT_PROJECT" remote add origin https://github.com/Round/Trip.git
-"$LIFECYCLE" pause --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1
-"$LIFECYCLE" resume --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1
-sleep 1
-if "$LIFECYCLE" complete --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1; then
+# resume 之后改 origin：若 resume 丢了字段，complete 会从新 origin 解析出 New/Repo。
+RT_LABEL="正：pause → resume → 改 origin → complete，最终快照仍是首次记录的 repository"
+if "$LIFECYCLE" pause --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1 \
+  && "$LIFECYCLE" resume --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1 \
+  && git -C "$RT_PROJECT" remote set-url origin git@github-alias:New/Repo.git \
+  && sleep 1 \
+  && "$LIFECYCLE" complete --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1; then
   RT_SNAPSHOT="$(latest_snapshot "$RT_PROJECT/.agent/history/roundtrip")"
   if [ -n "$RT_SNAPSHOT" ] && [ "$(snapshot_repository "$RT_SNAPSHOT")" = "Round/Trip" ] \
     && [ "$(python3 "$HISTORY" status "$RT_PROJECT/spec/CAPABILITY-HISTORY.json" roundtrip)" = completed ]; then
-    ok "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+    ok "$RT_LABEL"
   else
-    bad "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+    bad "$RT_LABEL"
   fi
 else
-  bad "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+  bad "$RT_LABEL"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

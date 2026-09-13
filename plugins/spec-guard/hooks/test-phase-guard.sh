@@ -233,15 +233,31 @@ else
 fi
 export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
 
-# 分隔符回归：issue 缺失但仓库合法时，tab 分隔会把仓库字段顶进 issue 变量。
-# \x1f 分隔符下空 issue 字段必须原样保留，不得被仓库字段填补。
+# 仓库身份带尾随换行：Python 的 `$` 允许末尾换行，read 又会按行截断，
+# 非法值会被悄悄当成 fixture/repo 去查。必须整串匹配，同样待核验、零调用。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo\n"},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-newline"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "快照仓库身份带尾随换行 → 归档待核验，不得当成合法仓库" "ARCHIVED (远端待核验)|断链0"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ 尾随换行的仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ 尾随换行的仓库身份却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 缺少 Issue 编号但仓库合法：仍按缺少 Issue 编号报告，且不调用 gh。
+# （字段改用 \x1f 分隔是防御性的：即使退回 tab，错位后的值也非数字，
+#  结论不变，所以本用例不能证明分隔符本身。）
 archived_github_fixture
 printf '%s\n' '{"tracker":"github","initiative":{"repository":"fixture/repo"},"activeModule":"","modules":{}}' \
   > .agent/history/archive/20260904T000001Z-0002/state.json
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-noissue"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
-chk "快照缺少 Issue 编号但含合法仓库 → 报告缺少 Issue 编号，字段不得错位" "ARCHIVED (远端待核验)|断链0"
-hasctx "缺少 Issue 编号时不得把仓库字段误当成 issue" "缺少 Issue 编号"
+chk "快照缺少 Issue 编号但含合法仓库 → 报告缺少 Issue 编号" "ARCHIVED (远端待核验)|断链0"
+hasctx "缺少 Issue 编号时说明原因" "缺少 Issue 编号"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 缺少 Issue 编号时 gh 零调用\n'; PASS=$((PASS+1))
 else

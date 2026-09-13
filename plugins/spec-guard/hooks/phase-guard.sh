@@ -338,7 +338,7 @@ for initiative in ledger.get("initiatives", []):
     tracker = snapshot.get("tracker")
     issue = (snapshot.get("initiative") or {}).get("issue")
     repository = (snapshot.get("initiative") or {}).get("repository")
-    if not (isinstance(repository, str) and REPO_RE.match(repository)):
+    if not (isinstance(repository, str) and REPO_RE.fullmatch(repository)):
         repository = ""
     if isinstance(tracker, str) and tracker:
         print(FS.join((

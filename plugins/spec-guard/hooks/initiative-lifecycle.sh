@@ -183,8 +183,8 @@ cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
 cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
 # GitHub 归档记录仓库身份（Spec: archive-github-repository.md）。只在
 # tracker=github 且快照尚无合法 initiative.repository 时，从当前 origin
-# 解析 owner/repo 并写回快照；解析规则与 phase-guard.sh 的
-# remote_host/is_github_remote/github_repository_from_origin 一致。其他
+# 解析 owner/repo 并写回快照；host 判定与 phase-guard.sh 的
+# remote_host/is_github_remote 一致。归档核验只读这个记录值，不再解析 origin。其他
 # tracker 或已带合法 repository 的快照必须原样保留，不重写字节。
 python3 - "$STATE_DEST/state.json" "$PROJECT" <<'PY' || exit 1
 import json

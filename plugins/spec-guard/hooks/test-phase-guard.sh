@@ -209,8 +209,10 @@ printf '%s\n' '{"tracker":"github","initiative":{"issue":141},"activeModule":"",
   > .agent/history/archive/20260904T000001Z-0002/state.json
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-norepo"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
-chk "快照缺少仓库身份 → 归档待核验，绝不调用 gh" "ARCHIVED (远端待核验)|断链0"
+chk "快照缺少仓库身份 → 永久无法核验，绝不调用 gh" "IDLE (已归档，部分无法核验)|断链0"
 hasctx "缺少仓库身份时明确说明原因" "缺少仓库身份"
+hasctx "缺少仓库身份归入无法核验" "无法核验"
+lacksctx "缺少仓库身份不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 缺少仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
 else
@@ -224,8 +226,10 @@ printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"a/b/c
   > .agent/history/archive/20260904T000001Z-0002/state.json
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-badrepo"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
-chk "快照仓库身份格式非法 → 归档待核验，绝不调用 gh" "ARCHIVED (远端待核验)|断链0"
+chk "快照仓库身份格式非法 → 永久无法核验，绝不调用 gh" "IDLE (已归档，部分无法核验)|断链0"
 hasctx "非法仓库身份同样报告缺少仓库身份" "缺少仓库身份"
+hasctx "非法仓库身份归入无法核验" "无法核验"
+lacksctx "非法仓库身份不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 非法仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
 else
@@ -240,9 +244,11 @@ printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixtu
   > .agent/history/archive/20260904T000001Z-0002/state.json
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-newline"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
-chk "快照仓库身份带尾随换行 → 归档待核验，不得当成合法仓库" "ARCHIVED (远端待核验)|断链0"
+chk "快照仓库身份带尾随换行 → 永久无法核验，不得当成合法仓库" "IDLE (已归档，部分无法核验)|断链0"
 # 阶段本身会被空行记录计成「 条目」而碰巧正确，所以原因与无空条目都要断言。
 hasctx "尾随换行的仓库身份报告缺少仓库身份" "缺少仓库身份"
+hasctx "尾随换行的仓库身份归入无法核验" "无法核验"
+lacksctx "尾随换行不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 lacksctx "尾随换行不得拆出空 tracker 的未核验条目" "条目"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 尾随换行的仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
@@ -259,8 +265,10 @@ printf '%s\n' '{"tracker":"github","initiative":{"repository":"fixture/repo"},"a
   > .agent/history/archive/20260904T000001Z-0002/state.json
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-noissue"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
-chk "快照缺少 Issue 编号但含合法仓库 → 报告缺少 Issue 编号" "ARCHIVED (远端待核验)|断链0"
+chk "快照缺少 Issue 编号但含合法仓库 → 永久无法核验" "IDLE (已归档，部分无法核验)|断链0"
 hasctx "缺少 Issue 编号时说明原因" "缺少 Issue 编号"
+hasctx "缺少 Issue 编号归入无法核验" "无法核验"
+lacksctx "缺少 Issue 编号不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 缺少 Issue 编号时 gh 零调用\n'; PASS=$((PASS+1))
 else
@@ -276,6 +284,8 @@ archived_github_fixture
 rm .agent/history/archive/20260904T000001Z-0002/state.json
 chk "正常归档且快照缺失 → 不得落入普通 IDLE" "ARCHIVED (远端待核验)|断链0"
 hasctx "归档快照缺失时标明待核验原因" "归档状态快照"
+hasctx "快照不可读时指向历史审计" "/spec-guard:history-integrity"
+lacksctx "快照不可读不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 
 # GitLab 走同一条只读对账路径；glab 是本地桩，测试不访问真实项目。
 archived_gitlab_fixture() {
@@ -316,6 +326,85 @@ OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GLAB_BIN:$PATH"; export SPEC_GUA
 chk "归档快照的 GitLab initiative 仍 opened → 不得宣告整体完成" "ARCHIVE_DRIFT (远端未关闭)|断链1"
 hasctx "GitLab 远端仍开放时给出明确分歧" "GitLab Issue #7 仍为 OPEN"
 export PATH="$OLD_ARCHIVE_PATH"; unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# 多 initiative 归档账本夹具：每个 entry 是 "id|tracker|issue|repo"（issue/repo
+# 可留空）。用于组合「一条可核验、一条永久无法核验」这类混合场景 ——
+# 复用单条初始化的 archived_*_fixture() 表达不出两条 initiative 并存。
+archive_multi_fixture() {
+  base; mkdir -p spec
+  python3 - "$@" <<'PY'
+import json, os, sys
+
+FAKE = "a" * 64
+initiatives = []
+for i, entry in enumerate(sys.argv[1:]):
+    iid, tracker, issue, repo = entry.split("|")
+    created_cp = "2026090%dT000000Z-0001" % (i + 1)
+    done_cp = "2026090%dT000001Z-0002" % (i + 1)
+    state_dir = ".agent/history/%s/%s" % (iid, done_cp)
+    os.makedirs(state_dir, exist_ok=True)
+    initiative = {}
+    if issue:
+        initiative["issue"] = int(issue)
+    if repo:
+        initiative["repository"] = repo
+    state = {"tracker": tracker, "initiative": initiative, "activeModule": "", "modules": {}}
+    with open(state_dir + "/state.json", "w") as fh:
+        json.dump(state, fh)
+    initiatives.append({
+        "id": iid,
+        "title": iid,
+        "events": [
+            {"type": "created", "at": "now", "checkpoint": {
+                "id": created_cp,
+                "map": {"path": "spec/history/%s/%s/CAPABILITY-MAP.md" % (iid, created_cp), "sha256": FAKE},
+                "modules": [],
+            }},
+            {"type": "completed", "at": "now", "checkpoint": {
+                "id": done_cp,
+                "map": {"path": "spec/history/%s/%s/CAPABILITY-MAP.md" % (iid, done_cp), "sha256": FAKE},
+                "state": {"path": state_dir + "/state.json", "sha256": FAKE},
+                "modules": [],
+            }},
+        ],
+    })
+
+with open("spec/CAPABILITY-HISTORY.json", "w") as fh:
+    json.dump({"schemaVersion": 1, "initiatives": initiatives}, fh)
+PY
+}
+
+# 一条待核验（未 opt-in）+ 一条永久无法核验（缺少仓库身份）并存：仍属于
+# 「远端待核验」阶段，opt-in 建议必须出现；无法核验的那条不能冒充成待核验。
+archive_multi_fixture "archive-a|github|141|fixture/repo" "archive-b|github|142|"
+OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GH_BIN:$PATH"
+unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+chk "一条待核验 + 一条永久无法核验 → 仍是远端待核验" "ARCHIVED (远端待核验)|断链0"
+hasctx "混合归档仍建议 opt-in 核验可核验的那条" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
+hasctx "混合归档标出永久无法核验的那条" "GitHub Epic #142（缺少仓库身份） 无法核验"
+export PATH="$OLD_ARCHIVE_PATH"
+
+# 可核验的那条核验通过（已关闭）、另一条永久无法核验：不再卡在待核验，
+# 收敛为「已归档，部分无法核验」，且不再建议 opt-in（没有条目能从中受益）。
+archive_multi_fixture "archive-a|github|141|fixture/repo" "archive-b|github|142|"
+OLD_ARCHIVE_PATH="$PATH"; export PATH="$ARCHIVE_GH_BIN:$PATH"; export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "一条已核验关闭 + 一条永久无法核验 → 已归档，部分无法核验" "IDLE (已归档，部分无法核验)|断链0"
+hasctx "已核验的那条标为已关闭" "fixture/repo#141 已关闭"
+hasctx "无法核验的那条仍标出" "无法核验"
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# GitLab 快照缺少 Issue 编号：与 GitHub 同理，永久无法核验，不调用 glab。
+archive_multi_fixture "archive-only|gitlab||"
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GLAB_CALLS="$TMP/archive-glab-calls-noissue"; export PATH="$ARCHIVE_GLAB_BIN:$PATH" ARCHIVE_GLAB_CALLS
+unset SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+chk "GitLab 快照缺少 Issue 编号 → 永久无法核验" "IDLE (已归档，部分无法核验)|断链0"
+hasctx "GitLab 缺少 Issue 编号时标明原因" "GitLab initiative ["
+if [ ! -e "$ARCHIVE_GLAB_CALLS" ]; then
+  printf '  ✅ GitLab 缺少 Issue 编号时 glab 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ GitLab 缺少 Issue 编号却调用了 glab\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GLAB_CALLS
 
 base; mkdir -p spec; touch spec/a.md
 printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"active","title":"Active","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/active/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}}]}]}' > spec/CAPABILITY-HISTORY.json

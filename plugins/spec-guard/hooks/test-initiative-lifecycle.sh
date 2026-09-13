@@ -198,5 +198,143 @@ else
   printf '    cleanup status=%s output=%s\n' "$CLEANUP_STATUS" "$CLEANUP_OUTPUT"
 fi
 
+# GitHub 归档快照记录仓库身份（Spec: archive-github-repository.md）。
+snapshot_repository() {
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("initiative") or {}).get("repository", ""))' "$1"
+}
+latest_snapshot() {
+  ls -d "$1"/*/state.json 2>/dev/null | sort | tail -1
+}
+ledger_state_sha() {
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["initiatives"][0]["events"][-1]["checkpoint"]["state"]["sha256"])' "$1"
+}
+
+GH1_PROJECT="$TMP/gh-ssh-alias-project"
+mkdir -p "$GH1_PROJECT/spec" "$GH1_PROJECT/.agent"
+printf '# Map\n' > "$GH1_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH1_PROJECT/.agent/state.json"
+git -C "$GH1_PROJECT" init -q
+git -C "$GH1_PROJECT" remote add origin git@github-alias:Owner/Repo.git
+if "$LIFECYCLE" complete --project "$GH1_PROJECT" --initiative gh-ssh-alias >/dev/null 2>&1; then
+  GH1_SNAPSHOT="$(latest_snapshot "$GH1_PROJECT/.agent/history/gh-ssh-alias")"
+  GH1_SHA="$(shasum -a 256 "$GH1_SNAPSHOT" | awk '{print $1}')"
+  if [ -n "$GH1_SNAPSHOT" ] \
+    && [ "$(snapshot_repository "$GH1_SNAPSHOT")" = "Owner/Repo" ] \
+    && [ "$(ledger_state_sha "$GH1_PROJECT/spec/CAPABILITY-HISTORY.json")" = "$GH1_SHA" ]; then
+    ok "正：tracker=github + SSH host 别名 origin → 快照记录 owner/repo，账本 sha256 与快照一致"
+  else
+    bad "正：tracker=github + SSH host 别名 origin → 快照记录 owner/repo，账本 sha256 与快照一致"
+  fi
+else
+  bad "正：tracker=github + SSH host 别名 origin → 快照记录 owner/repo，账本 sha256 与快照一致"
+fi
+
+GH2_PROJECT="$TMP/gh-https-project"
+mkdir -p "$GH2_PROJECT/spec" "$GH2_PROJECT/.agent"
+printf '# Map\n' > "$GH2_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH2_PROJECT/.agent/state.json"
+git -C "$GH2_PROJECT" init -q
+git -C "$GH2_PROJECT" remote add origin https://github.com/Owner/Repo
+if "$LIFECYCLE" complete --project "$GH2_PROJECT" --initiative gh-https >/dev/null 2>&1; then
+  GH2_SNAPSHOT="$(latest_snapshot "$GH2_PROJECT/.agent/history/gh-https")"
+  if [ -n "$GH2_SNAPSHOT" ] && [ "$(snapshot_repository "$GH2_SNAPSHOT")" = "Owner/Repo" ]; then
+    ok "正：tracker=github + https origin（无 .git 后缀）→ 快照记录 owner/repo"
+  else
+    bad "正：tracker=github + https origin（无 .git 后缀）→ 快照记录 owner/repo"
+  fi
+else
+  bad "正：tracker=github + https origin（无 .git 后缀）→ 快照记录 owner/repo"
+fi
+
+GH3_PROJECT="$TMP/gh-no-origin-project"
+mkdir -p "$GH3_PROJECT/spec" "$GH3_PROJECT/.agent"
+printf '# Map\n' > "$GH3_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH3_PROJECT/.agent/state.json"
+git -C "$GH3_PROJECT" init -q
+GH3_OUTPUT="$("$LIFECYCLE" complete --project "$GH3_PROJECT" --initiative gh-no-origin 2>&1)"
+GH3_STATUS=$?
+GH3_SNAPSHOT="$(latest_snapshot "$GH3_PROJECT/.agent/history/gh-no-origin")"
+if [ "$GH3_STATUS" -eq 0 ] && [ -n "$GH3_SNAPSHOT" ] \
+  && [ "$(snapshot_repository "$GH3_SNAPSHOT")" = "" ] \
+  && grep -q '提示：无法从 origin 解析 GitHub 仓库' <<<"$GH3_OUTPUT"; then
+  ok "正：tracker=github + 无 origin → 归档成功、无 repository 字段、打印提示"
+else
+  bad "正：tracker=github + 无 origin → 归档成功、无 repository 字段、打印提示"
+  printf '    status=%s output=%s\n' "$GH3_STATUS" "$GH3_OUTPUT"
+fi
+
+GH4_PROJECT="$TMP/gh-non-github-origin-project"
+mkdir -p "$GH4_PROJECT/spec" "$GH4_PROJECT/.agent"
+printf '# Map\n' > "$GH4_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH4_PROJECT/.agent/state.json"
+git -C "$GH4_PROJECT" init -q
+git -C "$GH4_PROJECT" remote add origin https://gitlab.com/o/r.git
+if "$LIFECYCLE" complete --project "$GH4_PROJECT" --initiative gh-non-github >/dev/null 2>&1; then
+  GH4_SNAPSHOT="$(latest_snapshot "$GH4_PROJECT/.agent/history/gh-non-github")"
+  if [ -n "$GH4_SNAPSHOT" ] && [ "$(snapshot_repository "$GH4_SNAPSHOT")" = "" ]; then
+    ok "正：tracker=github + 非 GitHub origin → 无 repository 字段"
+  else
+    bad "正：tracker=github + 非 GitHub origin → 无 repository 字段"
+  fi
+else
+  bad "正：tracker=github + 非 GitHub origin → 无 repository 字段"
+fi
+
+NONE_PROJECT="$TMP/none-tracker-project"
+mkdir -p "$NONE_PROJECT/spec" "$NONE_PROJECT/.agent"
+printf '# Map\n' > "$NONE_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"none","activeModule":null,"modules":{}}' > "$NONE_PROJECT/.agent/state.json"
+cp "$NONE_PROJECT/.agent/state.json" "$TMP/none-tracker-original-state.json"
+git -C "$NONE_PROJECT" init -q
+git -C "$NONE_PROJECT" remote add origin git@github.com:Owner/Repo.git
+if "$LIFECYCLE" complete --project "$NONE_PROJECT" --initiative none-tracker >/dev/null 2>&1; then
+  NONE_SNAPSHOT="$(latest_snapshot "$NONE_PROJECT/.agent/history/none-tracker")"
+  if [ -n "$NONE_SNAPSHOT" ] && cmp -s "$NONE_SNAPSHOT" "$TMP/none-tracker-original-state.json"; then
+    ok "正：tracker=none → 快照字节与原始 state 完全一致（不改写）"
+  else
+    bad "正：tracker=none → 快照字节与原始 state 完全一致（不改写）"
+  fi
+else
+  bad "正：tracker=none → 快照字节与原始 state 完全一致（不改写）"
+fi
+
+KEEP_PROJECT="$TMP/keep-repo-project"
+mkdir -p "$KEEP_PROJECT/spec" "$KEEP_PROJECT/.agent"
+printf '# Map\n' > "$KEEP_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1,"repository":"Old/Repo"}}' > "$KEEP_PROJECT/.agent/state.json"
+git -C "$KEEP_PROJECT" init -q
+git -C "$KEEP_PROJECT" remote add origin git@github-alias:New/Repo.git
+if "$LIFECYCLE" complete --project "$KEEP_PROJECT" --initiative keep-repo >/dev/null 2>&1; then
+  KEEP_SNAPSHOT="$(latest_snapshot "$KEEP_PROJECT/.agent/history/keep-repo")"
+  if [ -n "$KEEP_SNAPSHOT" ] && [ "$(snapshot_repository "$KEEP_SNAPSHOT")" = "Old/Repo" ]; then
+    ok "正：state 已带合法 repository → 保留原值，忽略当前 origin"
+  else
+    bad "正：state 已带合法 repository → 保留原值，忽略当前 origin"
+  fi
+else
+  bad "正：state 已带合法 repository → 保留原值，忽略当前 origin"
+fi
+
+RT_PROJECT="$TMP/roundtrip-project"
+mkdir -p "$RT_PROJECT/spec" "$RT_PROJECT/.agent"
+printf '# Map\n' > "$RT_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$RT_PROJECT/.agent/state.json"
+git -C "$RT_PROJECT" init -q
+git -C "$RT_PROJECT" remote add origin https://github.com/Round/Trip.git
+"$LIFECYCLE" pause --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1
+"$LIFECYCLE" resume --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1
+sleep 1
+if "$LIFECYCLE" complete --project "$RT_PROJECT" --initiative roundtrip >/dev/null 2>&1; then
+  RT_SNAPSHOT="$(latest_snapshot "$RT_PROJECT/.agent/history/roundtrip")"
+  if [ -n "$RT_SNAPSHOT" ] && [ "$(snapshot_repository "$RT_SNAPSHOT")" = "Round/Trip" ] \
+    && [ "$(python3 "$HISTORY" status "$RT_PROJECT/spec/CAPABILITY-HISTORY.json" roundtrip)" = completed ]; then
+    ok "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+  else
+    bad "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+  fi
+else
+  bad "正：pause → resume → complete 往返后，最终 completed 快照仍带 repository"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

@@ -15,7 +15,6 @@ VERIFIED_TARGETS = {
     "project-verified": "tracker-project",
 }
 UNVERIFIED = {"not-verified", "unsupported"}
-FORBIDDEN_CAPABILITIES = {"automatic-parallel-execution", "parallel-write-execution"}
 JOURNEY_TARGETS = {
     "github-project": ("project-verified", "tracker-project"),
     "gitlab-project": ("project-verified", "tracker-project"),
@@ -54,8 +53,6 @@ def check_record(record):
     capabilities = record.get("capabilities", [])
     if not isinstance(capabilities, list) or any(not isinstance(item, str) for item in capabilities):
         fail("invalid capabilities")
-    if FORBIDDEN_CAPABILITIES.intersection(capabilities):
-        fail("paused parallel write capability cannot be claimed")
     if status in VERIFIED_TARGETS:
         if target_kind != VERIFIED_TARGETS[status]:
             fail("evidence status does not match target kind")

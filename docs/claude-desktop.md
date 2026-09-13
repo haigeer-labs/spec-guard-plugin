@@ -34,12 +34,12 @@ settings → Install Extension…** 后选取。安装页面会展示工具与�
 | `sync_map_preview` | GitHub 本地投影预览、GitLab 确定性预览或 local 说明 | 否 |
 | `write_operation` | 返回需要确认的下一步 | 否，永不执行 |
 
-`setup`、创建/刷新 Issue、MR 创建/合并、history import、lifecycle、`next`、`deliver`、Desktop worker
-登记与 teardown 没有 MCP 工具入口。普通串行写入请在 Claude Code CLI、Codex CLI 或 Codex 桌面版中明确说明影响范围
-并确认后执行；实验性并行写操作（包括 Desktop 登记）已暂停，切换宿主也不能重新开启。
+`setup`、创建/刷新 Issue、MR 创建/合并、history import、lifecycle、`next`、`deliver` 与 teardown
+没有 MCP 工具入口。写入请在 Claude Code CLI、Codex CLI 或 Codex 桌面版中明确说明影响范围并确认后执行。
 
-GitHub 预览与 GitLab 确定性入口都先调用同一严格能力图解析器。并列 Build order 只提供
-稳定展示顺序；依赖仍只取 `Depends on`。图无效、Python 不可用、子进程非零或返回坏 JSON 时，
+GitHub 预览与 GitLab 确定性入口都先调用同一能力图解析器。Spec Guard 始终严格串行推进；
+为兼容上游格式，Build order 的逗号分组会按左到右展开为单模块步骤，依赖仍只取 `Depends on`。
+图无效、Python 不可用、子进程非零或返回坏 JSON 时，
 预览直接返回错误，绝不会退回旧正则解析或报告成功。该保证来自本地协议回归，不等同于 Desktop
 原生 UI E2E。
 
@@ -52,40 +52,10 @@ GitHub 预览与 GitLab 确定性入口都先调用同一严格能力图解析�
 | Codex CLI | Codex plugin skill/hook | 支持 | 支持；sandbox 可能要求批准 `gh`/`glab` |
 | Codex 桌面版 | Codex plugin skill | 支持 | 支持；遵从桌面端批准流程 |
 
-## Desktop 原生 worktree worker 登记
-
-审计整改后的源码已暂停实验性 Desktop 登记，以及并行创建、启动、汇合与回收。登记命令保留为
-PARALLEL_WRITES_DISABLED 拒绝入口；目前尚未发布，旧安装不会自动更新。
-
-已存在的 host-owned worker 可以经 Codex ops 或 Claude Code 的 parallel-status 只读核验。
-展示 host、hostWorkerId、worktreePath、branch 和“完成与可回收性未核验”；不要求插件自有进程记录，
-也不依据 ownership、claimed 或旧 completed 判断可以删除。
-
-Claude Code 桌面会话与本页的 Claude Desktop MCPB 是不同接入方式。MCPB 仍只暴露上表的检查和预览工具，
-没有并行状态或执行工具；本轮源码回归不等于两个桌面产品的原生 UI 验收。
-
-只读并行诊断若在其他宿主调用，也只会产出 `candidate-only`、`needs-review`、
-`sequential-required` 或有限的 `manual-parallel-eligible` 声明结论。它不验证真实代码改动、
-测试服务、端口或运行资源的隔离；链接、别名、权限或平台不确定时必须人工审查。
-
-### 升级与旧会话
-
-先保存成果、核对仍运行的任务，由用户决定停止或重启宿主会话，并确认新版本加载。
-升级不会停止旧进程，已加载旧版本的会话不受新入口保证。保留 ledger、分支与 worktree 供人工核对，
-不要直接删除账本或回退已知不安全版本以恢复实验写入。
-
-### 历史验证边界（2026-09-05）
-
-早期 Git fixture 曾验证登记写入与部分拒绝场景，但没有完成原生 Desktop 登记 E2E：
-当时未取得可验证的目标 cwd 与稳定宿主任务 ID，两端没有成功登记记录。
-本次审计后该旧登记流程已暂停，即使未来能取得 ID/cwd，也不能据此重新开放写入口。
-当前验证重点是拒绝无副作用、旧记录只读核验及错误可观察。
-
 ## 验证
 
 ```bash
 /bin/bash plugins/spec-guard/hooks/test-claude-desktop-mcp.sh
-/bin/bash plugins/spec-guard/hooks/test-desktop-worker-registration.sh
 /bin/bash scripts/validate.sh
 ```
 

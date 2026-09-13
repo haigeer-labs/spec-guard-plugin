@@ -177,6 +177,48 @@ then
 else
   bad "正：确认的修正只追加证据事件，不重写 checkpoint"
 fi
+
+if python3 "$HISTORY" audit "$AUDIT" "$PROJECT" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+assert report["summary"]["findings"] == 4
+assert report["summary"]["correctedFindings"] == 1
+assert report["summary"]["unresolvedFindings"] == 3
+assert report["summary"]["unresolvedByCode"] == {
+    "dependency-mismatch": 1,
+    "responsibility-mismatch": 1,
+    "timestamp-unverified": 1,
+}
+status = next(item for item in report["findings"] if item["field"] == "status")
+assert status["resolution"] == "corrected"
+assert status["correctionIndex"] == 0
+responsibility = next(item for item in report["findings"] if item["field"] == "responsibility")
+assert responsibility["resolution"] == "unresolved"
+assert "correctionIndex" not in responsibility
+'
+then
+  ok "正：已追加的补正标记对应 finding，未解决 finding 保持可见"
+else
+  bad "正：已追加的补正标记对应 finding，未解决 finding 保持可见"
+fi
+
+DEPENDENCY_CORRECTION="$TMP/dependency-correction.json"
+write_history "$DEPENDENCY_CORRECTION" "{\"type\":\"history-correction\",\"initiativeId\":\"a\",\"eventIndex\":0,\"checkpointId\":\"$CHECKPOINT\",\"moduleId\":\"payment-api\",\"field\":\"dependsOn\",\"before\":[\"other\"],\"after\":[],\"auditedAt\":\"2026-09-05T12:00:00Z\",\"auditReportSha256\":\"$AUDIT_REPORT_SHA\",\"sources\":[{\"kind\":\"audit-finding\",\"code\":\"dependency-mismatch\"}]}"
+if python3 "$HISTORY" correct --confirm "$AUDIT" "$TMP/audit-report.json" "$DEPENDENCY_CORRECTION" >/dev/null 2>&1 \
+  && python3 "$HISTORY" audit "$AUDIT" "$PROJECT" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+assert report["summary"]["correctedFindings"] == 2
+assert report["summary"]["unresolvedFindings"] == 2
+dependency = next(item for item in report["findings"] if item["field"] == "dependsOn")
+assert dependency["resolution"] == "corrected"
+assert dependency["correctionIndex"] == 1
+'
+then
+  ok "正：依赖数组补正按完整列表精确匹配"
+else
+  bad "正：依赖数组补正按完整列表精确匹配"
+fi
 CORRECTION_AFTER="$(shasum -a 256 "$AUDIT" | awk '{print $1}')"
 BAD_CORRECTION="$TMP/bad-correction.json"
 write_history "$BAD_CORRECTION" "{\"type\":\"history-correction\",\"initiativeId\":\"a\",\"eventIndex\":0,\"checkpointId\":\"$CHECKPOINT\",\"moduleId\":\"payment-api\",\"field\":\"status\",\"before\":\"completed\",\"after\":\"completed\",\"auditedAt\":\"2026-09-05T12:00:00Z\",\"auditReportSha256\":\"$AUDIT_REPORT_SHA\",\"sources\":[{\"kind\":\"audit-finding\",\"code\":\"status-unsupported\"}]}"

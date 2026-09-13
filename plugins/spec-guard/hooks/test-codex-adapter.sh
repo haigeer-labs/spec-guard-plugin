@@ -138,7 +138,7 @@ ops = open(sys.argv[1], encoding="utf-8").read()
 bridge = open(sys.argv[2], encoding="utf-8").read()
 readme = open(sys.argv[3], encoding="utf-8").read()
 
-for operation in ("setup", "phase", "roadmap", "documentation-baseline", "documentation-impact", "documentation-verification", "verify", "verify-history", "audit-history", "correct-history", "history-migration", "parallel-readiness", "parallel-safety-gate", "parallel-subagent-preflight", "teardown", "lifecycle", "sync-map", "next", "deliver"):
+for operation in ("setup", "phase", "roadmap", "documentation-baseline", "documentation-impact", "documentation-verification", "verify", "verify-history", "audit-history", "correct-history", "history-migration", "teardown", "lifecycle", "sync-map", "next", "deliver"):
     if ops.count(f"`{operation}`") != 1:
         raise SystemExit(f"操作 {operation} 必须恰好声明一次")
 
@@ -166,23 +166,6 @@ if 'documentation_impact.py' not in ops or '不得扫描代码' not in ops:
     raise SystemExit("documentation-impact 未声明只读解析与无代码推断边界")
 if 'documentation_verification.py' not in ops or '非阻断' not in ops:
     raise SystemExit("documentation-verification 未声明只读与非阻断边界")
-if 'parallel-readiness.py' not in ops:
-    raise SystemExit("parallel-readiness 未调用共享分析脚本")
-if '--refresh' not in ops or '用户确认' not in ops:
-    raise SystemExit("parallel-readiness 未要求用户确认 --refresh")
-if 'UserPromptSubmit' in ops:
-    raise SystemExit("parallel-readiness 不得接入 UserPromptSubmit hook")
-if 'parallel-safety-gate.py' not in ops or 'manual-parallel-eligible' not in ops:
-    raise SystemExit("parallel-safety-gate 必须声明共享入口与保守分类")
-preflight_start = ops.find("## `parallel-subagent-preflight`")
-preflight_end = ops.find("\n## `", preflight_start + 1)
-preflight = ops[preflight_start:preflight_end if preflight_end != -1 else None]
-for token in ("用户明确确认", "spawn_agent", "只读", "父会话", "等待", "汇总", "parallel-safety-gate.py", "manual-parallel-eligible", "parallel-guidance"):
-    if token not in preflight:
-        raise SystemExit(f"parallel-subagent-preflight 缺少必要约束：{token}")
-for forbidden in ("创建顶层任务", "自动创建 worktree", "并行写入代码"):
-    if forbidden in preflight:
-        raise SystemExit(f"parallel-subagent-preflight 不得承诺：{forbidden}")
 if '确认' not in ops:
     raise SystemExit("teardown 未要求用户确认")
 if 'initiative-lifecycle.sh' not in ops or 'lifecycle' not in ops:
@@ -193,24 +176,12 @@ for operation in ("sync-map", "next", "deliver"):
     if f"`{operation}`" not in ops or "spec-github-bridge" not in ops:
         raise SystemExit(f"{operation} 未委派给 spec-github-bridge")
 
-for operation in ("parallel-execute", "parallel-integrate", "parallel-reclaim", "parallel-register-worker", "parallel-status"):
-    if ops.count(f"## `{operation}`") != 1:
-        raise SystemExit(f"操作 {operation} 必须有唯一入口")
-for token in ("PARALLEL_WRITES_DISABLED", "--details --format json", "recordedState", "完成与可回收性未核验", "无任务绑定的 canonical next/deliver"):
-    if token not in ops:
-        raise SystemExit(f"缺少并行暂停与只读路由约束：{token}")
-if "宿主可回收" in ops:
-    raise SystemExit("不能把 host ownership 当成可回收证据")
-
 if "find ~/.claude/plugins" in bridge:
     raise SystemExit("bridge 不得猜测 ~/.claude/plugins 中的 digest 路径")
 if "spec-digest:" not in bridge:
     raise SystemExit("bridge 未要求 hook 注入 spec-digest 事实")
 if "停止" not in bridge or "spec-guard 未加载" not in bridge:
     raise SystemExit("bridge 未在 digest 事实缺失时明确停止")
-for token in ("parallel-subagent-preflight", "Codex 专用", "用户明确确认", "只读预检", "不等于隔离 worktree"):
-    if token not in readme:
-        raise SystemExit(f"README 缺少子智能体预检边界说明：{token}")
 PY
 }
 

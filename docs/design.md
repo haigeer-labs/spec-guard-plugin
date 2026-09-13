@@ -9,7 +9,7 @@
 
 `addyosmani/agent-skills` 是一套优秀的工程流程 skill 集合，但在三个场景下会失效：
 
-### 场景 1：多需求并行时产物互相覆盖
+### 场景 1：多模块需求时产物互相覆盖
 
 `spec-driven-development` 的 **Phase 0** 支持多模块——检测到一个需求包含多个
 独立可测能力时，会产出能力图并按 module id 生成 `SPEC-identity.md`、
@@ -381,4 +381,4 @@ verify 的图外文件判据复用历史 schema/摘要验证和图解析：完�
 从能力图一次性取得复制/清理集合，并在删除当前产物前验证历史证据；不批量整理旧产物。
 
 串行阶段检查点唯一规则见 `plugins/spec-guard/references/workflow-checkpoints.md`；入口只引用，
-不复制五项说明。预告必须服从本轮实际路径与授权；取消使旧预告失效，继续不能恢复暂停的并行 initiative。
+不复制五项说明。预告必须服从本轮实际路径与授权；取消使旧预告失效，继续不能恢复暂停的 initiative。

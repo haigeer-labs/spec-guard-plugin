@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.12.0"
+  },
+  "records": [
+    {
+      "subject": "spec-guard-source",
+      "status": "source-verified",
+      "target": {
+        "kind": "source-checkout",
+        "id": "candidate:0.12.0;branch:codex/remove-parallel-workflow;worktree:uncommitted"
+      },
+      "observedAt": "2026-09-13T09:40:26Z",
+      "evidence": [
+        "command:bash scripts/validate.sh",
+        "command:bash plugins/spec-guard/hooks/test-audit-map-consistency.sh --selftest",
+        "command:bash plugins/spec-guard/hooks/test-capability-history.sh",
+        "command:python3 plugins/spec-guard/hooks/capability-history.py audit spec/CAPABILITY-HISTORY.json .",
+        "result:102 raw historical findings retained; 102 corrected; 0 unresolved",
+        "result:all local source checks passed; no package, installed-host, or tracker-project claim"
+      ]
+    }
+  ]
+}

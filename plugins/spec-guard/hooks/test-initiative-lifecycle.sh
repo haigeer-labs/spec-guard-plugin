@@ -163,5 +163,40 @@ else
   bad "反：越界 initiative 可写入项目外路径"
 fi
 
+# 清理阶段失败时，不能先把 completed/paused 事件记进账本，更不能留下半个 checkpoint。
+CLEANUP_PROJECT="$TMP/cleanup-failure-project"
+mkdir -p "$CLEANUP_PROJECT/spec" "$CLEANUP_PROJECT/tasks/alpha" "$CLEANUP_PROJECT/tasks/beta" "$CLEANUP_PROJECT/.agent" "$TMP/fake-rm-bin"
+printf '# Capability Map: Cleanup\n\n## 模块\n\n| Module id | Responsibility | Depends on |\n| --- | --- | --- |\n| alpha | Alpha | — |\n| beta | Beta | alpha |\n' > "$CLEANUP_PROJECT/spec/CAPABILITY-MAP.md"
+printf '# Alpha\n' > "$CLEANUP_PROJECT/spec/alpha.md"
+printf '# Beta\n' > "$CLEANUP_PROJECT/spec/beta.md"
+printf '# Plan\n' > "$CLEANUP_PROJECT/tasks/alpha/plan.md"
+printf '# Beta plan\n' > "$CLEANUP_PROJECT/tasks/beta/plan.md"
+printf '{"activeModule":"alpha","modules":{"alpha":{"issue":1},"beta":{"issue":2}}}\n' > "$CLEANUP_PROJECT/.agent/state.json"
+cat > "$TMP/fake-rm-bin/rm" <<'STUB'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in */spec/beta.md) exit 1 ;; esac
+done
+exec /bin/rm "$@"
+STUB
+chmod +x "$TMP/fake-rm-bin/rm"
+CLEANUP_OUTPUT="$(PATH="$TMP/fake-rm-bin:$PATH" \
+    "$LIFECYCLE" pause --project "$CLEANUP_PROJECT" --initiative cleanup-failure 2>&1)"
+CLEANUP_STATUS=$?
+if [ "$CLEANUP_STATUS" -ne 0 ] \
+  && [ -f "$CLEANUP_PROJECT/spec/CAPABILITY-MAP.md" ] \
+  && [ -f "$CLEANUP_PROJECT/spec/alpha.md" ] \
+  && [ -f "$CLEANUP_PROJECT/spec/beta.md" ] \
+  && [ -f "$CLEANUP_PROJECT/tasks/alpha/plan.md" ] \
+  && [ -f "$CLEANUP_PROJECT/tasks/beta/plan.md" ] \
+  && [ -f "$CLEANUP_PROJECT/.agent/state.json" ] \
+  && [ ! -f "$CLEANUP_PROJECT/spec/CAPABILITY-HISTORY.json" ] \
+  && ! has_glob "$CLEANUP_PROJECT/spec/history/cleanup-failure/*/CAPABILITY-MAP.md"; then
+  ok "反：清理失败时恢复当前产物且不记录事件或残留 checkpoint"
+else
+  bad "反：清理失败后留下半归档或错误 lifecycle 状态"
+  printf '    cleanup status=%s output=%s\n' "$CLEANUP_STATUS" "$CLEANUP_OUTPUT"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

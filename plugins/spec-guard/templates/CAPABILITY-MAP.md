@@ -20,6 +20,8 @@
 
 Build order: example-a → example-b
 
+<!-- Spec Guard 按严格串行推进。为兼容上游格式，逗号分组会按左到右顺序展开为单模块步骤，不代表并行授权。 -->
+
 ---
 
 ## 评审记录

@@ -557,6 +557,28 @@ chk "module id=a 时 master 不算模块分支（子串陷阱）" "TASK_CLAIMED|
 
 export PATH="$OLDPATH"
 
+# UserPromptSubmit 每轮都会运行；远端 API 卡住不能把整个对话 hook 一并拖住。
+mkdir -p "$TMP/slow-gh-bin"
+cat > "$TMP/slow-gh-bin/gh" <<'STUB'
+#!/bin/bash
+sleep 3
+printf '[]\n'
+STUB
+chmod +x "$TMP/slow-gh-bin/gh"
+mod_repo
+START="$(python3 -c 'import time; print(time.monotonic())')"
+PATH="$TMP/slow-gh-bin:$PATH" ctx >/dev/null
+if python3 - "$START" <<'PY'
+import sys
+import time
+raise SystemExit(0 if time.monotonic() - float(sys.argv[1]) < 2.6 else 1)
+PY
+then
+  printf '  ✅ GitHub sub-issue 查询超时不会阻塞 hook\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ GitHub sub-issue 查询超时仍阻塞 hook\n'; FAIL=$((FAIL+1))
+fi
+
 # ── 「刻意空闲」豁免必须覆盖本地模式 ───────────────────────
 # 0.7.12 之前这条豁免排在 tracker 分支**之后**，tracker=none 根本够不到，
 # 落进本地模式分支报出「有 spec 但没有 tasks//plan.md」+「/plan 为 [] 拆解任务」

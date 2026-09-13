@@ -58,6 +58,7 @@ python3 scripts/check-grep-pipe.py $(find . -name "*.sh" -not -path "./.git/*") 
 echo ""
 echo "═══ 用户可见输出里的命令名 ═══"
 python3 scripts/check-command-names.py || F=1
+python3 scripts/check-no-parallel-surface.py || F=1
 
 echo ""
 echo "═══ 校验器自身的回归 ═══"
@@ -115,14 +116,6 @@ echo ""
 
 echo "═══ Codex 适配器回归 ═══"
 /bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
-echo ""
-
-echo "═══ 并行写入隔离与只读诊断回归 ═══"
-for suite in audit-safety-containment parallel-execution-ledger parallel-worktree-runtime \
-             parallel-cli-execution parallel-workflow-integration desktop-worker-registration \
-             parallel-readiness parallel-safety-gate parallel-guidance; do
-  /bin/bash "plugins/spec-guard/hooks/test-${suite}.sh" || F=1
-done
 echo ""
 
 echo "═══ Codex 真实宿主 smoke 判决器自检（不调用 Codex）═══"

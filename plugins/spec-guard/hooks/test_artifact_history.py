@@ -29,11 +29,9 @@ class ArtifactHistoryTests(unittest.TestCase):
 
     def test_snapshot_verified_and_map_only_history_are_distinct(self):
         self.add('history-ledger')
-        self.add('parallel-readiness')
         p = self.verify()
         self.assertEqual(p.returncode, 0, p.stdout)
         self.assertIn('历史内容已验证: history-ledger', p.stdout)
-        self.assertIn('历史归属可证，内容未验证: parallel-readiness', p.stdout)
 
     def test_orphan_and_modified_historical_content_fail(self):
         (self.root / 'spec/orphan.md').write_text('# orphan\n')
@@ -48,8 +46,8 @@ class ArtifactHistoryTests(unittest.TestCase):
         self.assertIn('历史内容不符: history-ledger', p.stdout)
 
     def test_broken_history_cannot_fall_back_to_unverified(self):
-        self.add('parallel-readiness')
-        path = self.root / 'spec/history/parallel-readiness-guidance/20260903T210029Z-0001/CAPABILITY-MAP.md'
+        self.add('history-ledger')
+        path = self.root / 'spec/history/capability-history/20260903T074408Z-0001/CAPABILITY-MAP.md'
         path.write_text(path.read_text() + '\nchanged\n')
         p = self.verify()
         self.assertEqual(p.returncode, 1)

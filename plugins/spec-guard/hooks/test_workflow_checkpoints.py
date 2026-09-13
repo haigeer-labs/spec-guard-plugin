@@ -24,7 +24,7 @@ class CheckpointContractTests(unittest.TestCase):
         text=(self.plugin/'references/workflow-checkpoints.md').read_text()
         for scenario in ('设计 → 计划','计划 → 实现','实现 → 验证','验证失败','交付前','权限被拒绝','结果未知','取消或暂停'):
             self.assertIn(scenario,text)
-        for rule in ('不重复','最近一次','失效','并行','无需确认'):
+        for rule in ('不重复','最近一次','失效','无需确认'):
             self.assertIn(rule,text)
 
 

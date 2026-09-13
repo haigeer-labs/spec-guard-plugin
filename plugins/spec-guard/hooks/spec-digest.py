@@ -46,7 +46,7 @@ def parse_map(path):
     goal_text: `## 目标` 一节的正文；没有这一节时为 None
     """
     # 历史能力图不一定有 Build order；digest 只需稳定复现既有行与目标段语义，
-    # 因此使用共享解析器的兼容模式，而新的并行分析器使用严格模式。
+    # 因此使用共享解析器的兼容模式，而新入口使用严格模式。
     parsed = parse_capability_map(path, validate_graph=False)
     rows = [(row.module_id, row.normalized_row) for row in parsed.rows]
     return rows, parsed.goal

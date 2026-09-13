@@ -6,8 +6,10 @@
 
 1. 确认 Claude 与 Codex manifest 的版本一致。
 2. 按用户影响更新 `CHANGELOG.md`。
-3. 运行 `/bin/bash scripts/validate.sh` 与受改动面影响的聚焦测试。
-4. 若修改 Codex manifest、hook 或技能，运行 `/bin/bash evals/codex-plugin-smoke.sh --selftest`。
+3. 若存在破坏性行为变更，先提供迁移指南；严格串行变更见
+   [migration-strict-serial.md](migration-strict-serial.md)。
+4. 运行 `/bin/bash scripts/validate.sh` 与受改动面影响的聚焦测试。
+5. 若修改 Codex manifest、hook 或技能，运行 `/bin/bash evals/codex-plugin-smoke.sh --selftest`。
 
 ## 发布
 

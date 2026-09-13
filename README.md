@@ -34,6 +34,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 | [docs/claude-desktop.md](docs/claude-desktop.md) | Claude Desktop 的 MCPB 安装、工具权限与四端支持矩阵 |
 | [docs/maintainer-workflow.md](docs/maintainer-workflow.md) | 维护者的验证矩阵、本地 Codex 安装与真实 smoke |
 | [docs/release-process.md](docs/release-process.md) | 发版步骤，以及开发副本与已安装副本的同步核对 |
+| [docs/migration-strict-serial.md](docs/migration-strict-serial.md) | 移除并行工作流后的能力图、命令与宿主会话迁移步骤 |
 | [docs/releases/README.md](docs/releases/README.md) | 发布证据状态、宿主矩阵与新安装/升级记录模板 |
 | [CLAUDE.md](CLAUDE.md) | 开发本插件的 agent 配置 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
@@ -46,7 +47,7 @@ Codex 需要已适配的 agent-skills、已登录的 Codex 与已信任的插件
 `agent-skills` 是一套优秀的工程流程 skill，但在三个场景下会失效。每条都对应上游
 源码的具体位置（详见 [docs/upstream-analysis.md](docs/upstream-analysis.md)）。
 
-### ① 多需求并行时产物互相覆盖
+### ① 多模块需求时产物互相覆盖
 
 `spec-driven-development` 的 Phase 0 支持多模块，会生成能力图和
 `SPEC-identity.md`、`SPEC-billing.md`。**但下游没跟上**：
@@ -302,7 +303,7 @@ mkdir -p spec tasks .agent
 
 该入口不认证、不激活 tracker；`--dry-run` 永远不写。安装初始空 state 与工作上下文分开，
 不会为消除提示伪造 Issue。图外 spec 有完整历史快照时验证摘要；只有已结束历史图归属时明确标记
-内容未验证；孤儿或已知快照不符仍失败。阶段交接遵循共享检查点预告，普通“继续”不恢复暂停的并行 initiative。
+内容未验证；孤儿或已知快照不符仍失败。阶段交接遵循共享检查点预告，普通“继续”不恢复暂停的 initiative。
 
 
 ### 4. 建 `spec/CAPABILITY-MAP.md`
@@ -370,12 +371,6 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 | `/spec-guard:phase` | 查看当前链路状态和断链项 |
 | `/spec-guard:roadmap [--all]` | 按需查看正常流程、当前位置、检查点、完成条件与 Git/worktree 上下文；`--all` 才展开活跃能力图 |
 | `/spec-guard:verify-artifacts` | 校验已落地的产物是否符合约定 |
-| `/spec-guard:parallel-readiness` | 只读分析能力图中的并行候选；默认不联网，`--refresh` 须经确认且仍不等于安全并行 |
-| `/spec-guard:parallel-safety-gate` | 审查显式路径/API/资源边界；仅 `manual-parallel-eligible`，不自动执行 |
-| `/spec-guard:parallel-guidance` | 为可人工并行模块生成 worker 命名与汇合清单；不自动创建或回收 |
-| `/spec-guard:parallel-status` | 只读检查旧 run/worker/进程记录；查询失败返回非零，旧完成记录显示未核验 |
-| `/spec-guard:parallel-execute`、`parallel-integrate`、`parallel-reclaim`、`parallel-register-worker` | 实验性写操作已暂停，返回 `PARALLEL_WRITES_DISABLED`，保留旧资源 |
-| `spec-guard-ops:parallel-subagent-preflight`（Codex） | 经用户确认后，以原生子智能体并行做模块只读预检；不并行写代码 |
 | `/spec-guard:sync-map` | 能力图 → 当前 tracker 的任务结构 |
 | `/spec-guard:next` | 取下一个可执行任务 |
 | `/spec-guard:deliver` | 五轴自查 → 开**模块级** PR（Closes #module-issue） |
@@ -386,8 +381,8 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 `spec/CAPABILITY-MAP.md` 与 `.agent/state.json` 的既有契约。
 
 - **校验历史**：`verify-history.sh` 是只读操作；没有账本时报告“未验证”，不会把旧项目当作失败。
-- **语义审计**：`capability-history.py audit <ledger> <project>` 只读比对 checkpoint map 与账本主张；没有可采信来源的状态或时间报告为 `unknown`，不会猜测或写入。
-- **历史补正**：`capability-history.py correct --confirm <ledger> <audit-report> <correction>` 仅在明确确认后追加带审计报告哈希、来源、原值、修正值和审计时间的 `history-correction` 记录；绝不重写 checkpoint。
+- **语义审计**：`capability-history.py audit <ledger> <project>` 只读比对 checkpoint map 与账本主张；没有可采信来源的状态或时间报告为 `unknown`，不会猜测或写入。每个原始 finding 标记为 `corrected` 或 `unresolved`，摘要单列未解决数量。
+- **历史补正**：`capability-history.py correct --confirm <ledger> <audit-report> <correction>` 仅在明确确认后追加带审计报告哈希、来源、原值、修正值和审计时间的 `history-correction` 记录；绝不重写 checkpoint。补正只标记精确匹配的原始 finding，不隐藏历史事实。
 - **迁移预览**：`history-migration.py preview <project>` 只列出旧根目录证据和冲突，不写文件。
 - **迁移导入**：`history-migration.py import --confirm <project>` 必须经用户确认；它创建新的 checkpoint 与账本，但绝不修改旧 spec、plan、state 或 Git 历史。
 - **暂停、恢复与终态**：通过共享 lifecycle 入口执行；真实操作先要求确认，`--dry-run` 仅预览。
@@ -395,45 +390,10 @@ Claude Code 中，Spec Guard 插件命令均为 `/spec-guard:<命令>`；`/spec`
 Codex 使用 `spec-guard-ops` 的 `verify-history`、`audit-history`、`correct-history`、`history-migration` 与 `lifecycle`
 操作；Claude 使用相同的 hook 脚本。这样两个宿主保持一致的只读和确认语义。
 
-`parallel-readiness` 在两个宿主中都是显式调用的只读分析，不挂在对话 hook 上。它只会
-标出同一依赖层的 `candidate-only` 模块组；用户明确确认联网刷新后才可用 `--refresh`
-验证默认分支的新鲜度。候选组仍需后续安全审查，插件不会自动创建或回收 worktree、任务
-或子代理。
-
-能力图的 `Build order` 允许 `identity → billing, notifications → reporting` 这样的并列组：
-它只约束组间先后和稳定展示/创建顺序，**不**把组内的逗号顺序变成依赖。真正的依赖只来自
-`Depends on`，readiness 再按该依赖计算层级；因此即使两个独立模块在线性 Build order 中相邻，
-也最多是 `candidate-only`。严格图校验失败时，同步预览、GitLab 同步与 GitHub/Codex 的新建或
-补充入口都会停止；摘要的表格行序仍只用于旧摘要兼容，不可用作执行顺序。
-
-安全门要求每个候选模块在 `spec/<module-id>.md` 提供五字段 `Parallel Boundary` JSON。
-它以路径组件比较 `src/`、`./src`、`src//`、`.` 等等价写法，保留原始值与规范值供审阅；
-`src` 不会和 `src-old` 混淆。父目录穿越、绝对/盘符/UNC、反斜杠、通配符、控制字符、空路径、
-大小写或 Unicode 别名、符号链接、权限/平台不确定性都会降级为 `needs-review`。
-未创建的普通路径可作词法声明比较，但报告会说明这不证明物理隔离、实际 diff、测试资源或运行时资源安全。
-
-`parallel-subagent-preflight` 是 **Codex 专用** 操作：只有 safety gate 合格且用户明确确认后，
-当前父会话才会创建原生子智能体进行**只读预检**，再等待并汇总结果。它不等于隔离 worktree，也不等于允许并行写入代码；没有原生子智能体能力时，流程会回退到
-`parallel-guidance` 的人工 worktree 指引。
-
-本分支的审计整改暂停了实验性并行写操作，包括创建 run/lease/worktree、启动 CLI Agent、Desktop 登记、
-汇合与回收；完整自动并行执行器尚未提供。该变化尚未发布，已安装版本不会随源码提交自动更新。
-普通串行工作流及只读 readiness/safety/guidance 保留。详情见 [Desktop 与旧 worker 处理](docs/claude-desktop.md#desktop-原生-worktree-worker-登记)。
-
-| 使用方式 | 本次整改后的并行能力边界 |
-|---|---|
-| Codex CLI | ops 提供只读诊断；写入口统一暂停 |
-| Codex 桌面版 | 使用相同 ops 与脚本；写入口统一暂停 |
-| Claude Code CLI | slash 命令提供只读诊断；写入口统一暂停 |
-| Claude Code 桌面会话 | 加载本插件时使用相同拒绝边界；本轮未做原生 UI 完整验收 |
-
-Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行或旧 worker 状态工具。
-上述源码与命令回归不等于四端原生 E2E 或安装验收。
-
-升级前先保存已有成果，核对仍运行的任务；由用户决定停止或重启宿主会话，并确认新版本确实加载。
-新代码不会停止旧进程，也不能接管已经加载旧版本的会话。保留旧 ledger、分支和 worktree，勿直接删除
-账本或回退到已知不安全版本以继续实验写流程。旧 `completed` 仅代表记录中的进程退出成功；
-`claimed` 和 `owner=host` 都不证明已验收或可回收。查询成功仅表示读取成功。
+Spec Guard 按 `Build order` 严格串行推进，例如 `identity → billing → notifications → reporting`：
+它定义模块的唯一推进顺序，`Depends on` 仍用于校验该顺序满足依赖。为兼容上游能力图，逗号分组仍可
+输入；`identity → billing, notifications → reporting` 会确定性地展开为 `identity → billing →
+notifications → reporting`，不构成并行授权。摘要的表格行序仅用于旧摘要兼容，不可用作执行顺序。
 
 ### 典型流程
 
@@ -492,7 +452,7 @@ Claude Desktop 的 MCPB 是另外的接入方式，目前不提供并行执行�
 `/phase` 只提供紧凑的自动摘要；需要完整视图时才调用 `/spec-guard:roadmap`。路线图先展示
 上游的正常阶段，再展示当前 Initiative/模块、下一动作与下一检查点、完成条件和证据边界。
 它不计算百分比或 ETA，不创建任务/Issue/PR，不修改 state，也不把分支、linked worktree 或
-独立端口误作模块绑定、任务领取或并行写入授权。
+独立端口误作模块绑定或任务领取授权。
 
 ### 阶段
 
@@ -617,7 +577,7 @@ MODULE_DONE       模块的 sub-issue 建过、且全部关闭            → /n
 
 ## 已知限制
 
-1. **GitLab 任务层使用受控选择而非全局并行器。** 当前 worktree 必须显式绑定 initiative 与
+1. **GitLab 任务层使用受控选择。** 当前 worktree 必须显式绑定 initiative 与
    module；binding 是本地上下文，不是跨机器 lease，也不创建 Agent/worktree。GitLab 使用平面
    Issue 与 Merge Request；`relates_to` 只表示关联，不代表父子、阻塞或锁。真实 GitLab 实例的
    写入 E2E 作为发布证据单独验收，离线桩测试不替代它。

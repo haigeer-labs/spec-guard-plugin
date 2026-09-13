@@ -14,10 +14,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/hooks/capability-history.py" audit "$LEDGER" "$PR
 ```
 
 审计报告中的 `unknown` 不是失败时可以猜测补齐的值。它表示现有证据无法支撑历史主张；
-不要从当前 `activeModule`、文件名或当前时间推断责任、依赖、状态或历史时间。
+不要从当前 `activeModule`、文件名或当前时间推断责任、依赖、状态或历史时间。每条原始
+finding 都带 `resolution: corrected | unresolved`；补正不会隐藏原始 finding，应以 summary 的
+`unresolvedFindings` 与 `unresolvedByCode` 作为待处理缺口。
 
 `correct` 是写操作。只有用户明确确认该次补正后，才允许调用；它会向账本追加
-`history-correction` 记录，绝不重写 checkpoint。`<audit-report.json>` 和
+`history-correction` 记录，绝不重写 checkpoint。它只会标记原值、修正值与身份均精确匹配的
+audit finding 为 `corrected`。`<audit-report.json>` 和
 `<correction.json>` 必须是用户审阅过的文件，补正必须包含原值、修正值、审计报告哈希、
 审计时间、`initiativeId`、`eventIndex`、对应的 `checkpointId`（无 checkpoint 时为
 `null`）与 audit finding：

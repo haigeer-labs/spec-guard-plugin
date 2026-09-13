@@ -1,6 +1,6 @@
 {
   "name": "spec-guard",
-  "version": "0.11.3",
+  "version": "0.12.0",
   "description": "为 addyosmani/agent-skills 补上多模块 Spec 支持、GitHub / GitLab Issue 打通、以及链路断裂检测。",
   "author": {
     "name": "haigeer-labs"

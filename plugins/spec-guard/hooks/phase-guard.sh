@@ -513,11 +513,30 @@ fi
 
 # ── 4. GitHub 层 ───────────────────────────────────────────
 OPEN_TASKS="?"; TOTAL_TASKS="?"; ASSIGNED=""; GH_OK=false
-if [ "$LOCAL_STAGE" = absent ] && command -v gh >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
+github_sub_issues() {
+  python3 - "$1" <<'PY'
+import subprocess
+import sys
+
+try:
+    result = subprocess.run(
+        ["gh", "api", "repos/{owner}/{repo}/issues/%s/sub_issues" % sys.argv[1]],
+        capture_output=True,
+        text=True,
+        timeout=2,
+    )
+except (OSError, subprocess.TimeoutExpired):
+    raise SystemExit(1)
+if result.returncode == 0:
+    sys.stdout.write(result.stdout)
+PY
+}
+if [ "$LOCAL_STAGE" = absent ] && command -v gh >/dev/null 2>&1 \
+  && command -v python3 >/dev/null 2>&1 && [ -n "$MODULE_ISSUE" ]; then
   # 必须用 REST sub_issues：`gh issue list` **没有** --parent 这个 flag
   # （--parent 只在 gh issue create 上）。早期版本用了它，结果每次都失败、
   # 静默落进「gh 不可用」降级分支 —— GitHub 层从来没真正跑过。
-  RAW=$(gh api "repos/{owner}/{repo}/issues/${MODULE_ISSUE}/sub_issues" 2>/dev/null) || RAW=""
+  RAW=$(github_sub_issues "$MODULE_ISSUE" 2>/dev/null) || RAW=""
   if [ -n "$RAW" ]; then
     GH_OK=true
     # REST 返回所有状态，要自己筛 open

@@ -7,8 +7,9 @@
 本文件配置的是插件作者仓库，不是给使用者复制到项目中的约定。使用者的模板在
 `plugins/spec-guard/templates/claude-block-*.md`，由 `/setup-convention` 写入。
 
-不要在本仓库写入会激活 phase-guard 的声明块，也不要创建活跃的
-`.agent/state.json`。两者都会让插件检查自己的源码仓库，产生无意义的自引用状态。
+本仓库用 spec-guard 管理自身开发：`AGENTS.md` 的 Codex 约定块、`spec/`、`tasks/`
+与 `.agent/` 是有意保留的激活信号，phase-guard 在这里报告的是本仓库自己的 initiative
+状态。它运行的是**已安装版**插件，不是工作区源码，其输出不能当作产品回归结果。
 需要验证插件行为时，使用 `evals/codex-plugin-smoke.sh` 建立的临时消费者项目。
 
 ## 插件目的

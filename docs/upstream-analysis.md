@@ -103,6 +103,9 @@ agents/    commands/  docs/  evals/  hooks/  references/  scripts/  skills/
 Build order: identity → billing, notifications → reporting
 ```
 
+这是上游格式的原始示例。Spec Guard 保留该输入兼容性，但不提供并行执行：逗号分组会按书写顺序
+展开为单模块串行步骤。
+
 **三条约束**（第 59-63 行）：
 
 > - **Stable module ids.** Kebab-case, chosen once, never renamed mid-initiative.

@@ -156,7 +156,9 @@ LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
 python3 "$ROOT/hooks/capability-history.py" audit "$LEDGER" "$PROJECT"
 ```
 
-审计发现不授权猜测或覆盖历史值。应先向用户说明每项证据缺口。
+审计发现不授权猜测或覆盖历史值。每条原始 finding 都标记为 `corrected` 或 `unresolved`；
+原始 finding 不会因补正而消失，后续行动应优先依据 summary 的 `unresolvedFindings` 与
+`unresolvedByCode`。应先向用户说明每项证据缺口。
 
 ## `correct-history`
 
@@ -169,9 +171,9 @@ python3 "$ROOT/hooks/capability-history.py" correct --confirm \
 
 `AUDIT_REPORT` 和 `CORRECTION` 必须由用户审阅；后者须含 audit report 的 SHA-256、
 来源、原值、修正值、审计时间以及 `initiativeId`、`eventIndex`、`checkpointId`。
-该操作只追加 `history-correction` 事件，绝不重写
-checkpoint。没有 `--confirm`、哈希不匹配、证据不充分或把 `unknown` 升级为 `completed`
-时停止并不写入。
+该操作只追加 `history-correction` 事件，绝不重写 checkpoint；精确匹配的 audit finding 会在
+下一次审计中标为 `corrected`，但仍保留可见。没有 `--confirm`、哈希不匹配、证据不充分或把
+`unknown` 升级为 `completed` 时停止并不写入。
 
 ## `history-migration`
 
@@ -188,122 +190,6 @@ python3 "$ROOT/hooks/history-migration.py" import --confirm "$PROJECT"
 ```
 
 不要自行写入或修改旧 spec、plan、state 与 Git 历史。
-
-## `parallel-readiness`
-
-这是只读的并行开发候选分析：它只根据能力图依赖层和精确的默认分支 SHA 给出
-`candidate-only` 组，**不等于安全可并行**，也不会创建 worktree、分支、宿主子任务、
-Issue 或更改 `.agent/state.json`、`/next`、生命周期和 hook。
-
-默认使用本地已知的远端跟踪快照（报告会标明新鲜度未验证）：
-
-```bash
-python3 "$ROOT/hooks/parallel-readiness.py" --project "$PROJECT"
-```
-
-只有用户明确要求最新远端默认分支，且已完成用户确认允许联网刷新后，才追加
-`--refresh`：
-
-```bash
-python3 "$ROOT/hooks/parallel-readiness.py" --project "$PROJECT" --refresh
-```
-
-刷新失败时报告失败；不要回退成“最新”结论。无论哪种结果，都提示用户下一步需由
-parallel-safety-gate 审查路径、接口、迁移、配置和测试资源冲突。
-
-## `parallel-safety-gate`
-
-这是显式、只读的安全门；`manual-parallel-eligible` 不会自动创建或回收任何 worktree、
-任务、分支、Issue 或子代理，也不改 state、`/next` 或 hook：
-
-```bash
-python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
-```
-
-只有用户明确要求并确认联网刷新后才追加 `--refresh`。缺失边界声明或任意冲突必须报告
-`needs-review`/`sequential-required`，不得推荐自动并行。
-
-## `parallel-guidance`
-
-只为 `manual-parallel-eligible` 输出人工 worker 命名与汇合清单，不创建、管理或回收
-worktree、任务、分支或 Issue：
-
-```bash
-python3 "$ROOT/hooks/parallel-guidance.py" --project "$PROJECT"
-```
-
-用户明确确认联网刷新后才追加 `--refresh`；其余结果仅说明为何应人工审查或串行。
-
-## `parallel-subagent-preflight`
-
-这是 **Codex 专用的只读预检**，不是并行代码实现。先运行 safety gate：
-
-```bash
-python3 "$ROOT/hooks/parallel-safety-gate.py" --project "$PROJECT"
-```
-
-只在报告对目标候选组返回 `manual-parallel-eligible`、当前会话提供原生 `spawn_agent`
-工具、且用户**明确确认**要开启子智能体预检时，父会话才可以为每个模块调用一次
-`spawn_agent`。每个任务名使用 `sg-preflight-<module-id>`，提示首行使用
-`SG 自动并行预检｜<module-id>`，并要求子智能体：
-
-- 只读检查模块 spec、`Parallel Boundary`、依赖、实施风险与测试范围；
-- 不修改文件，不运行会写入的测试，不提交、不推送；
-- 不运行 `git worktree`、`git branch`、`git merge`、`git push`，也不创建 Issue、PR 或改 state；
-- 用简短结构化结果报告边界冲突、待澄清项和建议的串行/人工 worktree 下一步。
-
-父会话必须等待全部子智能体并汇总结果，明确说明“通过预检不等于授权并行写入”。
-子智能体共享父会话工作目录，不能被描述为隔离 worktree。
-
-若 safety gate 不合格、用户未确认、或原生 `spawn_agent` 工具不可用，停止预检：不模拟
-子智能体、不启动独立聊天，报告降级原因并运行既有 `parallel-guidance` 生成用户手动管理的
-隔离 worktree 指引。任何 `--refresh` 仍需用户明确确认后才可透传。
-
-## `parallel-execute`
-
-实验性并行执行写操作已暂停，使用下面的统一拒绝入口。
-
-## `parallel-integrate`
-
-实验性并行汇合写操作已暂停，使用下面的统一拒绝入口。
-
-## `parallel-reclaim`
-
-实验性并行回收写操作已暂停，使用下面的统一拒绝入口。
-
-## `parallel-register-worker`
-
-实验性 Desktop 登记写操作已暂停。上述四个写入口统一执行：
-
-```bash
-python3 - "$ROOT/hooks" <<'PY'
-import json, sys
-sys.path.insert(0, sys.argv[1])
-from parallel_execution_lib import ParallelWritesDisabled, reject_parallel_write
-try:
-    reject_parallel_write()
-except ParallelWritesDisabled as error:
-    print(json.dumps({"ok": False, "code": error.code, "message": str(error)}, ensure_ascii=False))
-    raise SystemExit(1)
-PY
-```
-
-返回 PARALLEL_WRITES_DISABLED，不因旧确认参数、候选组或历史记录重新开放。
-保存已有成果、worktree 和账本；不要编写替代脚本、创建宿主任务、重领或清理来绕过暂停。
-升级不停止旧会话中的进程，由用户在保存成果和核对任务后决定停止或重启。
-
-## `parallel-status`
-
-只读汇总。RUN 必须取用户明确提供的 run ID，不能从不明记录猜测：
-
-```bash
-python3 "$ROOT/hooks/parallel-execution.py" status \
-  --project "$PROJECT" --run "$RUN" --details --format json
-```
-
-如实展示总体 ok 和退出码，失败不能忽略。旧 completed 显示 unverified 与 recordedState；
-claimed 只说明历史领取记录存在。owner=host 显示“完成与可回收性未核验”，不要求插件进程记录。
-查询成功不表示任务验收成功；保留旧资源供人工核对。
 
 ## `teardown`
 

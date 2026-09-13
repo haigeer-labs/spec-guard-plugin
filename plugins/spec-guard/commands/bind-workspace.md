@@ -4,7 +4,7 @@ allowed-tools: Bash, Read
 ---
 
 阶段交接、确认或停止前，读取并遵循[共享检查点规则](../references/workflow-checkpoints.md)；按实际路径预告下一步，已有授权不重复询问。
-这是一次本地上下文绑定，不会创建 Agent、worktree、分支、Issue、MR 或并行执行器。
+这是一次本地上下文绑定，不会创建 Agent、worktree、分支、Issue 或 MR。
 它也不是跨 worktree/machine 的锁。
 
 若 state 含 `workflowStage`，本地验证或未知阶段不能绑定；说明当前上下文与下一步，

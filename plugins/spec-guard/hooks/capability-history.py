@@ -181,6 +181,13 @@ def check_correction(correction, initiatives):
             fail("invalid correction source")
 
 
+def correction_identity(item, before_key, after_key):
+    return (tuple(item.get(key) for key in
+                  ("initiativeId", "eventIndex", "checkpointId", "moduleId", "field")) +
+            (json.dumps(item.get(before_key), ensure_ascii=False, sort_keys=True),
+             json.dumps(item.get(after_key), ensure_ascii=False, sort_keys=True)))
+
+
 def validate_data(data):
     if not isinstance(data, dict) or data.get("schemaVersion") != 1:
         fail("unsupported capability history schema")
@@ -341,6 +348,9 @@ def audit(data, root_path):
     if not os.path.isdir(root):
         fail("project root is not a directory")
     findings = []
+    corrections = {}
+    for index, correction in enumerate(data.get("corrections", [])):
+        corrections[correction_identity(correction, "before", "after")] = index
 
     def report(initiative, event_index, checkpoint, field, code, message,
                module=None, expected=None, actual=None):
@@ -413,10 +423,23 @@ def audit(data, root_path):
                            module, "unknown", module["status"])
 
     counts = {}
+    unresolved_counts = {}
+    corrected = 0
     for finding in findings:
         counts[finding["code"]] = counts.get(finding["code"], 0) + 1
+        correction_index = corrections.get(correction_identity(finding, "actual", "expected"))
+        if correction_index is None:
+            finding["resolution"] = "unresolved"
+            unresolved_counts[finding["code"]] = unresolved_counts.get(finding["code"], 0) + 1
+        else:
+            finding["resolution"] = "corrected"
+            finding["correctionIndex"] = correction_index
+            corrected += 1
     return {"schemaVersion": 1, "readOnly": True, "findings": findings,
-            "summary": {"findings": len(findings), "byCode": counts}}
+            "summary": {"findings": len(findings), "byCode": counts,
+                        "correctedFindings": corrected,
+                        "unresolvedFindings": len(findings) - corrected,
+                        "unresolvedByCode": unresolved_counts}}
 
 
 def load_json(path, description):

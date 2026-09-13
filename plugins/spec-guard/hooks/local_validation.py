@@ -1,4 +1,4 @@
-"""Read-only local-validation context; never grants task or worker authority."""
+"""Read-only local-validation context; never grants task authority."""
 import json
 from pathlib import Path
 import sys

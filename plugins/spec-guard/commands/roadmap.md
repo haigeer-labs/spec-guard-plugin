@@ -33,4 +33,4 @@ gh auth status --hostname github.com
 
 如脚本报告 Initiative、能力图或当前模块无法唯一确认，原样说明不确定性；不要通过文件新旧、分支名、
 模块数量或 Issue 编号猜测。`linked worktree`、分支和 detached HEAD 仅说明代码执行位置，不是模块
-绑定、任务领取或并行写入授权。`local-validation` 下不得建议 tracker 同步、领取、绑定或交付。
+绑定或任务领取授权。`local-validation` 下不得建议 tracker 同步、领取、绑定或交付。

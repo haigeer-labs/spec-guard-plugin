@@ -1297,5 +1297,1889 @@
         }
       ]
     }
+  ],
+  "corrections": [
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 0,
+      "checkpointId": "19700101T000000Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "imported",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-ledger",
+      "field": "responsibility",
+      "before": "history-ledger",
+      "after": "定义并维护 `spec/CAPABILITY-HISTORY.json`：initiative 生命周期事件、能力图 checkpoint、模块关系和证据索引。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-ledger",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "initiative-lifecycle",
+      "field": "responsibility",
+      "before": "initiative-lifecycle",
+      "after": "安全地创建、暂停、恢复、完成、放弃或替代 initiative；每次切换保留可恢复 checkpoint。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "initiative-lifecycle",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "history-ledger"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "initiative-lifecycle",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-verification",
+      "field": "responsibility",
+      "before": "history-verification",
+      "after": "校验当前与历史两条产物链，发现 orphan、缺失或被篡改的历史证据，同时避免假阳性。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-verification",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "history-ledger"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-verification",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-migration",
+      "field": "responsibility",
+      "before": "history-migration",
+      "after": "从旧根目录产物、旧 state 与 Git 历史生成可审阅迁移预览，并保守导入旧记录。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-migration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "history-ledger"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-migration",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-workflow-integration",
+      "field": "responsibility",
+      "before": "history-workflow-integration",
+      "after": "接入 Claude/Codex 操作入口、`/sync-map` 防线、模板、文档和完整回归；不复制共享业务逻辑。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-workflow-integration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "initiative-lifecycle",
+        "history-verification",
+        "history-migration"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "capability-history",
+      "eventIndex": 1,
+      "checkpointId": "20260903T074408Z-0001",
+      "moduleId": "history-workflow-integration",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-detection",
+      "field": "responsibility",
+      "before": "tracker-detection",
+      "after": "根据显式配置、远端与已认证 CLI 探测 GitLab、GitHub 或本地模式；探测失败不得误判为另一平台",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-detection",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "responsibility",
+      "before": "gitlab-workflow",
+      "after": "定义 GitLab Issue、关联和 Merge Request 的命令契约与能力降级；保留可审计的任务映射",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-detection"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "responsibility",
+      "before": "tracker-routing",
+      "after": "让 hook、设置命令和 skills 将 GitHub、GitLab、本地项目路由到相应实现，并保持 GitHub 兼容",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-detection",
+        "gitlab-workflow"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "responsibility",
+      "before": "gitlab-e2e",
+      "after": "在 hqdf/web/x9-live-player 上验证自动识别、Issue、MR、清理及降级提示",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-routing"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 0,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-detection",
+      "field": "responsibility",
+      "before": "tracker-detection",
+      "after": "根据显式配置、远端与已认证 CLI 探测 GitLab、GitHub 或本地模式；探测失败不得误判为另一平台",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-detection",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "responsibility",
+      "before": "gitlab-workflow",
+      "after": "定义 GitLab Issue、关联和 Merge Request 的命令契约与能力降级；保留可审计的任务映射",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-detection"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-workflow",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "responsibility",
+      "before": "tracker-routing",
+      "after": "让 hook、设置命令和 skills 将 GitHub、GitLab、本地项目路由到相应实现，并保持 GitHub 兼容",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-detection",
+        "gitlab-workflow"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "tracker-routing",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "responsibility",
+      "before": "gitlab-e2e",
+      "after": "在 hqdf/web/x9-live-player 上验证自动识别、Issue、MR、清理及降级提示",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "tracker-routing"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-tracker-support",
+      "eventIndex": 1,
+      "checkpointId": "20260903T153239Z-0001",
+      "moduleId": "gitlab-e2e",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 0,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 0,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": "claude-desktop-mcp",
+      "field": "responsibility",
+      "before": "claude-desktop-mcp",
+      "after": "提供 Claude Desktop 可配置的本地 stdio MCP Server，封装 phase、verify、verify-history 与 GitHub/GitLab sync-map 预览，并对写操作强制确认。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 0,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": "claude-desktop-mcp",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 1,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 1,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": "claude-desktop-mcp",
+      "field": "responsibility",
+      "before": "claude-desktop-mcp",
+      "after": "提供 Claude Desktop 可配置的本地 stdio MCP Server，封装 phase、verify、verify-history 与 GitHub/GitLab sync-map 预览，并对写操作强制确认。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "70",
+      "eventIndex": 1,
+      "checkpointId": "20260903T185103Z-0001",
+      "moduleId": "claude-desktop-mcp",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-readiness-guidance",
+      "eventIndex": 0,
+      "checkpointId": "20260903T210029Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-readiness-guidance",
+      "eventIndex": 1,
+      "checkpointId": "20260903T210029Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 0,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 0,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": "parallel-subagent-preflight",
+      "field": "responsibility",
+      "before": "parallel-subagent-preflight",
+      "after": "在 Codex 专用操作 Skill 中把合格安全门结果转为经确认的只读原生子智能体预检、父会话汇总与宿主降级说明",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 0,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": "parallel-subagent-preflight",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 1,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 1,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": "parallel-subagent-preflight",
+      "field": "responsibility",
+      "before": "parallel-subagent-preflight",
+      "after": "在 Codex 专用操作 Skill 中把合格安全门结果转为经确认的只读原生子智能体预检、父会话汇总与宿主降级说明",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-subagent-preflight",
+      "eventIndex": 1,
+      "checkpointId": "20260903T213539Z-0001",
+      "moduleId": "parallel-subagent-preflight",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 0,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 0,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": "parallel-order-conflict-guard",
+      "field": "responsibility",
+      "before": "parallel-order-conflict-guard",
+      "after": "将显式串行 Build order 与依赖图的矛盾传入 parallel-safety-gate，输出可解释的 needs-review 结果并以回归测试锁定",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 0,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": "parallel-order-conflict-guard",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 1,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 1,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": "parallel-order-conflict-guard",
+      "field": "responsibility",
+      "before": "parallel-order-conflict-guard",
+      "after": "将显式串行 Build order 与依赖图的矛盾传入 parallel-safety-gate，输出可解释的 needs-review 结果并以回归测试锁定",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "parallel-order-conflict-guard",
+      "eventIndex": 1,
+      "checkpointId": "20260903T214142Z-0001",
+      "moduleId": "parallel-order-conflict-guard",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 0,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 0,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": "gitlab-workflow-hardening",
+      "field": "responsibility",
+      "before": "gitlab-workflow-hardening",
+      "after": "修复 GitLab map 同步 state 回写和 MR 合并短暂就绪处理，并以确定性与真实 E2E 回归锁定",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 0,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": "gitlab-workflow-hardening",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 1,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 1,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": "gitlab-workflow-hardening",
+      "field": "responsibility",
+      "before": "gitlab-workflow-hardening",
+      "after": "修复 GitLab map 同步 state 回写和 MR 合并短暂就绪处理，并以确定性与真实 E2E 回归锁定",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "gitlab-workflow-hardening",
+      "eventIndex": 1,
+      "checkpointId": "20260904T013109Z-0001",
+      "moduleId": "gitlab-workflow-hardening",
+      "field": "status",
+      "before": "in-progress",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-execution-ledger",
+      "field": "responsibility",
+      "before": "parallel-execution-ledger",
+      "after": "在 Git common directory 中维护 run、模块租约、worker manifest、状态恢复和 owned-only cleanup 身份；不修改 `.agent/state.json`。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-execution-ledger",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "responsibility",
+      "before": "parallel-worktree-runtime",
+      "after": "创建和校验 Git linked worktree、分支、基线、setup 与测试；仅清理由 Spec Guard 创建且 ledger 所有的资源。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "responsibility",
+      "before": "parallel-cli-execution",
+      "after": "在已验证 worktree 中启动和观察 Codex CLI / Claude Code CLI worker，记录进程结果并在失败时 fail closed。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-worktree-runtime"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "responsibility",
+      "before": "parallel-workflow-integration",
+      "after": "提供 `/parallel-execute`、`/parallel-status`、`/parallel-integrate`、`/parallel-reclaim`，并使 worker 模式下的 `/next`、`/deliver` 只能处理获分配模块。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-cli-execution"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "responsibility",
+      "before": "desktop-worker-registration",
+      "after": "登记、校验和标记用户在 Codex Desktop / Claude Code Desktop 创建的原生 Worktree worker；缺少宿主能力时降级为手工步骤。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-workflow-integration"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 0,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-execution-ledger",
+      "field": "responsibility",
+      "before": "parallel-execution-ledger",
+      "after": "在 Git common directory 中维护 run、模块租约、worker manifest、状态恢复和 owned-only cleanup 身份；不修改 `.agent/state.json`。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-execution-ledger",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "responsibility",
+      "before": "parallel-worktree-runtime",
+      "after": "创建和校验 Git linked worktree、分支、基线、setup 与测试；仅清理由 Spec Guard 创建且 ledger 所有的资源。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-worktree-runtime",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "responsibility",
+      "before": "parallel-cli-execution",
+      "after": "在已验证 worktree 中启动和观察 Codex CLI / Claude Code CLI worker，记录进程结果并在失败时 fail closed。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-worktree-runtime"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-cli-execution",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "responsibility",
+      "before": "parallel-workflow-integration",
+      "after": "提供 `/parallel-execute`、`/parallel-status`、`/parallel-integrate`、`/parallel-reclaim`，并使 worker 模式下的 `/next`、`/deliver` 只能处理获分配模块。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-cli-execution"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "parallel-workflow-integration",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "responsibility",
+      "before": "desktop-worker-registration",
+      "after": "登记、校验和标记用户在 Codex Desktop / Claude Code Desktop 创建的原生 Worktree worker；缺少宿主能力时降级为手工步骤。",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "responsibility-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "dependsOn",
+      "before": [],
+      "after": [
+        "parallel-execution-ledger",
+        "parallel-workflow-integration"
+      ],
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "dependency-mismatch"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "94",
+      "eventIndex": 1,
+      "checkpointId": "20260905T053825Z-0001",
+      "moduleId": "desktop-worker-registration",
+      "field": "status",
+      "before": "not-started",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "status-unsupported"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "138",
+      "eventIndex": 0,
+      "checkpointId": "20260905T145513Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "138",
+      "eventIndex": 1,
+      "checkpointId": "20260905T145513Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "workflow-roadmap",
+      "eventIndex": 0,
+      "checkpointId": "20260909T180951Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "2026-09-09T18:09:51.477686Z",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "workflow-roadmap",
+      "eventIndex": 1,
+      "checkpointId": "20260909T180951Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "2026-09-09T18:09:51.477686Z",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "documentation-governance",
+      "eventIndex": 0,
+      "checkpointId": "20260910T014247Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    },
+    {
+      "type": "history-correction",
+      "initiativeId": "documentation-governance",
+      "eventIndex": 1,
+      "checkpointId": "20260910T014247Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "now",
+      "after": "unknown",
+      "auditedAt": "2026-09-13T09:36:54Z",
+      "auditReportSha256": "bb5e0f35723a6bd413c6019c99a1271e9c964fa599af54d5ac48a790ab4b1596",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    }
   ]
 }

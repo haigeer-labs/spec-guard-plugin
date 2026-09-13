@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """为当前 Git worktree 创建并核验 Spec Guard 的本地 tracker binding。
 
-绑定只是用户显式选择的本地上下文，不是任务事实源、锁或并行执行器。任何
+绑定只是用户显式选择的本地上下文，不是任务事实源、锁或运行执行器。任何
 无法证明的 Git、能力图、state 或依赖事实都返回结构化的 fail-closed 结果。
 """
 from __future__ import print_function

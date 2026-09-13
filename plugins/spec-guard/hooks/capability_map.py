@@ -148,8 +148,12 @@ def _parse_declared_order(lines):
         raw = match.group(1).strip()
         if not raw:
             raise MapError("Build order 不能为空")
-        groups = [[_strip_ticks(item) for item in group.split(",")]
-                  for group in re.split(r"\s*(?:→|->)\s*", raw)]
+        segments = re.split(r"\s*(?:→|->)\s*", raw)
+        # 上游格式允许逗号表示可并列的模块；Spec Guard 不提供并行执行，
+        # 因此保留输入兼容性，同时按书写顺序展开为单模块串行步骤。
+        groups = []
+        for segment in segments:
+            groups.extend([[_strip_ticks(item)] for item in segment.split(",")])
         if any(not item for group in groups for item in group):
             raise MapError("Build order 格式无效")
         declarations.append(groups)

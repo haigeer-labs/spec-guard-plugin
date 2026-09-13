@@ -32,6 +32,8 @@ case "$INITIATIVE" in
 esac
 HISTORY="$(cd "$(dirname "$0")" && pwd)/capability-history.py"
 LEDGER="$PROJECT/spec/CAPABILITY-HISTORY.json"
+LEDGER_EXISTED=false
+[ -e "$LEDGER" ] && LEDGER_EXISTED=true
 
 if [ "$DRY" = true ]; then
   echo "将执行 ${ACTION} initiative=${INITIATIVE}；当前产物不会被修改。"
@@ -148,6 +150,34 @@ CHECKPOINT="$(date -u +%Y%m%dT%H%M%SZ)-0001"
 DEST="$PROJECT/spec/history/$INITIATIVE/$CHECKPOINT"
 [ ! -e "$DEST" ] || { echo "checkpoint 已存在" >&2; exit 1; }
 STATE_DEST="$PROJECT/.agent/history/$INITIATIVE/$CHECKPOINT"
+TASK_DEST="$PROJECT/tasks/history/$INITIATIVE/$CHECKPOINT"
+ARCHIVE_COMMITTED=false
+discard_uncommitted_checkpoint() {
+  [ "$ARCHIVE_COMMITTED" = true ] && return
+  rm -rf "$DEST" "$STATE_DEST" "$TASK_DEST"
+}
+restore_current_artifacts() {
+  cp "$DEST/CAPABILITY-MAP.md" "$PROJECT/spec/CAPABILITY-MAP.md" || return 1
+  cp "$STATE_DEST/state.json" "$PROJECT/.agent/state.json" || return 1
+  while IFS= read -r MODULE; do
+    [ -n "$MODULE" ] || continue
+    if [ -f "$DEST/$MODULE.md" ]; then
+      cp "$DEST/$MODULE.md" "$PROJECT/spec/$MODULE.md" || return 1
+    fi
+    if [ -f "$TASK_DEST/$MODULE/plan.md" ]; then
+      mkdir -p "$PROJECT/tasks/$MODULE" || return 1
+      cp "$TASK_DEST/$MODULE/plan.md" "$PROJECT/tasks/$MODULE/plan.md" || return 1
+    fi
+  done <<< "$MODULES"
+}
+cleanup_current_artifacts() {
+  while IFS= read -r MODULE; do
+    [ -n "$MODULE" ] || continue
+    rm -f "$PROJECT/spec/$MODULE.md" "$PROJECT/tasks/$MODULE/plan.md" || return 1
+  done <<< "$MODULES"
+  rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
+}
+trap 'discard_uncommitted_checkpoint' EXIT
 mkdir -p "$DEST" "$STATE_DEST" || exit 1
 cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
 cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
@@ -219,7 +249,7 @@ event = json.load(open(sys.argv[2], encoding='utf-8'))
 history['verify']({'initiatives': [{'events': [event]}]}, sys.argv[3])
 PYVERIFY
 CREATED_EVENT="$(mktemp)"
-trap 'rm -f "$EVENT" "$CREATED_EVENT"' EXIT
+trap 'rm -f "$EVENT" "$CREATED_EVENT"; discard_uncommitted_checkpoint' EXIT
 python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
 import json
 import sys
@@ -234,12 +264,20 @@ json.dump(
     open(created_path, "w", encoding="utf-8"),
 )
 PY
-python3 "$HISTORY" ensure "$LEDGER" "$CREATED_EVENT" || exit 1
+if ! cleanup_current_artifacts; then
+  restore_current_artifacts || echo "清理失败且无法完整恢复当前产物" >&2
+  echo "清理当前产物失败；未记录 lifecycle 事件" >&2
+  exit 1
+fi
+if ! python3 "$HISTORY" ensure "$LEDGER" "$CREATED_EVENT"; then
+  restore_current_artifacts || echo "无法完整恢复当前产物" >&2
+  exit 1
+fi
 rm -f "$CREATED_EVENT"
-python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT" || exit 1
-while IFS= read -r MODULE; do
-  [ -n "$MODULE" ] || continue
-  rm -f "$PROJECT/spec/$MODULE.md" "$PROJECT/tasks/$MODULE/plan.md"
-done <<< "$MODULES"
-rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
+if ! python3 "$HISTORY" append "$LEDGER" "$INITIATIVE" "$EVENT"; then
+  restore_current_artifacts || echo "无法完整恢复当前产物" >&2
+  [ "$LEDGER_EXISTED" = true ] || rm -f "$LEDGER"
+  exit 1
+fi
+ARCHIVE_COMMITTED=true
 echo "已执行 $ACTION initiative=$INITIATIVE"

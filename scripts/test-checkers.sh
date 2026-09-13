@@ -283,9 +283,7 @@ rm -f "$LOCK"
 DIRTY="$ROOT/plugins/spec-guard/hooks/spec-digest.py"
 MTARGETS=("$ROOT/plugins/spec-guard/hooks/phase-guard.sh" \
           "$ROOT/plugins/spec-guard/hooks/verify-artifacts.sh" "$DIRTY" \
-          "$ROOT/plugins/spec-guard/hooks/parallel-execution.py" \
-          "$ROOT/plugins/spec-guard/hooks/parallel_execution_lib.py" \
-          "$ROOT/plugins/spec-guard/hooks/parallel_worktree_lib.py")
+)
 if git -C "$ROOT" diff --quiet HEAD -- "${MTARGETS[@]}" 2>/dev/null; then
   printf '\n# test-checkers 临时弄脏\n' >> "$DIRTY"
   want fail "mutation-check: 目标文件脏 → 拒跑" python3 "$MC" --only 不存在的关键词

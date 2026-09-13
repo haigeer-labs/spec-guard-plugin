@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### 变更
+
+- **归档 GitHub initiative 时快照记录 `initiative.repository`（owner/repo），远端核验只查询该仓库。**
+- **变更（行为）：缺少仓库身份的旧归档在显式远端核验时报告“未核验（缺少仓库身份）”，不再按当前 origin 推断；历史快照不改写。**
+
 ## [0.12.0] - 2026-09-13
 
 ### 破坏性变更

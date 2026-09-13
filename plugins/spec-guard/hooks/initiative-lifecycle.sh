@@ -256,11 +256,15 @@ existing = initiative.get("repository")
 if isinstance(existing, str) and REPO_RE.fullmatch(existing):
     sys.exit(0)
 
-result = subprocess.run(
-    ["git", "-C", project, "remote", "get-url", "origin"],
-    capture_output=True, text=True,
-)
-remote = result.stdout.strip() if result.returncode == 0 else ""
+try:
+    result = subprocess.run(
+        ["git", "-C", project, "remote", "get-url", "origin"],
+        capture_output=True, text=True,
+    )
+    remote = result.stdout.strip() if result.returncode == 0 else ""
+except OSError:
+    # 没有可执行的 git 等同于没有 origin：仓库身份不可得，但归档不能失败。
+    remote = ""
 repository = github_repository_from_origin(remote)
 if not repository:
     print(NOTICE)

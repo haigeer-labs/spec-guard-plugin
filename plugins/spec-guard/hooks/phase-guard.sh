@@ -281,7 +281,8 @@ fi
 # 归档是本地文件操作；它本身不能证明外部 tracker 也已收口。
 # lifecycle 保持离线：这里是 hook 中**可选、只读且显式 opt-in**的补充核验。
 # 只有设置 SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1、归档账本最新事件为 completed，
-# 且快照明确记录了外部 initiative 条目号，才查询。paused / abandoned /
+# 且快照明确记录了外部 initiative 条目号（GitHub 还须记录 initiative.repository，
+# 缺失时不回退到当前 origin），才查询。paused / abandoned /
 # superseded 不等同于「远端必须关闭」，所以不作推断。
 ARCHIVE_REMOTE_OPEN=""
 ARCHIVE_REMOTE_UNVERIFIED=""

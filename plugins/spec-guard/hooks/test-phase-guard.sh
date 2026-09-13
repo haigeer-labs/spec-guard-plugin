@@ -241,6 +241,9 @@ printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixtu
 OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-newline"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
 export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
 chk "快照仓库身份带尾随换行 → 归档待核验，不得当成合法仓库" "ARCHIVED (远端待核验)|断链0"
+# 阶段本身会被空行记录计成「 条目」而碰巧正确，所以原因与无空条目都要断言。
+hasctx "尾随换行的仓库身份报告缺少仓库身份" "缺少仓库身份"
+lacksctx "尾随换行不得拆出空 tracker 的未核验条目" "条目"
 if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
   printf '  ✅ 尾随换行的仓库身份时 gh 零调用\n'; PASS=$((PASS+1))
 else

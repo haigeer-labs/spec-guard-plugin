@@ -339,5 +339,29 @@ else
   bad "$RT_LABEL"
 fi
 
+# 机器上没有 git：仓库身份不可得，但归档不能因此失败（spec: Never fail an archive）。
+# 只把脚本实际用到的命令链接进 PATH，刻意不放 git。
+NOGIT_BIN="$TMP/nogit-bin"; mkdir -p "$NOGIT_BIN"
+ln -s "$(python3 -c 'import sys; print(sys.executable)')" "$NOGIT_BIN/python3"
+for tool in bash awk cp date dirname mkdir mktemp rm sed shasum cat mv ls sort tail head grep tr basename touch chmod env; do
+  tool_path="$(command -v "$tool" 2>/dev/null || true)"
+  [ -n "$tool_path" ] && ln -s "$tool_path" "$NOGIT_BIN/$tool"
+done
+NOGIT_PROJECT="$TMP/nogit-project"
+mkdir -p "$NOGIT_PROJECT/spec" "$NOGIT_PROJECT/.agent"
+printf '# Map\n' > "$NOGIT_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$NOGIT_PROJECT/.agent/state.json"
+NOGIT_OUTPUT="$(PATH="$NOGIT_BIN" "$LIFECYCLE" complete --project "$NOGIT_PROJECT" --initiative nogit 2>&1)"
+NOGIT_STATUS=$?
+NOGIT_SNAPSHOT="$(latest_snapshot "$NOGIT_PROJECT/.agent/history/nogit")"
+if [ "$NOGIT_STATUS" -eq 0 ] && [ -n "$NOGIT_SNAPSHOT" ] \
+  && [ "$(snapshot_repository "$NOGIT_SNAPSHOT")" = "" ] \
+  && grep -q '提示：无法从 origin 解析 GitHub 仓库' <<<"$NOGIT_OUTPUT"; then
+  ok "正：机器上没有 git → 归档成功、无 repository 字段、打印提示"
+else
+  bad "正：机器上没有 git → 归档成功、无 repository 字段、打印提示"
+  printf '    status=%s output=%s\n' "$NOGIT_STATUS" "$NOGIT_OUTPUT"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

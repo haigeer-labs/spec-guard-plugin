@@ -56,9 +56,11 @@ snapshot, and verify archived Epics only against that recorded repository.
 
 ### Visible consequence (accepted)
 
-Existing GitHub archives lack the field. With remote verification opted in they
-change from verified-via-current-origin to "未核验（缺少仓库身份）". Old
-checkpoints and ledger events are never rewritten to hide this.
+Existing GitHub archives lack the field. They are reported as
+"未核验（缺少仓库身份）" whether or not remote verification is opted in (the
+identity check precedes the opt-in check); with opt-in they previously verified
+via the current origin. Old checkpoints and ledger events are never rewritten to
+hide this. Improving the follow-up hint for such archives is tracked in #20.
 
 ## Boundaries
 

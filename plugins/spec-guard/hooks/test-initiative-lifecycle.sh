@@ -280,6 +280,75 @@ else
   bad "正：tracker=github + 非 GitHub origin → 无 repository 字段"
 fi
 
+GH5_PROJECT="$TMP/gh-alias-no-user-project"
+mkdir -p "$GH5_PROJECT/spec" "$GH5_PROJECT/.agent"
+printf '# Map\n' > "$GH5_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH5_PROJECT/.agent/state.json"
+git -C "$GH5_PROJECT" init -q
+git -C "$GH5_PROJECT" remote add origin github-alias:Owner/Repo.git
+if "$LIFECYCLE" complete --project "$GH5_PROJECT" --initiative gh-alias-no-user >/dev/null 2>&1; then
+  GH5_SNAPSHOT="$(latest_snapshot "$GH5_PROJECT/.agent/history/gh-alias-no-user")"
+  if [ -n "$GH5_SNAPSHOT" ] && [ "$(snapshot_repository "$GH5_SNAPSHOT")" = "Owner/Repo" ]; then
+    ok "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+  else
+    bad "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+  fi
+else
+  bad "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+fi
+
+# repository 字段非字符串（如账本迁移留下的数字）不是「合法值」，必须
+# 视同缺失，重新从当前 origin 解析 —— 不能因 isinstance 检查外的疏漏把
+# 一个坏类型悄悄当成「已有合法记录」而跳过写回。
+NONSTR_PROJECT="$TMP/gh-nonstring-repository-project"
+mkdir -p "$NONSTR_PROJECT/spec" "$NONSTR_PROJECT/.agent"
+printf '# Map\n' > "$NONSTR_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1,"repository":123}}' > "$NONSTR_PROJECT/.agent/state.json"
+git -C "$NONSTR_PROJECT" init -q
+git -C "$NONSTR_PROJECT" remote add origin https://github.com/Owner/Repo.git
+if "$LIFECYCLE" complete --project "$NONSTR_PROJECT" --initiative gh-nonstring-repository >/dev/null 2>&1; then
+  NONSTR_SNAPSHOT="$(latest_snapshot "$NONSTR_PROJECT/.agent/history/gh-nonstring-repository")"
+  if [ -n "$NONSTR_SNAPSHOT" ] && [ "$(snapshot_repository "$NONSTR_SNAPSHOT")" = "Owner/Repo" ]; then
+    ok "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+  else
+    bad "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+  fi
+else
+  bad "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+fi
+
+# pause → resume → 改 origin → complete：resume 恢复的是 FIRST（pause）
+# checkpoint 里原样保存的当前产物；那个 checkpoint 自己的 state.json（在
+# .agent/history 下）此后不应再被写。后面这次 complete 建的是全新的
+# checkpoint 目录，不会碰旧目录，但这里用字节级 sha256 直接把「不应变」
+# 钉死为可回归的断言。
+ROUNDTRIP_BYTES_PROJECT="$TMP/roundtrip-bytes-project"
+mkdir -p "$ROUNDTRIP_BYTES_PROJECT/spec" "$ROUNDTRIP_BYTES_PROJECT/.agent"
+printf '# Map\n' > "$ROUNDTRIP_BYTES_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$ROUNDTRIP_BYTES_PROJECT/.agent/state.json"
+git -C "$ROUNDTRIP_BYTES_PROJECT" init -q
+git -C "$ROUNDTRIP_BYTES_PROJECT" remote add origin https://github.com/First/Checkpoint.git
+RTB_LABEL="正：pause → resume → 改 origin → complete，首个（pause）checkpoint 的 state.json 字节不变"
+if "$LIFECYCLE" pause --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1; then
+  RTB_FIRST_SNAPSHOT="$(latest_snapshot "$ROUNDTRIP_BYTES_PROJECT/.agent/history/roundtrip-bytes")"
+  RTB_FIRST_SHA_BEFORE="$(shasum -a 256 "$RTB_FIRST_SNAPSHOT" | awk '{print $1}')"
+  if "$LIFECYCLE" resume --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1 \
+    && git -C "$ROUNDTRIP_BYTES_PROJECT" remote set-url origin git@github-alias:Second/Checkpoint.git \
+    && sleep 1 \
+    && "$LIFECYCLE" complete --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1; then
+    RTB_FIRST_SHA_AFTER="$(shasum -a 256 "$RTB_FIRST_SNAPSHOT" | awk '{print $1}')"
+    if [ "$RTB_FIRST_SHA_BEFORE" = "$RTB_FIRST_SHA_AFTER" ]; then
+      ok "$RTB_LABEL"
+    else
+      bad "$RTB_LABEL"
+    fi
+  else
+    bad "$RTB_LABEL"
+  fi
+else
+  bad "$RTB_LABEL"
+fi
+
 NONE_PROJECT="$TMP/none-tracker-project"
 mkdir -p "$NONE_PROJECT/spec" "$NONE_PROJECT/.agent"
 printf '# Map\n' > "$NONE_PROJECT/spec/CAPABILITY-MAP.md"

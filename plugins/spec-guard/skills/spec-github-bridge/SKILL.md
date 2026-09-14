@@ -79,13 +79,18 @@ description: 在 agent-skills 的 spec/plan 产物和 GitHub Issues 之间同步
 `.agent/state.json` 的字段**由本插件定义**。当前全部字段：
 
     tracker  issueTypes  activeModule  updatedAt  workflowStage（可选）
-    initiative{ title issue map goalDigest repository }
+    initiative{ title issue map goalDigest repository repositoryIssue }
     modules.<id>{ issue rowDigest }
 
-`initiative.repository`（`owner/repo`）只由 `initiative-lifecycle.sh` 写入归档
-快照（`.agent/history/<initiative>/<checkpoint>/state.json`），记录该 Epic 所在
-的 GitHub 仓库；agent 不写这个字段。`resume` 会把快照原样恢复为当前 state，
-此时字段随之带回，之后再归档保留原值，不按当前 origin 重新解析。
+`initiative.repository`（`owner/repo`）与 `initiative.repositoryIssue`
+只由 `initiative-lifecycle.sh` 写入归档快照
+（`.agent/history/<initiative>/<checkpoint>/state.json`）：`repository` 记录该
+Epic 所在的 GitHub 仓库，`repositoryIssue` 记录写入 `repository` 那一刻的
+`initiative.issue`，标记这个仓库身份绑定的是哪一个 Epic 编号；agent 不写这两
+个字段。`resume` 会把快照原样恢复为当前 state，此时两个字段随之带回，之后再
+归档保留原值，不按当前 origin 重新解析。若 `resume` 后 Epic 编号变了（例如在
+另一个仓库重建），下一次归档会发现 `repositoryIssue` 与当前 issue 对不上，
+判定旧仓库跟错了 Epic，重新从 origin 解析。
 
 `workflowStage` 当前唯一显式值是 `local-validation`，用于已有能力图、当前模块 spec/plan、
 但尚未激活 tracker 的本地研究/验证。initiative.title 必须填写，initiative.issue 为 null，

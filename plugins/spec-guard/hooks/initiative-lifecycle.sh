@@ -186,11 +186,22 @@ mkdir -p "$DEST" "$STATE_DEST" || exit 1
 cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
 cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
 cp "$PROJECT/.agent/state.json" "$ORIGINAL_STATE" || exit 1
-# GitHub 归档记录仓库身份（Spec: archive-github-repository.md）。只在
-# tracker=github 且快照尚无合法 initiative.repository 时，从当前 origin
-# 解析 owner/repo 并写回快照；host 判定与 phase-guard.sh 的
-# remote_host/is_github_remote 一致。归档核验只读这个记录值，不再解析 origin。其他
-# tracker 或已带合法 repository 的快照必须原样保留，不重写字节。
+# GitHub 归档记录仓库身份，并绑定到写入时的 Epic 编号（Spec: bind recorded
+# repository identity to the Epic number）。只在 tracker=github 时处理；host
+# 判定与 phase-guard.sh 的 remote_host/is_github_remote 一致。
+#
+# initiative.repositoryIssue 记录写入 repository 那一刻的 initiative.issue：
+#   - 合法 repository + 无 repositoryIssue 键（legacy 快照）→ 保留 repository，
+#     issue 合法时回填 repositoryIssue，否则原样不动。
+#   - 合法 repository + repositoryIssue 与当前 issue 一致（都合法）→ 已绑定
+#     到当前 Epic，不重写。
+#   - 合法 repository + repositoryIssue 存在但对不上（缺失/类型错/issue 变了）
+#     → resume 后在别的仓库重建过 Epic，旧 repository 跟错了：必须重新从
+#     origin 解析；解析不到就把 repository 和 repositoryIssue 都删掉，绝不
+#     留着一个跟错 Epic 的仓库身份。
+#   - 无合法 repository（缺失或类型非法）→ 同样从 origin 解析并绑定当前
+#     issue；解析不到就打印提示，且清掉任何残留的 repositoryIssue。
+# 归档核验只读记录值，不再解析 origin。
 python3 - "$STATE_DEST/state.json" "$PROJECT" "$(dirname "$HISTORY")" <<'PY' || exit 1
 import json
 import re
@@ -216,28 +227,84 @@ if not isinstance(initiative, dict):
     print(NOTICE)
     sys.exit(0)
 
-existing = initiative.get("repository")
-if isinstance(existing, str) and REPO_RE.fullmatch(existing):
+
+def is_valid_issue(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def is_valid_repository(value):
+    return isinstance(value, str) and bool(REPO_RE.fullmatch(value))
+
+
+def write_snapshot():
+    with open(snapshot_path, "w", encoding="utf-8") as handle:
+        json.dump(snapshot, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def resolve_repository():
+    try:
+        result = subprocess.run(
+            ["git", "-C", project, "remote", "get-url", "origin"],
+            capture_output=True, text=True,
+        )
+        remote = result.stdout.strip() if result.returncode == 0 else ""
+    except OSError:
+        # 没有可执行的 git 等同于没有 origin：仓库身份不可得，但归档不能失败。
+        remote = ""
+    return repository_from_remote(remote)
+
+
+issue = initiative.get("issue")
+issue_valid = is_valid_issue(issue)
+repository_valid = is_valid_repository(initiative.get("repository"))
+has_repository_issue_key = "repositoryIssue" in initiative
+
+if repository_valid and not has_repository_issue_key:
+    # legacy（v0.13.0 之前）快照：保留 repository，issue 合法时回填。
+    if issue_valid:
+        initiative["repositoryIssue"] = issue
+        write_snapshot()
     sys.exit(0)
 
-try:
-    result = subprocess.run(
-        ["git", "-C", project, "remote", "get-url", "origin"],
-        capture_output=True, text=True,
+if repository_valid and has_repository_issue_key:
+    repository_issue = initiative.get("repositoryIssue")
+    bound_to_current_issue = (
+        issue_valid and is_valid_issue(repository_issue) and repository_issue == issue
     )
-    remote = result.stdout.strip() if result.returncode == 0 else ""
-except OSError:
-    # 没有可执行的 git 等同于没有 origin：仓库身份不可得，但归档不能失败。
-    remote = ""
-repository = repository_from_remote(remote)
-if not repository:
-    print(NOTICE)
+    if bound_to_current_issue:
+        sys.exit(0)
+    # 跟错了 Epic（issue 变了，或 repositoryIssue 本身缺失/类型错）：
+    # 绝不保留旧仓库身份，必须重新解析。
+    resolved = resolve_repository()
+    if resolved:
+        initiative["repository"] = resolved
+        if issue_valid:
+            initiative["repositoryIssue"] = issue
+        else:
+            initiative.pop("repositoryIssue", None)
+        write_snapshot()
+    else:
+        initiative.pop("repository", None)
+        initiative.pop("repositoryIssue", None)
+        write_snapshot()
+        print(NOTICE)
     sys.exit(0)
 
-initiative["repository"] = repository
-with open(snapshot_path, "w", encoding="utf-8") as handle:
-    json.dump(snapshot, handle, indent=2, ensure_ascii=False)
-    handle.write("\n")
+# 无合法 repository（缺失或类型非法）。
+resolved = resolve_repository()
+if resolved:
+    initiative["repository"] = resolved
+    if issue_valid:
+        initiative["repositoryIssue"] = issue
+    else:
+        initiative.pop("repositoryIssue", None)
+    write_snapshot()
+else:
+    print(NOTICE)
+    if has_repository_issue_key:
+        initiative.pop("repositoryIssue", None)
+        write_snapshot()
 PY
 MAP_SHA="$(shasum -a 256 "$DEST/CAPABILITY-MAP.md" | awk '{print $1}')"
 STATE_SHA="$(shasum -a 256 "$STATE_DEST/state.json" | awk '{print $1}')"

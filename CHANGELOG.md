@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### 变更
+
+- **归档记录的仓库身份绑定到 Epic 编号。** 归档快照新增 `initiative.repositoryIssue`，记录写入 `repository` 那一刻的 Epic 编号；若 `resume` 后 Epic 编号变了（例如在另一个仓库重建），下一次归档会发现两者对不上，重新从 origin 解析仓库身份。没有这个字段的旧快照（v0.13.0 写出）仍保留原 `repository`，并在下一次归档时补上当前 Epic 编号。已知限制：这类旧快照如果被 `resume` 后在另一个仓库重建 Epic，补记的是新 Epic 编号，因此会一直被记到旧仓库，不会自动纠正。phase-guard 把「存在但对不上」的 `repositoryIssue` 视同缺少仓库身份，不再核验。
+
 ### 修复
 
 - **归档记录仓库身份认得更多 GitHub origin 写法。** origin-URL 解析提取为可导入的 `github_remote.py`，新增识别尾随斜杠（`.../Owner/Repo/`）、大小写不敏感的 `.git` 后缀（`Owner/Repo.GIT`）与不带用户名的 scp 别名（`alias:owner/repo`）；此前只有带用户名的 `user@alias:owner/repo` 能解析。

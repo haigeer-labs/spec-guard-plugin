@@ -222,6 +222,12 @@ fi
 snapshot_repository() {
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("initiative") or {}).get("repository", ""))' "$1"
 }
+snapshot_repository_issue() {
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); v=(d.get("initiative") or {}).get("repositoryIssue"); print(v if v is not None else "")' "$1"
+}
+snapshot_has_repository_issue_key() {
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("repositoryIssue" in (d.get("initiative") or {}))' "$1"
+}
 latest_snapshot() {
   ls -d "$1"/*/state.json 2>/dev/null | sort | tail -1
 }
@@ -450,6 +456,136 @@ if [ "$NOGIT_STATUS" -eq 0 ] && [ -n "$NOGIT_SNAPSHOT" ] \
 else
   bad "正：机器上没有 git → 归档成功、无 repository 字段、打印提示"
   printf '    status=%s output=%s\n' "$NOGIT_STATUS" "$NOGIT_OUTPUT"
+fi
+
+# repositoryIssue 绑定记录的仓库身份属于哪个 Epic 编号（Spec: bind recorded
+# repository identity to the Epic number）。resume 之后重置 issue、在另一个
+# 仓库重建 Epic 时，旧快照记录的 repository 必须能被识别为「跟错了 Epic」，
+# 而不是被无条件保留。
+
+# a. 尚无 repositoryIssue、也无 repository → 从当前 origin 解析并记录两者。
+CASEA_PROJECT="$TMP/repoissue-case-a-project"
+mkdir -p "$CASEA_PROJECT/spec" "$CASEA_PROJECT/.agent"
+printf '# Map\n' > "$CASEA_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":7}}' > "$CASEA_PROJECT/.agent/state.json"
+git -C "$CASEA_PROJECT" init -q
+git -C "$CASEA_PROJECT" remote add origin https://github.com/Owner/Repo.git
+if "$LIFECYCLE" complete --project "$CASEA_PROJECT" --initiative repoissue-case-a >/dev/null 2>&1; then
+  CASEA_SNAPSHOT="$(latest_snapshot "$CASEA_PROJECT/.agent/history/repoissue-case-a")"
+  CASEA_SHA="$(shasum -a 256 "$CASEA_SNAPSHOT" | awk '{print $1}')"
+  if [ -n "$CASEA_SNAPSHOT" ] \
+    && [ "$(snapshot_repository "$CASEA_SNAPSHOT")" = "Owner/Repo" ] \
+    && [ "$(snapshot_repository_issue "$CASEA_SNAPSHOT")" = "7" ] \
+    && [ "$(ledger_state_sha "$CASEA_PROJECT/spec/CAPABILITY-HISTORY.json")" = "$CASEA_SHA" ]; then
+    ok "正 a：无 repository → 记录 repository=Owner/Repo 且 repositoryIssue=7，账本 sha256 一致"
+  else
+    bad "正 a：无 repository → 记录 repository=Owner/Repo 且 repositoryIssue=7，账本 sha256 一致"
+  fi
+else
+  bad "正 a：无 repository → 记录 repository=Owner/Repo 且 repositoryIssue=7，账本 sha256 一致"
+fi
+
+# b. Epic 重建：issue 变了，repositoryIssue 还是旧 issue → 跟旧 Epic 绑定的
+# repository 视为跟错了，必须从当前 origin 重新解析并绑定新 issue。
+CASEB_PROJECT="$TMP/repoissue-case-b-project"
+mkdir -p "$CASEB_PROJECT/spec" "$CASEB_PROJECT/.agent"
+printf '# Map\n' > "$CASEB_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":8,"repository":"Old/Repo","repositoryIssue":7}}' > "$CASEB_PROJECT/.agent/state.json"
+git -C "$CASEB_PROJECT" init -q
+git -C "$CASEB_PROJECT" remote add origin git@github-alias:New/Repo.git
+if "$LIFECYCLE" complete --project "$CASEB_PROJECT" --initiative repoissue-case-b >/dev/null 2>&1; then
+  CASEB_SNAPSHOT="$(latest_snapshot "$CASEB_PROJECT/.agent/history/repoissue-case-b")"
+  if [ -n "$CASEB_SNAPSHOT" ] \
+    && [ "$(snapshot_repository "$CASEB_SNAPSHOT")" = "New/Repo" ] \
+    && [ "$(snapshot_repository_issue "$CASEB_SNAPSHOT")" = "8" ]; then
+    ok "正 b：Epic 重建（issue 变了）→ 从新 origin 重新解析，repositoryIssue 更新为新 issue"
+  else
+    bad "正 b：Epic 重建（issue 变了）→ 从新 origin 重新解析，repositoryIssue 更新为新 issue"
+  fi
+else
+  bad "正 b：Epic 重建（issue 变了）→ 从新 origin 重新解析，repositoryIssue 更新为新 issue"
+fi
+
+# c. 同一 Epic，仅 origin 迁移：repositoryIssue 与 issue 一致 → 快照字节不变
+# （既不重写 repository 也不重写 repositoryIssue）。
+CASEC_PROJECT="$TMP/repoissue-case-c-project"
+mkdir -p "$CASEC_PROJECT/spec" "$CASEC_PROJECT/.agent"
+printf '# Map\n' > "$CASEC_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":7,"repository":"Old/Repo","repositoryIssue":7}}' > "$CASEC_PROJECT/.agent/state.json"
+cp "$CASEC_PROJECT/.agent/state.json" "$TMP/repoissue-case-c-original-state.json"
+git -C "$CASEC_PROJECT" init -q
+git -C "$CASEC_PROJECT" remote add origin git@github-alias:New/Repo.git
+if "$LIFECYCLE" complete --project "$CASEC_PROJECT" --initiative repoissue-case-c >/dev/null 2>&1; then
+  CASEC_SNAPSHOT="$(latest_snapshot "$CASEC_PROJECT/.agent/history/repoissue-case-c")"
+  if [ -n "$CASEC_SNAPSHOT" ] && cmp -s "$CASEC_SNAPSHOT" "$TMP/repoissue-case-c-original-state.json" \
+    && [ "$(snapshot_repository "$CASEC_SNAPSHOT")" = "Old/Repo" ]; then
+    ok "正 c：同一 Epic、仅 origin 迁移 → repositoryIssue 与 issue 一致，快照字节不变"
+  else
+    bad "正 c：同一 Epic、仅 origin 迁移 → repositoryIssue 与 issue 一致，快照字节不变"
+  fi
+else
+  bad "正 c：同一 Epic、仅 origin 迁移 → repositoryIssue 与 issue 一致，快照字节不变"
+fi
+
+# d. legacy 快照：有合法 repository 但没有 repositoryIssue 键 → 保留原
+# repository，回填 repositoryIssue=issue。
+CASED_PROJECT="$TMP/repoissue-case-d-project"
+mkdir -p "$CASED_PROJECT/spec" "$CASED_PROJECT/.agent"
+printf '# Map\n' > "$CASED_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":7,"repository":"Old/Repo"}}' > "$CASED_PROJECT/.agent/state.json"
+git -C "$CASED_PROJECT" init -q
+git -C "$CASED_PROJECT" remote add origin git@github-alias:New/Repo.git
+if "$LIFECYCLE" complete --project "$CASED_PROJECT" --initiative repoissue-case-d >/dev/null 2>&1; then
+  CASED_SNAPSHOT="$(latest_snapshot "$CASED_PROJECT/.agent/history/repoissue-case-d")"
+  if [ -n "$CASED_SNAPSHOT" ] \
+    && [ "$(snapshot_repository "$CASED_SNAPSHOT")" = "Old/Repo" ] \
+    && [ "$(snapshot_repository_issue "$CASED_SNAPSHOT")" = "7" ]; then
+    ok "正 d：legacy 快照（无 repositoryIssue）→ 保留 repository，回填 repositoryIssue=issue"
+  else
+    bad "正 d：legacy 快照（无 repositoryIssue）→ 保留 repository，回填 repositoryIssue=issue"
+  fi
+else
+  bad "正 d：legacy 快照（无 repositoryIssue）→ 保留 repository，回填 repositoryIssue=issue"
+fi
+
+# e. Epic 重建且当前不可解析（无 origin）→ 绝不保留跟错 Epic 的旧
+# repository：两个字段都要删掉，并打印既有提示。
+CASEE_PROJECT="$TMP/repoissue-case-e-project"
+mkdir -p "$CASEE_PROJECT/spec" "$CASEE_PROJECT/.agent"
+printf '# Map\n' > "$CASEE_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":8,"repository":"Old/Repo","repositoryIssue":7}}' > "$CASEE_PROJECT/.agent/state.json"
+git -C "$CASEE_PROJECT" init -q
+CASEE_OUTPUT="$("$LIFECYCLE" complete --project "$CASEE_PROJECT" --initiative repoissue-case-e 2>&1)"
+CASEE_STATUS=$?
+CASEE_SNAPSHOT="$(latest_snapshot "$CASEE_PROJECT/.agent/history/repoissue-case-e")"
+if [ "$CASEE_STATUS" -eq 0 ] && [ -n "$CASEE_SNAPSHOT" ] \
+  && [ "$(snapshot_repository "$CASEE_SNAPSHOT")" = "" ] \
+  && [ "$(snapshot_has_repository_issue_key "$CASEE_SNAPSHOT")" = "False" ] \
+  && grep -q '提示：无法从 origin 解析 GitHub 仓库' <<<"$CASEE_OUTPUT"; then
+  ok "正 e：跟错 Epic 且无法重新解析 → 删除 repository 与 repositoryIssue，打印提示"
+else
+  bad "正 e：跟错 Epic 且无法重新解析 → 删除 repository 与 repositoryIssue，打印提示"
+  printf '    status=%s output=%s\n' "$CASEE_STATUS" "$CASEE_OUTPUT"
+fi
+
+# f. 尚无 Epic（issue=null）→ 仍记录 repository，但不写 repositoryIssue。
+CASEF_PROJECT="$TMP/repoissue-case-f-project"
+mkdir -p "$CASEF_PROJECT/spec" "$CASEF_PROJECT/.agent"
+printf '# Map\n' > "$CASEF_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":null}}' > "$CASEF_PROJECT/.agent/state.json"
+git -C "$CASEF_PROJECT" init -q
+git -C "$CASEF_PROJECT" remote add origin https://github.com/Owner/Repo.git
+if "$LIFECYCLE" complete --project "$CASEF_PROJECT" --initiative repoissue-case-f >/dev/null 2>&1; then
+  CASEF_SNAPSHOT="$(latest_snapshot "$CASEF_PROJECT/.agent/history/repoissue-case-f")"
+  if [ -n "$CASEF_SNAPSHOT" ] \
+    && [ "$(snapshot_repository "$CASEF_SNAPSHOT")" = "Owner/Repo" ] \
+    && [ "$(snapshot_has_repository_issue_key "$CASEF_SNAPSHOT")" = "False" ]; then
+    ok "正 f：尚无 Epic（issue=null）→ 仍记录 repository，但不写 repositoryIssue"
+  else
+    bad "正 f：尚无 Epic（issue=null）→ 仍记录 repository，但不写 repositoryIssue"
+  fi
+else
+  bad "正 f：尚无 Epic（issue=null）→ 仍记录 repository，但不写 repositoryIssue"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

@@ -202,6 +202,56 @@ else
 fi
 export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
 
+# repositoryIssue 绑定记录的 repository 属于哪个 Epic 编号（Spec: bind
+# recorded repository identity to the Epic number）。resume 之后重置 issue、
+# 在另一个仓库重建 Epic 时，旧 repositoryIssue 会跟当前 issue 对不上——这时
+# 那条记录的 repository 必须被当成缺失，绝不能拿旧仓库去核验新 Epic。
+
+# g. repositoryIssue 与 issue 一致（141）→ 视为合法记录，正常按记录仓库核验。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo","repositoryIssue":141},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-repoissue-match"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export ARCHIVE_GH_STATE=CLOSED SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "repositoryIssue 与 issue 一致 → 正常按记录仓库核验为已关闭" "IDLE (已归档，远端已核验)|断链0"
+if [ -e "$ARCHIVE_GH_CALLS" ] && grep -qxF "issue view 141 --repo fixture/repo --json state --jq .state" "$ARCHIVE_GH_CALLS"; then
+  printf '  ✅ gh 调用带 --repo fixture/repo\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ gh 调用未带 --repo fixture/repo\n'; cat "$ARCHIVE_GH_CALLS" 2>/dev/null; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS ARCHIVE_GH_STATE SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# h. repositoryIssue（140）与 issue（141）不一致 → 记录的仓库跟错了 Epic，
+# 视同缺少仓库身份：绝不调用 gh，永久无法核验。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo","repositoryIssue":140},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-repoissue-mismatch"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "repositoryIssue 与 issue 不一致 → 视同缺少仓库身份，永久无法核验" "IDLE (已归档，部分无法核验)|断链0"
+hasctx "repositoryIssue 不一致报告缺少仓库身份" "缺少仓库身份"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ repositoryIssue 不一致时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ repositoryIssue 不一致却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
+# i. repositoryIssue 是字符串（"141"）而非 int → 类型不合法，同样视同缺失。
+archived_github_fixture
+printf '%s\n' '{"tracker":"github","initiative":{"issue":141,"repository":"fixture/repo","repositoryIssue":"141"},"activeModule":"","modules":{}}' \
+  > .agent/history/archive/20260904T000001Z-0002/state.json
+OLD_ARCHIVE_PATH="$PATH"; ARCHIVE_GH_CALLS="$TMP/archive-gh-calls-repoissue-string"; export PATH="$ARCHIVE_GH_BIN:$PATH" ARCHIVE_GH_CALLS
+export SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1
+chk "repositoryIssue 是字符串（非 int）→ 视同缺少仓库身份" "IDLE (已归档，部分无法核验)|断链0"
+hasctx "repositoryIssue 类型非法报告缺少仓库身份" "缺少仓库身份"
+if [ ! -e "$ARCHIVE_GH_CALLS" ]; then
+  printf '  ✅ repositoryIssue 是字符串时 gh 零调用\n'; PASS=$((PASS+1))
+else
+  printf '  ❌ repositoryIssue 是字符串却调用了 gh\n'; FAIL=$((FAIL+1))
+fi
+export PATH="$OLD_ARCHIVE_PATH"; unset ARCHIVE_GH_CALLS SPEC_GUARD_ARCHIVE_REMOTE_VERIFY
+
 # 快照缺少仓库身份：必须报告「缺少仓库身份」，绝不回退到当前 origin，也
 # 绝不调用 gh。
 archived_github_fixture

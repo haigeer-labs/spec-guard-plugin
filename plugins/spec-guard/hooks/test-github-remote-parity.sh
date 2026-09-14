@@ -36,13 +36,17 @@ sys.exit(0 if is_github_remote(sys.argv[1]) else 1)
 }
 
 # 共享表：覆盖 https / ssh:// 带端口 / user@host:path / 无 user 的 scp 别名 /
-# 大写 host / 路径里含 github 的 GitLab host / 尾随斜杠 / 大写 .GIT。
+# 大写 host / 路径里含 github 的 GitLab host / 尾随斜杠 / 大写 .GIT /
+# github 不在 host 开头（ssh.github.com、www.github.com）—— 否则把「host 含
+# github」误改成「host 以 github 开头」时，整张表仍会全部通过。
 # 每行：url|expect（yes=是 GitHub 远端，no=不是）
 TABLE='https://github.com/Owner/Repo.git|yes
 ssh://git@github.com:22/Owner/Repo.git|yes
 git@github.com:Owner/Repo.git|yes
 git@github-collab:Owner/Repo.git|yes
 github-alias:Owner/Repo.git|yes
+git@ssh.github.com:Owner/Repo.git|yes
+https://www.github.com/Owner/Repo.git|yes
 https://GITHUB.COM/Owner/Repo.git|no
 https://gitlab.com/me/github-tools.git|no
 https://github.com/Owner/Repo/|yes

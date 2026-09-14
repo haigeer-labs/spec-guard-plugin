@@ -43,7 +43,7 @@
 | R07 | 已复核 | 当前 `test-sync-map-gitlab.sh` 覆盖重复同步复用、丢失 create 响应恢复、歧义/过期 state 拒绝与 preview 零写入。 | 本地桩证据不等于真实 GitLab 发布验收。 | 无新增代码修复；发布前仍需在获授权的隔离项目验证。 |
 | R08 | P2 | MCP serverInfo 版本固定为 0.8.0，与 v0.11.0 manifest 不一致。 | 诊断与安装版本信息不可信。 | 从唯一 manifest 来源读取版本，并加入一致性测试。 |
 | R09 | 部分收口 | `v0.11.0` 有 changelog，但 `docs/releases/` 没有对应的命名发布 artifact/安装记录。本机两个旧同名插件的 smoke 均不作为证据；当前 worktree 已以独立候选插件 ID 安装，带 `--plugin-id`、`--expected-source` 的 smoke 退出 0，且缓存与当前源码（排除 Codex 自动生成目录）一致。README 所称“尚未发布”仅指当前整改分支，不构成版本冲突。 | 当前候选的 hook 注入已得到真实宿主验证，但还不能追溯证明正式 `v0.11.0` 发布体验。 | 为命名 artifact 补充干净环境安装记录，并补充 CI 实际运行。 |
-| R10 | 外部阻塞 | 本地与远端均有 active 的 `.github/workflows/validate.yml`（远端 workflow ID `342899601`），覆盖 Ubuntu/macOS 的 `scripts/validate.sh` 与关键回归；只读查询显示 `Validate` 历史运行数为 0。获用户授权后尝试 workflow dispatch，GitHub 返回 HTTP 422：`Actions has been disabled for this user`，未生成 run。本地 `scripts/validate.sh` 已通过，但变异测试因当前被修改文件跳过。 | 本地“全绿”无法等同发布保证；当前账号无法生成 CI 证据。 | 由具有 Actions 权限的仓库管理员启用/授权该账号后触发一次实际 CI，并让变异测试在独立 checkout/worktree 运行。 |
+| R10 | 部分收口（2026-09-14 更新，见文末） | 2026-09-12 基线：本地与远端均有 active 的 `.github/workflows/validate.yml`（远端 workflow ID `342899601`），覆盖 Ubuntu/macOS 的 `scripts/validate.sh` 与关键回归；只读查询显示 `Validate` 历史运行数为 0。获用户授权后尝试 workflow dispatch，GitHub 返回 HTTP 422：`Actions has been disabled for this user`，未生成 run。本地 `scripts/validate.sh` 已通过，但变异测试因当前被修改文件跳过。 | 本地“全绿”无法等同发布保证；当前账号无法生成 CI 证据。 | 由具有 Actions 权限的仓库管理员启用/授权该账号后触发一次实际 CI，并让变异测试在独立 checkout/worktree 运行。 |
 | R11 | P1 | phase hook 会为识别自建 GitLab remote 自动执行 `glab repo view`。 | 每次提示注入都可能在未授权情况下访问真实 GitLab。 | 自建实例只接受 `.agent/state.json` 的显式 `tracker=gitlab`；自动识别仅做不联网的 `gitlab.com` host 判断。 |
 
 ## 本轮修复范围
@@ -70,3 +70,12 @@
 ## 修复后的复评门槛
 
 完成 R01–R05、R08、R11 且所有定向/全量回归通过后，可将“数据安全与确认”从 0/20 提升为有条件评分；但只有补齐真实安装验证与 CI 证据，才应重新评估是否进入稳定发布。并行能力在恢复写入口前始终按“暂停的实验能力”计，不得纳入稳定发布承诺。
+
+## 后续更新（2026-09-14）
+
+以下只更新 R10 的事实状态，不改动上文 2026-09-12 基线结论。
+
+- **CI 已实际运行。** 仓库迁至 `haigeer-labs/spec-guard-plugin` 后，`Validate` 在 Ubuntu/macOS 上随 PR 与 main 推送运行并通过，例如 PR 运行 [34768462959](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34768462959)（#23）、[34772520801](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34772520801)（#24）、[34800676263](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34800676263)（#26），以及 main 推送运行 [34799901764](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34799901764)、[34805098783](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34805098783)。
+- **一次与代码无关的失败。** main 推送运行 [34798265790](https://github.com/haigeer-labs/spec-guard-plugin/actions/runs/34798265790)（`257b6fd`，v0.13.0 发布合并）在 ubuntu job 下载 ShellCheck 二进制时收到 GitHub `403 rate limit exceeded` 而失败；该 job 中回归步骤（如 phase-guard 193/0、verify-artifacts 76/0）均已通过，其后 main 的运行恢复通过。在线下载 ShellCheck 仍可能偶发失败。
+- **仍未收口。** 变异测试尚未在独立 checkout/worktree 中作为 CI 或发布证据运行。
+- **安装与真实宿主证据。** v0.13.0 已记录 Codex CLI（[v0.13.0-codex.json](../releases/v0.13.0-codex.json)）与 Claude Code 桌面会话（[v0.13.0-claude.json](../releases/v0.13.0-claude.json)）的安装与 hook 注入验证。

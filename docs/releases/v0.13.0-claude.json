@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.13.0"
+  },
+  "records": [
+    {
+      "subject": "claude-code",
+      "status": "installed-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "version:0.13.0;marketplace:spec-guard-marketplace;source:haigeer-labs/spec-guard-plugin@257b6fd"
+      },
+      "observedAt": "2026-09-14T02:26:29Z",
+      "evidence": [
+        "command:claude plugin marketplace update spec-guard-marketplace",
+        "command:claude plugin update spec-guard@spec-guard-marketplace -y",
+        "installed-cache:/Users/vilin/.claude/plugins/cache/spec-guard-marketplace/spec-guard/0.13.0",
+        "result:installed_plugins.json reports spec-guard@spec-guard-marketplace version 0.13.0, gitCommitSha 257b6fd, scope user, enabled"
+      ]
+    },
+    {
+      "subject": "claude-code-host",
+      "status": "host-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "claude-code-desktop:2.1.270;session:e35f6707-df8f-4846-bfe4-57fc1fb198fb"
+      },
+      "observedAt": "2026-09-14T14:56:42Z",
+      "evidence": [
+        "host:Claude Code desktop app (Code tab) after restart",
+        "result:UserPromptSubmit injected phase context reporting spec-guard v0.13.0 with spec-digest path under cache/spec-guard-marketplace/spec-guard/0.13.0",
+        "result:injected context used the 0.13.0 archive wording (unverifiable archives listed separately as 无法核验)"
+      ]
+    }
+  ]
+}

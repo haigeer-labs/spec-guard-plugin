@@ -4,7 +4,7 @@
 
 ### 变更
 
-- **归档记录的仓库身份绑定到 Epic 编号。** 归档快照新增 `initiative.repositoryIssue`，记录写入 `repository` 那一刻的 Epic 编号；若 `resume` 后 Epic 编号变了（例如在另一个仓库重建），下一次归档会发现两者对不上，重新从 origin 解析仓库身份。没有这个字段的旧快照（v0.13.0 及之前）仍保留原 `repository`，并在下一次归档时补上编号——注意这类旧快照如果被 `resume` 后在另一个仓库重建，仍会先按旧仓库身份归档一次，之后才能被识别为跟错了 Epic。phase-guard 把「存在但对不上」的 `repositoryIssue` 视同缺少仓库身份，不再核验。
+- **归档记录的仓库身份绑定到 Epic 编号。** 归档快照新增 `initiative.repositoryIssue`，记录写入 `repository` 那一刻的 Epic 编号；若 `resume` 后 Epic 编号变了（例如在另一个仓库重建），下一次归档会发现两者对不上，重新从 origin 解析仓库身份。没有这个字段的旧快照（v0.13.0 写出）仍保留原 `repository`，并在下一次归档时补上当前 Epic 编号。已知限制：这类旧快照如果被 `resume` 后在另一个仓库重建 Epic，补记的是新 Epic 编号，因此会一直被记到旧仓库，不会自动纠正。phase-guard 把「存在但对不上」的 `repositoryIssue` 视同缺少仓库身份，不再核验。
 
 ### 修复
 

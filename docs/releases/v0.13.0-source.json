@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.13.0"
+  },
+  "records": [
+    {
+      "subject": "spec-guard-source",
+      "status": "source-verified",
+      "target": {
+        "kind": "source-checkout",
+        "id": "candidate:0.13.0;branch:chore/release-v0.13.0;base:d7cb4e8;worktree:version-bump-uncommitted"
+      },
+      "observedAt": "2026-09-13T17:44:21Z",
+      "evidence": [
+        "command:bash plugins/spec-guard/hooks/test-phase-guard.sh",
+        "command:bash plugins/spec-guard/hooks/test-verify-artifacts.sh",
+        "command:bash plugins/spec-guard/hooks/test-initiative-lifecycle.sh",
+        "command:bash plugins/spec-guard/hooks/test-history-verification.sh",
+        "command:bash plugins/spec-guard/hooks/test-codex-adapter.sh",
+        "command:bash scripts/validate.sh",
+        "command:bash evals/codex-plugin-smoke.sh --selftest",
+        "result:phase-guard 193/0; verify-artifacts 76/0; initiative-lifecycle 17/0; codex-adapter 10/0; validate and smoke selftest passed",
+        "result:local source checks only; no package, installed-host, or tracker-project claim"
+      ]
+    }
+  ]
+}

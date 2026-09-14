@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.13.0"
+  },
+  "records": [
+    {
+      "subject": "codex-cli",
+      "status": "installed-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "version:0.13.0;marketplace:spec-guard-marketplace;source:haigeer-labs/spec-guard-plugin@v0.13.0"
+      },
+      "observedAt": "2026-09-14T02:27:00Z",
+      "evidence": [
+        "command:codex plugin marketplace add haigeer-labs/spec-guard-plugin --ref v0.13.0 --json",
+        "command:codex plugin add spec-guard@spec-guard-marketplace --json",
+        "installed-cache:/Users/vilin/.codex/plugins/cache/spec-guard-marketplace/spec-guard/0.13.0",
+        "result:codex plugin list reports spec-guard@spec-guard-marketplace 0.13.0 installed and enabled; marketplace snapshot at 257b6fd"
+      ]
+    },
+    {
+      "subject": "codex-cli-host",
+      "status": "host-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "codex-cli-smoke:2026-09-14T02:27:40Z"
+      },
+      "observedAt": "2026-09-14T02:27:52Z",
+      "evidence": [
+        "command:bash evals/codex-plugin-smoke.sh --plugin-id spec-guard@spec-guard-marketplace --expected-source /Users/vilin/.codex/.tmp/marketplaces/spec-guard-marketplace/plugins/spec-guard",
+        "result:received UserPromptSubmit phase context"
+      ]
+    }
+  ]
+}

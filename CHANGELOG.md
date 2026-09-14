@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### 修复
+
+- **归档记录仓库身份认得更多 GitHub origin 写法。** origin-URL 解析提取为可导入的 `github_remote.py`，新增识别尾随斜杠（`.../Owner/Repo/`）、大小写不敏感的 `.git` 后缀（`Owner/Repo.GIT`）与不带用户名的 scp 别名（`alias:owner/repo`）；此前只有带用户名的 `user@alias:owner/repo` 能解析。
+- **清理失败回滚不再泄漏归档改写。** `tracker=github` 归档会把 `initiative.repository` 写回快照；若随后清理当前产物失败，回滚现在恢复改写前保存的原始字节，而不是那份已被写回仓库身份的快照，不再把归档的副作用带回当前 `.agent/state.json`。
+- **归档快照字段含控制字符时整条判不可读。** `archived_completed_trackers` 用 `\x1f` 分隔单行记录；若 tracker/issue/repository 或 initiative id 混入 `\n`、`\r` 或 `\x1f`，会撕裂那一行、被拆成错位记录进而拼出看不出归属的空 tracker 条目。现在整条记录直接标记为 `__snapshot_unreadable__`，不再产出畸形条目。
+
 ## [0.13.0] - 2026-09-14
 
 ### 变更

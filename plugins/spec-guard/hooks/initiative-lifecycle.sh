@@ -158,7 +158,10 @@ discard_uncommitted_checkpoint() {
 }
 restore_current_artifacts() {
   cp "$DEST/CAPABILITY-MAP.md" "$PROJECT/spec/CAPABILITY-MAP.md" || return 1
-  cp "$STATE_DEST/state.json" "$PROJECT/.agent/state.json" || return 1
+  # 用改写前保存的原始字节恢复，而不是 $STATE_DEST/state.json ——
+  # 那份快照可能已经被下面的 GitHub 仓库身份写回改过（多了 repository 字段）。
+  # 回滚必须原样交回用户手上那份 state，不能把归档的副作用泄漏回当前产物。
+  cp "$ORIGINAL_STATE" "$PROJECT/.agent/state.json" || return 1
   while IFS= read -r MODULE; do
     [ -n "$MODULE" ] || continue
     if [ -f "$DEST/$MODULE.md" ]; then
@@ -177,22 +180,26 @@ cleanup_current_artifacts() {
   done <<< "$MODULES"
   rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 }
-trap 'discard_uncommitted_checkpoint' EXIT
+ORIGINAL_STATE="$(mktemp)" || exit 1
+trap 'rm -f "$ORIGINAL_STATE"; discard_uncommitted_checkpoint' EXIT
 mkdir -p "$DEST" "$STATE_DEST" || exit 1
 cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
 cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
+cp "$PROJECT/.agent/state.json" "$ORIGINAL_STATE" || exit 1
 # GitHub 归档记录仓库身份（Spec: archive-github-repository.md）。只在
 # tracker=github 且快照尚无合法 initiative.repository 时，从当前 origin
 # 解析 owner/repo 并写回快照；host 判定与 phase-guard.sh 的
 # remote_host/is_github_remote 一致。归档核验只读这个记录值，不再解析 origin。其他
 # tracker 或已带合法 repository 的快照必须原样保留，不重写字节。
-python3 - "$STATE_DEST/state.json" "$PROJECT" <<'PY' || exit 1
+python3 - "$STATE_DEST/state.json" "$PROJECT" "$(dirname "$HISTORY")" <<'PY' || exit 1
 import json
 import re
 import subprocess
 import sys
 
-snapshot_path, project = sys.argv[1:]
+snapshot_path, project, hooks_dir = sys.argv[1:]
+sys.path.insert(0, hooks_dir)
+from github_remote import repository_from_remote
 
 with open(snapshot_path, encoding="utf-8") as handle:
     snapshot = json.load(handle)
@@ -201,49 +208,6 @@ if snapshot.get("tracker") != "github":
     sys.exit(0)
 
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-SEGMENT_RE = re.compile(r"[A-Za-z0-9_.-]+")
-
-
-def remote_host(url):
-    host = url
-    if "://" in host:
-        host = host.split("://", 1)[1]
-    if "@" in host:
-        host = host.split("@", 1)[1]
-    host = host.split("/", 1)[0]
-    host = host.split(":", 1)[0]
-    return host
-
-
-def is_github_remote(url):
-    return "github" in remote_host(url)
-
-
-def github_repository_from_origin(remote):
-    if not remote or not is_github_remote(remote):
-        return None
-    if "://" in remote:
-        path = remote.split("://", 1)[1]
-        path = path.split("/", 1)[1] if "/" in path else ""
-    else:
-        at_index = remote.find("@")
-        colon_index = remote.find(":", at_index) if at_index != -1 else -1
-        if at_index == -1 or colon_index == -1:
-            return None
-        path = remote.split(":", 1)[1]
-    if path.startswith("/"):
-        path = path[1:]
-    if path.endswith(".git"):
-        path = path[: -len(".git")]
-    if "/" not in path:
-        return None
-    owner, repository = path.split("/", 1)
-    if not SEGMENT_RE.fullmatch(owner):
-        return None
-    if "/" in repository or not SEGMENT_RE.fullmatch(repository):
-        return None
-    return "%s/%s" % (owner, repository)
-
 
 NOTICE = "提示：无法从 origin 解析 GitHub 仓库（owner/repo），该 checkpoint 以后无法远端核验 Epic"
 
@@ -265,7 +229,7 @@ try:
 except OSError:
     # 没有可执行的 git 等同于没有 origin：仓库身份不可得，但归档不能失败。
     remote = ""
-repository = github_repository_from_origin(remote)
+repository = repository_from_remote(remote)
 if not repository:
     print(NOTICE)
     sys.exit(0)
@@ -286,7 +250,7 @@ while IFS= read -r MODULE; do
   fi
 done <<< "$MODULES"
 EVENT="$(mktemp)"
-trap 'rm -f "$EVENT"' EXIT
+trap 'rm -f "$EVENT" "$ORIGINAL_STATE"' EXIT
 python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" "$HISTORY" <<'PY' || exit 1
 import hashlib
 import json
@@ -343,7 +307,7 @@ event = json.load(open(sys.argv[2], encoding='utf-8'))
 history['verify']({'initiatives': [{'events': [event]}]}, sys.argv[3])
 PYVERIFY
 CREATED_EVENT="$(mktemp)"
-trap 'rm -f "$EVENT" "$CREATED_EVENT"; discard_uncommitted_checkpoint' EXIT
+trap 'rm -f "$EVENT" "$CREATED_EVENT" "$ORIGINAL_STATE"; discard_uncommitted_checkpoint' EXIT
 python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
 import json
 import sys

@@ -171,7 +171,12 @@ printf '# Alpha\n' > "$CLEANUP_PROJECT/spec/alpha.md"
 printf '# Beta\n' > "$CLEANUP_PROJECT/spec/beta.md"
 printf '# Plan\n' > "$CLEANUP_PROJECT/tasks/alpha/plan.md"
 printf '# Beta plan\n' > "$CLEANUP_PROJECT/tasks/beta/plan.md"
-printf '{"activeModule":"alpha","modules":{"alpha":{"issue":1},"beta":{"issue":2}}}\n' > "$CLEANUP_PROJECT/.agent/state.json"
+# tracker=github + 有效 GitHub origin：归档快照会被改写（写入 repository），
+# 恢复用的必须是改写前的原始字节，不能是那份被改过的快照。
+printf '{"tracker":"github","activeModule":"alpha","modules":{"alpha":{"issue":1},"beta":{"issue":2}},"initiative":{"title":"x","issue":1}}\n' > "$CLEANUP_PROJECT/.agent/state.json"
+git -C "$CLEANUP_PROJECT" init -q
+git -C "$CLEANUP_PROJECT" remote add origin https://github.com/Cleanup/Origin.git
+cp "$CLEANUP_PROJECT/.agent/state.json" "$TMP/cleanup-original-state.json"
 cat > "$TMP/fake-rm-bin/rm" <<'STUB'
 #!/usr/bin/env bash
 for arg in "$@"; do
@@ -196,6 +201,21 @@ if [ "$CLEANUP_STATUS" -ne 0 ] \
 else
   bad "反：清理失败后留下半归档或错误 lifecycle 状态"
   printf '    cleanup status=%s output=%s\n' "$CLEANUP_STATUS" "$CLEANUP_OUTPUT"
+fi
+
+# 恢复的 .agent/state.json 必须与改写前的原始字节完全相同 —— 不能是归档
+# 过程中被写入 repository 字段之后的那份快照。
+if cmp -s "$CLEANUP_PROJECT/.agent/state.json" "$TMP/cleanup-original-state.json"; then
+  ok "反：清理失败后恢复的 state.json 与原始字节完全一致（cmp）"
+else
+  bad "反：清理失败后恢复的 state.json 字节被篡改（应与改写前完全一致）"
+fi
+if [ "$(python3 -c 'import json,sys
+d = json.load(open(sys.argv[1]))
+print("repository" in (d.get("initiative") or {}))' "$CLEANUP_PROJECT/.agent/state.json")" = "False" ]; then
+  ok "反：清理失败后恢复的 state.json 没有 repository 字段"
+else
+  bad "反：清理失败后恢复的 state.json 意外带有 repository 字段（快照改写泄漏到了当前产物）"
 fi
 
 # GitHub 归档快照记录仓库身份（Spec: archive-github-repository.md）。
@@ -278,6 +298,75 @@ if "$LIFECYCLE" complete --project "$GH4_PROJECT" --initiative gh-non-github >/d
   fi
 else
   bad "正：tracker=github + 非 GitHub origin → 无 repository 字段"
+fi
+
+GH5_PROJECT="$TMP/gh-alias-no-user-project"
+mkdir -p "$GH5_PROJECT/spec" "$GH5_PROJECT/.agent"
+printf '# Map\n' > "$GH5_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$GH5_PROJECT/.agent/state.json"
+git -C "$GH5_PROJECT" init -q
+git -C "$GH5_PROJECT" remote add origin github-alias:Owner/Repo.git
+if "$LIFECYCLE" complete --project "$GH5_PROJECT" --initiative gh-alias-no-user >/dev/null 2>&1; then
+  GH5_SNAPSHOT="$(latest_snapshot "$GH5_PROJECT/.agent/history/gh-alias-no-user")"
+  if [ -n "$GH5_SNAPSHOT" ] && [ "$(snapshot_repository "$GH5_SNAPSHOT")" = "Owner/Repo" ]; then
+    ok "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+  else
+    bad "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+  fi
+else
+  bad "正：tracker=github + scp 别名 origin（无 user）→ 快照记录 owner/repo"
+fi
+
+# repository 字段非字符串（如账本迁移留下的数字）不是「合法值」，必须
+# 视同缺失，重新从当前 origin 解析 —— 不能因 isinstance 检查外的疏漏把
+# 一个坏类型悄悄当成「已有合法记录」而跳过写回。
+NONSTR_PROJECT="$TMP/gh-nonstring-repository-project"
+mkdir -p "$NONSTR_PROJECT/spec" "$NONSTR_PROJECT/.agent"
+printf '# Map\n' > "$NONSTR_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1,"repository":123}}' > "$NONSTR_PROJECT/.agent/state.json"
+git -C "$NONSTR_PROJECT" init -q
+git -C "$NONSTR_PROJECT" remote add origin https://github.com/Owner/Repo.git
+if "$LIFECYCLE" complete --project "$NONSTR_PROJECT" --initiative gh-nonstring-repository >/dev/null 2>&1; then
+  NONSTR_SNAPSHOT="$(latest_snapshot "$NONSTR_PROJECT/.agent/history/gh-nonstring-repository")"
+  if [ -n "$NONSTR_SNAPSHOT" ] && [ "$(snapshot_repository "$NONSTR_SNAPSHOT")" = "Owner/Repo" ]; then
+    ok "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+  else
+    bad "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+  fi
+else
+  bad "正：state 里 repository 是非字符串 → 视同缺失，从当前 origin 重新解析"
+fi
+
+# pause → resume → 改 origin → complete：resume 恢复的是 FIRST（pause）
+# checkpoint 里原样保存的当前产物；那个 checkpoint 自己的 state.json（在
+# .agent/history 下）此后不应再被写。后面这次 complete 建的是全新的
+# checkpoint 目录，不会碰旧目录，但这里用字节级 sha256 直接把「不应变」
+# 钉死为可回归的断言。
+ROUNDTRIP_BYTES_PROJECT="$TMP/roundtrip-bytes-project"
+mkdir -p "$ROUNDTRIP_BYTES_PROJECT/spec" "$ROUNDTRIP_BYTES_PROJECT/.agent"
+printf '# Map\n' > "$ROUNDTRIP_BYTES_PROJECT/spec/CAPABILITY-MAP.md"
+printf '{"tracker":"github","activeModule":null,"modules":{},"initiative":{"title":"x","issue":1}}' > "$ROUNDTRIP_BYTES_PROJECT/.agent/state.json"
+git -C "$ROUNDTRIP_BYTES_PROJECT" init -q
+git -C "$ROUNDTRIP_BYTES_PROJECT" remote add origin https://github.com/First/Checkpoint.git
+RTB_LABEL="正：pause → resume → 改 origin → complete，首个（pause）checkpoint 的 state.json 字节不变"
+if "$LIFECYCLE" pause --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1; then
+  RTB_FIRST_SNAPSHOT="$(latest_snapshot "$ROUNDTRIP_BYTES_PROJECT/.agent/history/roundtrip-bytes")"
+  RTB_FIRST_SHA_BEFORE="$(shasum -a 256 "$RTB_FIRST_SNAPSHOT" | awk '{print $1}')"
+  if "$LIFECYCLE" resume --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1 \
+    && git -C "$ROUNDTRIP_BYTES_PROJECT" remote set-url origin git@github-alias:Second/Checkpoint.git \
+    && sleep 1 \
+    && "$LIFECYCLE" complete --project "$ROUNDTRIP_BYTES_PROJECT" --initiative roundtrip-bytes >/dev/null 2>&1; then
+    RTB_FIRST_SHA_AFTER="$(shasum -a 256 "$RTB_FIRST_SNAPSHOT" | awk '{print $1}')"
+    if [ "$RTB_FIRST_SHA_BEFORE" = "$RTB_FIRST_SHA_AFTER" ]; then
+      ok "$RTB_LABEL"
+    else
+      bad "$RTB_LABEL"
+    fi
+  else
+    bad "$RTB_LABEL"
+  fi
+else
+  bad "$RTB_LABEL"
 fi
 
 NONE_PROJECT="$TMP/none-tracker-project"

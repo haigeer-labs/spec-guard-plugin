@@ -287,6 +287,33 @@ hasctx "归档快照缺失时标明待核验原因" "归档状态快照"
 hasctx "快照不可读时指向历史审计" "/spec-guard:history-integrity"
 lacksctx "快照不可读不建议 opt-in 重试" "SPEC_GUARD_ARCHIVE_REMOTE_VERIFY=1"
 
+# 快照字段本身含控制字符（\n \r \x1f）：archived_completed_trackers 用
+# \x1f 分隔单行记录，字段里混进这些字符会撕裂那一行，被 bash 的
+# `while IFS=$'\x1f' read` 拆成多条错位的记录 —— 其中一条会带着空 tracker
+# 落进兜底分支，拼出「 条目」这种看不出是谁的假记录。必须整条判不可读。
+archived_control_char_fixture() {
+  base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002
+  python3 - <<'PY'
+import json
+
+state = {
+    "tracker": "github\n",
+    "initiative": {"issue": 141, "repository": "fixture/repo"},
+    "activeModule": "",
+    "modules": {},
+}
+with open(".agent/history/archive/20260904T000001Z-0002/state.json", "w", encoding="utf-8") as handle:
+    json.dump(state, handle)
+PY
+  printf '%s\n' '{"schemaVersion":1,"initiatives":[{"id":"archive","title":"Archive","events":[{"type":"created","at":"now","checkpoint":{"id":"20260904T000000Z-0001","map":{"path":"spec/history/archive/20260904T000000Z-0001/CAPABILITY-MAP.md","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"modules":[]}},{"type":"completed","at":"now","checkpoint":{"id":"20260904T000001Z-0002","map":{"path":"spec/history/archive/20260904T000001Z-0002/CAPABILITY-MAP.md","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"state":{"path":".agent/history/archive/20260904T000001Z-0002/state.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"modules":[]}}]}]}' \
+    > spec/CAPABILITY-HISTORY.json
+}
+
+archived_control_char_fixture
+chk "归档快照的 tracker 字段含换行 → 整条视为不可读，不得拆出空 tracker 条目" "ARCHIVED (远端待核验)|断链0"
+hasctx "含控制字符的快照标明待核验原因" "归档状态快照"
+lacksctx "含控制字符的快照不得拆出空 tracker 的未核验条目" " 条目"
+
 # GitLab 走同一条只读对账路径；glab 是本地桩，测试不访问真实项目。
 archived_gitlab_fixture() {
   base; mkdir -p spec .agent/history/archive/20260904T000001Z-0002

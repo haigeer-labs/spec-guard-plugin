@@ -311,6 +311,10 @@ CONTROL_CHARS = ("\n", "\r", "\x1f")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
+def is_valid_issue(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def has_control_char(value):
     return any(ch in value for ch in CONTROL_CHARS)
 
@@ -353,10 +357,24 @@ for initiative in ledger.get("initiatives", []):
         print(FS.join((initiative_id, "__snapshot_unreadable__", "", "")))
         continue
     tracker = snapshot.get("tracker")
-    issue = (snapshot.get("initiative") or {}).get("issue")
-    repository = (snapshot.get("initiative") or {}).get("repository")
+    initiative_obj = snapshot.get("initiative") or {}
+    issue = initiative_obj.get("issue")
+    repository = initiative_obj.get("repository")
     if not (isinstance(repository, str) and REPO_RE.fullmatch(repository)):
         repository = ""
+    # repositoryIssue 记录 repository 绑定的是哪个 Epic 编号。resume 后在
+    # 别的仓库重建 Epic 会改 issue，若键存在却跟当前 issue 对不上（缺失、
+    # 类型错、或就是不等），这条 repository 就是跟错了 Epic 的旧记录——
+    # 必须当成缺失仓库身份处理，绝不能拿它去核验一个不相干的 Epic。
+    if "repositoryIssue" in initiative_obj:
+        repository_issue = initiative_obj.get("repositoryIssue")
+        bound_to_current_issue = (
+            is_valid_issue(issue)
+            and is_valid_issue(repository_issue)
+            and repository_issue == issue
+        )
+        if not bound_to_current_issue:
+            repository = ""
     tracker_str = tracker if isinstance(tracker, str) else ""
     issue_str = str(issue) if isinstance(issue, int) and issue > 0 else ""
     # 这四个字段拼成的一行要靠 \x1f 分隔、靠换行分隔记录；任何一个字段里

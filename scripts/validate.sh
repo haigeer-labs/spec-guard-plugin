@@ -85,6 +85,7 @@ python3 -B plugins/spec-guard/hooks/test_documentation_baseline.py || F=1
 python3 -B plugins/spec-guard/hooks/test_documentation_impact.py || F=1
 python3 -B plugins/spec-guard/hooks/test_documentation_verification.py || F=1
 python3 -B plugins/spec-guard/hooks/test_github_remote.py || F=1
+/bin/bash plugins/spec-guard/hooks/test-github-remote-parity.sh || F=1
 echo ""
 
 echo "═══ Capability history ledger regression ═══"

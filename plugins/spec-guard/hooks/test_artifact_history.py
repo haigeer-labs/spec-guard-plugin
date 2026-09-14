@@ -25,7 +25,9 @@ class ArtifactHistoryTests(unittest.TestCase):
         return self.fixture.hooks()[1]
 
     def add(self, name):
-        shutil.copy2(self.repo / ('spec/' + name + '.md'), self.root / ('spec/' + name + '.md'))
+        # 以归档 checkpoint 中逐字节相同的副本作为「当前 spec」，不依赖仓库根目录遗留文件。
+        archived = self.repo / 'spec/history/capability-history/20260903T074408Z-0001' / (name + '.md')
+        shutil.copy2(archived, self.root / ('spec/' + name + '.md'))
 
     def test_snapshot_verified_and_map_only_history_are_distinct(self):
         self.add('history-ledger')

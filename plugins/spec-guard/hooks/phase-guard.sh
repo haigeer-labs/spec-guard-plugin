@@ -307,7 +307,19 @@ import re
 import sys
 
 FS = "\x1f"
+CONTROL_CHARS = ("\n", "\r", "\x1f")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def has_control_char(value):
+    return any(ch in value for ch in CONTROL_CHARS)
+
+
+def sanitize_id(value):
+    for ch in CONTROL_CHARS:
+        value = value.replace(ch, " ")
+    return value
+
 
 ledger_path, root = sys.argv[1:]
 try:
@@ -316,6 +328,8 @@ except Exception:
     raise SystemExit
 for initiative in ledger.get("initiatives", []):
     initiative_id = initiative.get("id", "unknown")
+    if not isinstance(initiative_id, str):
+        initiative_id = str(initiative_id)
     events = initiative.get("events", [])
     if not events or events[-1].get("type") != "completed":
         continue
@@ -343,11 +357,20 @@ for initiative in ledger.get("initiatives", []):
     repository = (snapshot.get("initiative") or {}).get("repository")
     if not (isinstance(repository, str) and REPO_RE.fullmatch(repository)):
         repository = ""
-    if isinstance(tracker, str) and tracker:
+    tracker_str = tracker if isinstance(tracker, str) else ""
+    issue_str = str(issue) if isinstance(issue, int) and issue > 0 else ""
+    # 这四个字段拼成的一行要靠 \x1f 分隔、靠换行分隔记录；任何一个字段里
+    # 混进 \n / \r / \x1f 都会撕裂这一行，被 bash 的按行 read 拆成多条
+    # 错位的记录（其中一条会带着空 tracker 落进兜底分支）。这种快照本身
+    # 已经不可信，整条按不可读处理，绝不能把撕裂后的残片当成正常记录。
+    if any(has_control_char(field) for field in (initiative_id, tracker_str, issue_str, repository)):
+        print(FS.join((sanitize_id(initiative_id), "__snapshot_unreadable__", "", "")))
+        continue
+    if tracker_str:
         print(FS.join((
             initiative_id,
-            tracker,
-            str(issue) if isinstance(issue, int) and issue > 0 else "",
+            tracker_str,
+            issue_str,
             repository,
         )))
 PY

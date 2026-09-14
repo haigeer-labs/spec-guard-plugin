@@ -171,7 +171,12 @@ printf '# Alpha\n' > "$CLEANUP_PROJECT/spec/alpha.md"
 printf '# Beta\n' > "$CLEANUP_PROJECT/spec/beta.md"
 printf '# Plan\n' > "$CLEANUP_PROJECT/tasks/alpha/plan.md"
 printf '# Beta plan\n' > "$CLEANUP_PROJECT/tasks/beta/plan.md"
-printf '{"activeModule":"alpha","modules":{"alpha":{"issue":1},"beta":{"issue":2}}}\n' > "$CLEANUP_PROJECT/.agent/state.json"
+# tracker=github + 有效 GitHub origin：归档快照会被改写（写入 repository），
+# 恢复用的必须是改写前的原始字节，不能是那份被改过的快照。
+printf '{"tracker":"github","activeModule":"alpha","modules":{"alpha":{"issue":1},"beta":{"issue":2}},"initiative":{"title":"x","issue":1}}\n' > "$CLEANUP_PROJECT/.agent/state.json"
+git -C "$CLEANUP_PROJECT" init -q
+git -C "$CLEANUP_PROJECT" remote add origin https://github.com/Cleanup/Origin.git
+cp "$CLEANUP_PROJECT/.agent/state.json" "$TMP/cleanup-original-state.json"
 cat > "$TMP/fake-rm-bin/rm" <<'STUB'
 #!/usr/bin/env bash
 for arg in "$@"; do
@@ -196,6 +201,21 @@ if [ "$CLEANUP_STATUS" -ne 0 ] \
 else
   bad "反：清理失败后留下半归档或错误 lifecycle 状态"
   printf '    cleanup status=%s output=%s\n' "$CLEANUP_STATUS" "$CLEANUP_OUTPUT"
+fi
+
+# 恢复的 .agent/state.json 必须与改写前的原始字节完全相同 —— 不能是归档
+# 过程中被写入 repository 字段之后的那份快照。
+if cmp -s "$CLEANUP_PROJECT/.agent/state.json" "$TMP/cleanup-original-state.json"; then
+  ok "反：清理失败后恢复的 state.json 与原始字节完全一致（cmp）"
+else
+  bad "反：清理失败后恢复的 state.json 字节被篡改（应与改写前完全一致）"
+fi
+if [ "$(python3 -c 'import json,sys
+d = json.load(open(sys.argv[1]))
+print("repository" in (d.get("initiative") or {}))' "$CLEANUP_PROJECT/.agent/state.json")" = "False" ]; then
+  ok "反：清理失败后恢复的 state.json 没有 repository 字段"
+else
+  bad "反：清理失败后恢复的 state.json 意外带有 repository 字段（快照改写泄漏到了当前产物）"
 fi
 
 # GitHub 归档快照记录仓库身份（Spec: archive-github-repository.md）。

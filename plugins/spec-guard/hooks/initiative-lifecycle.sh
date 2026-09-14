@@ -158,7 +158,10 @@ discard_uncommitted_checkpoint() {
 }
 restore_current_artifacts() {
   cp "$DEST/CAPABILITY-MAP.md" "$PROJECT/spec/CAPABILITY-MAP.md" || return 1
-  cp "$STATE_DEST/state.json" "$PROJECT/.agent/state.json" || return 1
+  # 用改写前保存的原始字节恢复，而不是 $STATE_DEST/state.json ——
+  # 那份快照可能已经被下面的 GitHub 仓库身份写回改过（多了 repository 字段）。
+  # 回滚必须原样交回用户手上那份 state，不能把归档的副作用泄漏回当前产物。
+  cp "$ORIGINAL_STATE" "$PROJECT/.agent/state.json" || return 1
   while IFS= read -r MODULE; do
     [ -n "$MODULE" ] || continue
     if [ -f "$DEST/$MODULE.md" ]; then
@@ -177,10 +180,12 @@ cleanup_current_artifacts() {
   done <<< "$MODULES"
   rm -f "$PROJECT/spec/CAPABILITY-MAP.md" "$PROJECT/.agent/state.json"
 }
-trap 'discard_uncommitted_checkpoint' EXIT
+ORIGINAL_STATE="$(mktemp)" || exit 1
+trap 'rm -f "$ORIGINAL_STATE"; discard_uncommitted_checkpoint' EXIT
 mkdir -p "$DEST" "$STATE_DEST" || exit 1
 cp "$PROJECT/spec/CAPABILITY-MAP.md" "$DEST/CAPABILITY-MAP.md" || exit 1
 cp "$PROJECT/.agent/state.json" "$STATE_DEST/state.json" || exit 1
+cp "$PROJECT/.agent/state.json" "$ORIGINAL_STATE" || exit 1
 # GitHub 归档记录仓库身份（Spec: archive-github-repository.md）。只在
 # tracker=github 且快照尚无合法 initiative.repository 时，从当前 origin
 # 解析 owner/repo 并写回快照；host 判定与 phase-guard.sh 的
@@ -245,7 +250,7 @@ while IFS= read -r MODULE; do
   fi
 done <<< "$MODULES"
 EVENT="$(mktemp)"
-trap 'rm -f "$EVENT"' EXIT
+trap 'rm -f "$EVENT" "$ORIGINAL_STATE"' EXIT
 python3 - "$EVENT" "$EVENT_TYPE" "$PROJECT" "$INITIATIVE" "$CHECKPOINT" "$MAP_SHA" "$STATE_SHA" "$HISTORY" <<'PY' || exit 1
 import hashlib
 import json
@@ -302,7 +307,7 @@ event = json.load(open(sys.argv[2], encoding='utf-8'))
 history['verify']({'initiatives': [{'events': [event]}]}, sys.argv[3])
 PYVERIFY
 CREATED_EVENT="$(mktemp)"
-trap 'rm -f "$EVENT" "$CREATED_EVENT"; discard_uncommitted_checkpoint' EXIT
+trap 'rm -f "$EVENT" "$CREATED_EVENT" "$ORIGINAL_STATE"; discard_uncommitted_checkpoint' EXIT
 python3 - "$EVENT" "$CREATED_EVENT" "$INITIATIVE" <<'PY' || exit 1
 import json
 import sys

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-15
+
+### 新增
+
+- **只读 Proposal 生命周期。** 新增版本化 `new-module` Proposal 契约、远端默认分支发布快照、GitHub/GitLab Proposal Issue 只读核验、基线新鲜度评审、first-parent 晋级证明，以及仅在模块交付/推进边界给出的非阻断入口提示。
+- **共享事实与写入边界收紧。** Proposal 只接受远端默认分支的能力图事实；不使用其他 worktree 或未提交文件，不依赖 `spec-github-bridge` 或 `/sync-map`，也不自动创建或修改 Issue、PR、分支、任务或 `.agent/state.json`。
+
 ### 变更
 
 - **归档记录的仓库身份绑定到 Epic 编号。** 归档快照新增 `initiative.repositoryIssue`，记录写入 `repository` 那一刻的 Epic 编号；若 `resume` 后 Epic 编号变了（例如在另一个仓库重建），下一次归档会发现两者对不上，重新从 origin 解析仓库身份。没有这个字段的旧快照（v0.13.0 写出）仍保留原 `repository`，并在下一次归档时补上当前 Epic 编号。已知限制：这类旧快照如果被 `resume` 后在另一个仓库重建 Epic，补记的是新 Epic 编号，因此会一直被记到旧仓库，不会自动纠正。phase-guard 把「存在但对不上」的 `repositoryIssue` 视同缺少仓库身份，不再核验。

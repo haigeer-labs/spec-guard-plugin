@@ -1,7 +1,7 @@
 """Recover one Proposal Issue from already-read, platform-normalized candidates."""
 import json
 import subprocess
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from capability_map import _visible_lines
 from proposal_contract import ContractError, validate_tracker
@@ -65,6 +65,15 @@ def _issue_fields(platform, issue):
         issue_id = issue.get("number")
         repository = issue.get("repository")
         container = repository.get("full_name") if isinstance(repository, dict) else None
+        if container is None:
+            repository_url = issue.get("repository_url")
+            parsed = urlparse(repository_url) if isinstance(repository_url, str) else None
+            parts = parsed.path.strip("/").split("/") if parsed is not None else []
+            container = ("%s/%s" % (parts[1], parts[2])
+                         if (parsed is not None and parsed.scheme == "https" and
+                             parsed.netloc == "api.github.com" and
+                             len(parts) == 3 and parts[0] == "repos" and
+                             all(parts)) else None)
         body = issue.get("body")
     else:
         issue_id = issue.get("iid")

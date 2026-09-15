@@ -53,6 +53,16 @@ class ProposalTrackerReadFixtures(unittest.TestCase):
         self.assertEqual((gitlab.state, gitlab.issue_id, gitlab.stage),
                          ("verified", 9, "proposal-stage:published"))
 
+    def test_recovers_github_search_api_repository_url_shape(self):
+        issue = github_issue()
+        issue.pop("repository")
+        issue["repository_url"] = "https://api.github.com/repos/octo/spec-guard"
+        result = recover_tracker_issue(proposal(), "github", "octo/spec-guard", {
+            "complete": True, "issues": [issue],
+        })
+        self.assertEqual((result.state, result.issue_id, result.stage),
+                         ("verified", 42, "proposal-stage:in-review"))
+
     def test_complete_search_without_a_full_body_marker_is_absent(self):
         title_only = github_issue(body="plain text", title=MARKER)
         partial = github_issue(number=43, body="<!-- spec-guard-proposal:v1 id=gamma")

@@ -25,7 +25,22 @@
         "kind": "host-session",
         "id": "isolated-codex-smoke:v0.15.0"
       },
-      "reason": "the isolated Codex smoke reported login or UserPromptSubmit hook trust was not ready; no host behavior is claimed"
+      "reason": "the isolated smoke reported login or UserPromptSubmit hook trust was not ready, and the active v0.15.0 smoke produced no hook transcript; no host behavior is claimed"
+    },
+    {
+      "subject": "codex-cli-active-install",
+      "status": "installed-verified",
+      "target": {
+        "kind": "installed-session",
+        "id": "version:0.15.0;marketplace:spec-guard-marketplace;source:haigeer-labs/spec-guard-plugin@v0.15.0;scope:active-config"
+      },
+      "observedAt": "2026-09-15T15:04:08Z",
+      "evidence": [
+        "command:codex plugin marketplace remove spec-guard-marketplace --json",
+        "command:codex plugin marketplace add haigeer-labs/spec-guard-plugin --ref v0.15.0 --json",
+        "command:codex plugin add spec-guard@spec-guard-marketplace --json",
+        "result:active Codex configuration reported spec-guard@spec-guard-marketplace version 0.15.0 installed and enabled from the v0.15.0 Git marketplace snapshot"
+      ]
     }
   ]
 }

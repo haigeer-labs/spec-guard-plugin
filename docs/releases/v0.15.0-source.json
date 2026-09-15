@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "0.15.0"
+  },
+  "records": [
+    {
+      "subject": "spec-guard-source",
+      "status": "source-verified",
+      "target": {
+        "kind": "source-checkout",
+        "id": "candidate:0.15.0;branch:main;base:55278e9371ec;worktree:release-uncommitted"
+      },
+      "observedAt": "2026-09-15T14:56:54Z",
+      "evidence": [
+        "command:/bin/bash scripts/validate.sh",
+        "command:/bin/bash plugins/spec-guard/hooks/test-retire-legacy-tracker-bridge.sh",
+        "result:full local validation and retirement regression passed; no package, installed-host, tracker-project, tag, or marketplace claim"
+      ]
+    }
+  ]
+}

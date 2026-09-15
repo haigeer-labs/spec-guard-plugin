@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [0.15.0] - 2026-09-15
 
-### 移除
+### 破坏性变更
 
 - **Legacy GitHub/GitLab tracker bridge。** 移除远端任务投影、选择、worktree
   binding、交付与 Desktop 同步预览，以及对应命令、skills、hooks、模板和测试。

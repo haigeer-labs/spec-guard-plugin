@@ -1,6 +1,6 @@
 {
   "name": "spec-guard",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "多模块 Spec 本地目录约定、只读 Proposal 生命周期与链路检测。",
   "author": {
     "name": "haigeer-labs"

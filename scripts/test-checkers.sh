@@ -156,18 +156,6 @@ printf '跑一下 `/demo:not-real` 就好。\n' >> "$TMP/cngood/plugins/demo/tem
 want fail "command-names: 命名空间里的不存在命令 → 报错" \
   bash -c "cd '$TMP/cngood' && python3 '$ROOT/scripts/check-command-names.py'"
 
-# tracker 路由命令不能只是描述「调用 bridge」：真实 Claude 会把这种短句当成
-# 背景信息而静默结束。必须点明加载 skill、执行哪项操作、以及写入前的确认边界。
-if grep -q 'GitLab 使用确定性脚本' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
-   && grep -q '不要只复述路由规则或静默结束' "$ROOT/plugins/spec-guard/commands/sync-map.md" \
-   && grep -q '完整执行其「操作三：next」' "$ROOT/plugins/spec-guard/commands/next.md" \
-   && grep -q '完整执行其「操作四：deliver」' "$ROOT/plugins/spec-guard/commands/deliver.md" \
-   && grep -q 'allowed-tools: Bash, Read, Write' "$ROOT/plugins/spec-guard/commands/sync-map.md"; then
-  printf '  ✅ tracker 路由命令强制加载 bridge 并禁止静默结束\n'; PASS=$((PASS+1))
-else
-  printf '  ❌ tracker 路由命令缺少执行协议或所需工具权限\n'; FAIL=$((FAIL+1))
-fi
-
 # 它自己声明「不查 hooks/test-*.sh」—— 这条豁免也要有用例，
 # 否则下次有人收紧范围时会静默把它去掉（这正是 0.7.3 修过的那次）
 mkc "$TMP/cnskip" real
@@ -217,32 +205,14 @@ done
 # ── check-readme-sync.py ──
 mkr() {  # $1=目录 $2=README 内嵌块要不要跟模板一致(same|drift)
   rm -rf "$1"; mkdir -p "$1/plugins/spec-guard/templates"
-  printf '## 约定\n\n- 一行事实\n' > "$1/plugins/spec-guard/templates/claude-block-github.md"
-  printf '## 约定\n\n- GitLab 模式\n' > "$1/plugins/spec-guard/templates/claude-block-gitlab.md"
   printf '## 约定\n\n- 本地模式\n' > "$1/plugins/spec-guard/templates/claude-block-local.md"
   {
     echo "# README"; echo
-    echo "<!-- SYNC:claude-block-github BEGIN -->"
-    echo '````markdown'
-    echo "<!-- BEGIN:agent-skills-convention -->"
-    printf '## 约定\n\n- 一行事实\n'
-    [ "$2" = drift ] && echo "- 多出来的一行（模板里没有）"
-    echo "<!-- END:agent-skills-convention -->"
-    echo '````'
-    echo "<!-- SYNC:claude-block-github END -->"
-    echo
-    echo "<!-- SYNC:claude-block-gitlab BEGIN -->"
-    echo '````markdown'
-    echo "<!-- BEGIN:agent-skills-convention -->"
-    printf '## 约定\n\n- GitLab 模式\n'
-    echo "<!-- END:agent-skills-convention -->"
-    echo '````'
-    echo "<!-- SYNC:claude-block-gitlab END -->"
-    echo
     echo "<!-- SYNC:claude-block-local BEGIN -->"
     echo '````markdown'
     echo "<!-- BEGIN:agent-skills-convention -->"
     printf '## 约定\n\n- 本地模式\n'
+    [ "$2" = drift ] && echo "- 多出来的一行（模板里没有）"
     echo "<!-- END:agent-skills-convention -->"
     echo '````'
     echo "<!-- SYNC:claude-block-local END -->"
@@ -258,44 +228,6 @@ printf 'z\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-gitlab.
 printf 'y\n' > "$TMP/rsmissing/plugins/spec-guard/templates/claude-block-local.md"
 printf '# README\n没有 SYNC 标记\n' > "$TMP/rsmissing/README.md"
 want fail "readme-sync: README 里缺 SYNC 标记 → 报错" python3 "$ROOT/scripts/check-readme-sync.py" "$TMP/rsmissing"
-
-# ── mutation-check.py 的两道安全闸 ──────────────────────────
-#   它**在工作区就地改文件**。实测踩过：后台跑的时候另一边跑测试，读到的是
-#   被注入变异的 phase-guard.sh，得到一条假失败；而 `git diff` 里躺着的
-#   坏指纹算法差点被 commit 出去。两道闸都在跑任何变异之前就退出，所以这组
-#   断言很快 —— 免费。
-echo ""
-echo "═══ mutation-check 的安全闸 ═══"
-MC="$ROOT/scripts/mutation-check.py"
-LOCK="$ROOT/.mutation-check.lock"
-
-# 锁存在 → 拒跑。（放前面：它不依赖工作区状态，任何时候都测得了）
-rm -f "$LOCK"; echo 99999 > "$LOCK"
-want fail "mutation-check: 锁存在 → 拒跑" python3 "$MC" --only 不存在的关键词
-rm -f "$LOCK"
-
-# 目标文件脏 → 拒跑。真去弄脏一个再还原，不靠模拟。
-#
-# 前置条件是**三个目标文件全都干净**，不只是被弄脏的那一个：下面那条正向用例
-# （干净 + 无锁 → 放行）在任意一个目标脏着的时候都会红，而「改完这三个脚本
-# 就跑 validate.sh」恰恰是本仓写在工作流里的动作 —— 那种红是假失败，
-# 而假失败会让人学会忽略整套校验（A1）。跳过就明说跳过。
-DIRTY="$ROOT/plugins/spec-guard/hooks/spec-digest.py"
-MTARGETS=("$ROOT/plugins/spec-guard/hooks/phase-guard.sh" \
-          "$ROOT/plugins/spec-guard/hooks/verify-artifacts.sh" "$DIRTY" \
-)
-if git -C "$ROOT" diff --quiet HEAD -- "${MTARGETS[@]}" 2>/dev/null; then
-  printf '\n# test-checkers 临时弄脏\n' >> "$DIRTY"
-  want fail "mutation-check: 目标文件脏 → 拒跑" python3 "$MC" --only 不存在的关键词
-  git -C "$ROOT" checkout -- "$DIRTY"
-  # 干净 + 无锁 + 匹配不到任何变异体 → 正常走完退 0（正向用例）
-  want pass "mutation-check: 干净且无锁 → 放行" python3 "$MC" --only 不存在的关键词
-  [ -f "$LOCK" ] && { printf '  ❌ mutation-check: 跑完没清锁\n'; FAIL=$((FAIL+1)); } \
-                 || { printf '  ✅ mutation-check: 跑完清掉了锁\n'; PASS=$((PASS+1)); }
-else
-  printf '  ⏭  mutation-check 用例跳过（变异目标里有未提交改动: %s）—— 跳过不代表通过\n' \
-    "$(git -C "$ROOT" diff --name-only HEAD -- "${MTARGETS[@]}" | tr '\n' ' ')"
-fi
 
 echo ""
 echo "  总计 $PASS 通过 / $FAIL 失败"

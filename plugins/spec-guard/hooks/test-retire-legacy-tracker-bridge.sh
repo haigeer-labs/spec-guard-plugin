@@ -47,6 +47,9 @@ done
 absent_from 'spec-github-bridge|spec-gitlab-bridge|sync-map-gitlab|gitlab-bridge\.sh|workspace_binding' \
   "$PLUGIN/commands" "$PLUGIN/templates" "$PLUGIN/mcp" "$PLUGIN/hooks/hooks.json"
 
+absent_from 'spec-github-bridge`|spec-gitlab-bridge`|/sync-map' \
+  "$ROOT/README.md" "$ROOT/AGENTS.md" "$ROOT/docs/design.md" "$ROOT/docs/maintainer-workflow.md"
+
 absent_from 'spec-github-bridge|spec-gitlab-bridge|sync-map|gitlab_tracker|workspace_binding|\.agent/state\.json' \
   "$PLUGIN/hooks/proposal_contract.py" \
   "$PLUGIN/hooks/proposal_publication.py" \

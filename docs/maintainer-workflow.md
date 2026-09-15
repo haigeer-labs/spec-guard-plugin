@@ -25,7 +25,7 @@ initiative 状态，且来自已安装版插件，不是产品回归。用临时
 | `phase-guard.sh` 或激活/阶段逻辑 | `test-phase-guard.sh` 与 `test-verify-artifacts.sh` |
 | `verify-artifacts.sh` 或共享判据 | `test-verify-artifacts.sh` 与 `test-phase-guard.sh` |
 | Codex adapter、manifest 或 hook 注册 | `test-codex-adapter.sh` 与 `evals/codex-plugin-smoke.sh --selftest` |
-| GitLab 路由或 tracker 解析 | `test-gitlab-tracker-integrity.sh --selftest` 与相关 hook 测试 |
+| 旧 tracker bridge 退役 | `test-retire-legacy-tracker-bridge.sh` 与 Proposal focused suites |
 | `check-*.py` | `scripts/test-checkers.sh`，每条新判据都有一正一反用例 |
 | `spec-digest.py` | 其 self-test、phase 与 verify 两侧回归 |
 
@@ -34,17 +34,12 @@ macOS 上必须用 `/bin/bash`，以覆盖系统自带 bash 3.2；不要让 Home
 ## 可选但高价值的检查
 
 ```bash
-python3 scripts/mutation-check.py
-python3 scripts/mutation-check.py --only 归档
-/bin/bash evals/skill-deferral.sh --scaffold-only
 /bin/bash evals/module-namespace.sh --scaffold-only
-/bin/bash evals/next-redo.sh --selftest
-/bin/bash evals/sync-map.sh --selftest
+/bin/bash plugins/spec-guard/hooks/test-retire-legacy-tracker-bridge.sh
 ```
 
-变异测试会在工作区短暂改写目标文件。它要求目标相对 HEAD 干净，并使用锁防止并发；运行时
-不要同时测试、编辑或提交。`skill-deferral`、`module-namespace`、`next-redo` 和 `sync-map`
-的非 self-test 模式会调用真实宿主或外部服务，不能把“环境未就绪”误报为产品失败。
+`module-namespace` 的非 scaffold 模式会调用真实宿主；运行时不要同时测试、编辑或提交，
+不能把“环境未就绪”误报为产品失败。
 
 ## Codex 本地安装与真实 smoke
 

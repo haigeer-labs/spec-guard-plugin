@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### 移除
+
+- **Legacy GitHub/GitLab tracker bridge。** 移除远端任务投影、选择、worktree
+  binding、交付与 Desktop 同步预览，以及对应命令、skills、hooks、模板和测试。
+  现有 state、远端对象与归档保持不变；升级前请按迁移指南完成、放弃或保留在途工作。
+
+### 变更
+
+- **本地约定与 Proposal 边界收紧。** setup 仅支持本地多模块目录约定；phase/verify
+  只做本地结构检查，并对遗留 tracker state 给出无副作用的迁移提示。Proposal 继续只读。
+
 ## [0.14.0] - 2026-09-15
 
 ### 新增

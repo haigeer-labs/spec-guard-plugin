@@ -1,19 +1,18 @@
 {
   "name": "spec-guard",
   "version": "0.14.0",
-  "description": "为 addyosmani/agent-skills 补上多模块 Spec 支持、GitHub / GitLab Issue 打通、以及链路断裂检测。",
+  "description": "多模块 Spec 本地目录约定、只读 Proposal 生命周期与链路检测。",
   "author": {
     "name": "haigeer-labs"
   },
   "keywords": [
     "agent-skills",
     "spec-driven",
-    "github-issues",
-    "gitlab-issues",
+    "proposal",
     "workflow"
   ],
   "homepage": "https://github.com/haigeer-labs/spec-guard-plugin",
   "requires": {
-    "note": "依赖 addyosmani/agent-skills 已安装；github 模式需 gh >= 2.94.0，gitlab 模式需已认证的 glab"
+    "note": "依赖 addyosmani/agent-skills 已安装；Proposal tracker 读取由显式、只读适配器完成"
   }
 }

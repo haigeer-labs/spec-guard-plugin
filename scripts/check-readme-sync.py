@@ -35,7 +35,7 @@ def bad(msg: str) -> None:
 
 text = README.read_text(encoding="utf-8")
 
-for name in ("claude-block-github", "claude-block-gitlab", "claude-block-local"):
+for name in ("claude-block-local",):
     src = TPL / f"{name}.md"
     if not src.exists():
         bad(f"模板缺失: {src.relative_to(ROOT)}")

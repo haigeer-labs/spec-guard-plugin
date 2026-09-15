@@ -35,7 +35,6 @@ CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev
 
 ## 什么时候该跑
 
-- `/spec-guard:sync-map` 之后：确认 issue 结构和能力图对得上
-- `/plan` 之后：确认 task 落进了 issue 而不是 todo.md
-- `/spec-guard:deliver` 之前：确认模块 PR 会带上 `Closes #<module-issue>`，且每个 task 都有带 `Closes` 的 commit
+- 评审能力图与模块 spec 之后：确认文件名与目录结构一致
+- `/plan` 之后：确认任务留在相应模块的本地目录
 - 接手别人的分支、或隔了几天回来时

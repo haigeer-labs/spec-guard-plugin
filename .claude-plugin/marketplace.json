@@ -5,7 +5,7 @@
     {
       "name": "spec-guard",
       "source": "./plugins/spec-guard",
-      "description": "agent-skills 多 Spec 目录约定 + 链路守卫。补上 spec→plan→task 的状态机推进与断链检测。"
+      "description": "agent-skills 多 Spec 本地目录约定、Proposal 只读评审与链路守卫。"
     }
   ]
 }

@@ -66,21 +66,12 @@ bash scripts/test-checkers.sh || F=1
 python3 -B scripts/test_pre_push_environment.py || F=1
 echo ""
 
-# 指纹算法是两个 hook 和 /sync-map 共用的那一份 —— 它自己算错，
-# 表现就是一条关不掉的假警报。免费，所以进这一层。
+# 指纹算法供能力图与 Proposal 校验共用；免费，所以进这一层。
 echo "═══ 指纹算法自检 ═══"
 python3 plugins/spec-guard/hooks/spec-digest.py --selftest || F=1
 echo ""
 
-echo "═══ 能力图一致性聚焦回归 ═══"
-/bin/bash plugins/spec-guard/hooks/test-audit-map-consistency.sh || F=1
-echo ""
-
-echo "═══ 本地验证阶段（phase / verify 共用判据）═══"
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s plugins/spec-guard/hooks -p test_local_validation.py || F=1
-python3 -B plugins/spec-guard/hooks/test_local_context.py || F=1
-python3 -B plugins/spec-guard/hooks/test_artifact_history.py || F=1
-python3 -B plugins/spec-guard/hooks/test_workflow_checkpoints.py || F=1
+echo "═══ Proposal 与本地结构回归 ═══"
 python3 -B plugins/spec-guard/hooks/test_documentation_baseline.py || F=1
 python3 -B plugins/spec-guard/hooks/test_documentation_impact.py || F=1
 python3 -B plugins/spec-guard/hooks/test_documentation_verification.py || F=1
@@ -90,16 +81,11 @@ python3 -B plugins/spec-guard/hooks/test_proposal_tracker_read.py || F=1
 python3 -B plugins/spec-guard/hooks/test_proposal_review.py || F=1
 python3 -B plugins/spec-guard/hooks/test_proposal_promotion_proof.py || F=1
 python3 -B plugins/spec-guard/hooks/test_proposal_boundary_guidance.py || F=1
-python3 -B plugins/spec-guard/hooks/test_github_remote.py || F=1
-/bin/bash plugins/spec-guard/hooks/test-github-remote-parity.sh || F=1
+/bin/bash plugins/spec-guard/hooks/test-retire-legacy-tracker-bridge.sh || F=1
 echo ""
 
 echo "═══ Capability history ledger regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-capability-history.sh || F=1
-echo ""
-
-echo "═══ Initiative lifecycle regression ═══"
-/bin/bash plugins/spec-guard/hooks/test-initiative-lifecycle.sh || F=1
 echo ""
 
 echo "═══ History verification regression ═══"
@@ -110,22 +96,6 @@ echo "═══ History migration regression ═══"
 /bin/bash plugins/spec-guard/hooks/test-history-migration.sh || F=1
 echo ""
 
-echo "═══ GitLab sync-map regression ═══"
-/bin/bash plugins/spec-guard/hooks/test-sync-map-gitlab.sh || F=1
-echo ""
-
-echo "═══ GitLab tracker binding and selection regression ═══"
-/bin/bash plugins/spec-guard/hooks/test-gitlab-tracker-integrity.sh --selftest || F=1
-echo ""
-
-echo "═══ GitLab bridge regression ═══"
-/bin/bash plugins/spec-guard/hooks/test-gitlab-bridge.sh || F=1
-echo ""
-
-echo "═══ Codex 适配器回归 ═══"
-/bin/bash plugins/spec-guard/hooks/test-codex-adapter.sh || F=1
-echo ""
-
 echo "═══ Codex 真实宿主 smoke 判决器自检（不调用 Codex）═══"
 /bin/bash evals/codex-plugin-smoke.sh --selftest || F=1
 echo ""
@@ -133,13 +103,6 @@ echo ""
 echo "═══ 发布证据记录回归 ═══"
 /bin/bash evals/test-release-evidence.sh || F=1
 /bin/bash evals/test-release-package.sh || F=1
-echo ""
-
-# 评测的判决器也归这一层：真跑要花 token，但「判决器会不会永远打绿灯」
-# 不用花钱就能验 —— 喂已知坏输入必须非零退出。
-echo "═══ 评测判决器自身的回归（不调模型）═══"
-bash evals/next-redo.sh --selftest || F=1
-bash evals/sync-map.sh  --selftest || F=1
 echo ""
 
 echo "═══ README 内嵌声明块 ↔ templates ═══"

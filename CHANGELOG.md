@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.15.1] - 2026-09-16
+
+### 修复
+
+- **GitHub Proposal Issue 读取。** 兼容 GitHub Search API 的
+  `repository_url` 响应形状；此前真实 Proposal Issue 会被保守降级为
+  `unknown`，从而阻断 review 与 promotion proof。
+
 ## [0.15.0] - 2026-09-15
 
 ### 破坏性变更

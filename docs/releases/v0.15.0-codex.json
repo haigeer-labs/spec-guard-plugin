@@ -41,6 +41,20 @@
         "command:codex plugin add spec-guard@spec-guard-marketplace --json",
         "result:active Codex configuration reported spec-guard@spec-guard-marketplace version 0.15.0 installed and enabled from the v0.15.0 Git marketplace snapshot"
       ]
+    },
+    {
+      "subject": "codex-desktop-host",
+      "status": "host-verified",
+      "target": {
+        "kind": "host-session",
+        "id": "codex-desktop:new-session-after-v0.15.0-upgrade"
+      },
+      "observedAt": "2026-09-15T15:06:14Z",
+      "evidence": [
+        "event:UserPromptSubmit",
+        "result:the new session received the v0.15.0 local workflow context with only Capability map and Module specs; it did not request .agent/state.json or suggest /sync-map",
+        "command:codex plugin list --available --json reported spec-guard@spec-guard-marketplace version 0.15.0 installed and enabled from the Git marketplace"
+      ]
     }
   ]
 }
